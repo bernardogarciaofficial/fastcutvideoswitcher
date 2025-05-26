@@ -112,6 +112,9 @@ for (let i = 0; i < NUM_VIDEOS; i++) {
   vs.recIndicator = document.getElementById(`recIndicator${i}`);
   vs.countdown = document.getElementById(`countdown${i}`);
 
+  vs.video.controls = false; // Ensure no controls are shown
+  vs.video.muted = true;     // Ensure no volume control by user
+
   vs.recordBtn.disabled = true;
   vs.playBtn.disabled = true;
   vs.stopBtn.disabled = true;
@@ -188,7 +191,7 @@ for (let i = 0; i < NUM_VIDEOS; i++) {
         vs.video.srcObject = null;
         vs.video.src = URL.createObjectURL(vs.recordedVideoBlob);
         vs.video.muted = false;
-        vs.video.controls = true;
+        vs.video.controls = false; // No controls after recording
         vs.playBtn.disabled = false;
         vs.stopBtn.disabled = true;
         vs.recordBtn.disabled = false;
@@ -220,9 +223,9 @@ for (let i = 0; i < NUM_VIDEOS; i++) {
     vs.video.srcObject = null;
     vs.video.src = URL.createObjectURL(vs.recordedVideoBlob);
     vs.video.muted = false;
+    vs.video.controls = false; // Always keep controls hidden
     vs.video.currentTime = 0;
     audio.currentTime = 0;
-    vs.video.controls = true;
     vs.isPlaying = true;
     vs.video.play();
     audio.play();
