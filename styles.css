@@ -5,7 +5,7 @@ body {
 }
 
 .container {
-  max-width: 1700px;
+  max-width: 1800px;
   margin: 30px auto;
   text-align: center;
 }
@@ -38,35 +38,35 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 40px;
+  gap: 50px;
   margin: 0 auto;
-  max-width: 1200px;
+  max-width: 1400px;
   width: 100%;
 }
 
 .video-wrapper {
   position: relative;
-  width: 90vw;
-  max-width: 1200px;
-  margin: 0 auto 40px auto;
+  width: 96vw;
+  max-width: 1600px;
+  margin: 0 auto 50px auto;
   background: #181828;
-  border-radius: 18px;
-  box-shadow: 0 10px 40px 0 rgba(0,0,0,0.25);
-  padding: 36px 0 36px 0;
+  border-radius: 22px;
+  box-shadow: 0 12px 48px 0 rgba(0,0,0,0.28);
+  padding: 44px 0 44px 0;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
 video {
-  width: 88vw;
-  max-width: 1150px;
-  height: 48vw;
-  max-height: 650px;
+  width: 94vw;
+  max-width: 1550px;
+  height: 53vw;
+  max-height: 900px;
   background: #222;
   z-index: 1;
-  border-radius: 14px;
-  margin-bottom: 16px;
+  border-radius: 17px;
+  margin-bottom: 22px;
   box-shadow: 0 4px 32px 0 rgba(0,0,0,0.22);
 }
 .countdown {
@@ -75,25 +75,25 @@ video {
   width: 100%;
   height: 100%;
   color: #fff;
-  font-size: 6rem;
+  font-size: 7rem;
   font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 3;
-  background: rgba(0,0,0,0.55);
-  text-shadow: 2px 2px 14px #000;
+  background: rgba(0,0,0,0.60);
+  text-shadow: 2px 2px 18px #000;
 }
 .countdown.hidden {
   display: none;
 }
 .rec-indicator {
   position: absolute;
-  right: 44px;
-  top: 40px;
+  right: 54px;
+  top: 60px;
   color: #ff2323;
   font-weight: bold;
-  font-size: 2.7rem;
+  font-size: 3.2rem;
   z-index: 4;
   animation: blink 1s infinite;
   pointer-events: none;
@@ -108,13 +108,13 @@ video {
   100% { opacity: 1; }
 }
 .controls {
-  margin-top: 18px;
+  margin-top: 22px;
 }
 button {
-  margin: 0 7px;
-  padding: 12px 28px;
-  font-size: 1.3rem;
-  border-radius: 8px;
+  margin: 0 9px;
+  padding: 18px 38px;
+  font-size: 1.4rem;
+  border-radius: 9px;
   border: none;
   background: #2a28ad;
   color: #fff;
@@ -134,21 +134,21 @@ button:hover:not(:disabled) {
 }
 
 .master-edit-section {
-  margin: 60px auto 0 auto;
-  max-width: 1200px;
+  margin: 70px auto 0 auto;
+  max-width: 1400px;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 .dice-btn {
-  font-size: 1.7rem;
+  font-size: 2.1rem;
   background: #4a38ff;
   color: #fff;
-  border-radius: 13px;
+  border-radius: 16px;
   font-weight: bold;
   box-shadow: 0 8px 20px 0 rgba(66,56,255,0.16);
-  margin-bottom: 32px;
-  padding: 26px 68px;
+  margin-bottom: 42px;
+  padding: 32px 80px;
   border: none;
   cursor: pointer;
   transition: background 0.2s, transform 0.1s;
@@ -160,13 +160,13 @@ button:hover:not(:disabled) {
 }
 
 .master-video-wrapper {
-  width: 92vw;
-  max-width: 1300px;
+  width: 96vw;
+  max-width: 1550px;
   margin: 0 auto 0 auto;
   background: #141424;
-  border-radius: 18px;
-  box-shadow: 0 10px 40px 0 rgba(0,0,0,0.25);
-  padding: 30px 0 36px 0;
+  border-radius: 22px;
+  box-shadow: 0 12px 48px 0 rgba(0,0,0,0.28);
+  padding: 44px 0 44px 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -174,12 +174,12 @@ button:hover:not(:disabled) {
 }
 
 #masterOutputVideo {
-  width: 88vw;
-  max-width: 1200px;
-  height: 48vw;
-  max-height: 680px;
+  width: 94vw;
+  max-width: 1500px;
+  height: 53vw;
+  max-height: 900px;
   background: #222;
-  border-radius: 14px;
+  border-radius: 18px;
   margin-bottom: 0;
   z-index: 1;
 }
@@ -189,27 +189,27 @@ button:hover:not(:disabled) {
   top: 30px;
   left: 50%;
   transform: translateX(-50%);
-  width: 88vw;
-  max-width: 1200px;
-  height: 48vw;
-  max-height: 680px;
+  width: 94vw;
+  max-width: 1500px;
+  height: 53vw;
+  max-height: 900px;
   pointer-events: none;
   z-index: 2;
 }
 .export-section {
-  margin: 56px 0 40px 0;
+  margin: 66px 0 44px 0;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 .export-btn {
-  font-size: 1.35rem;
+  font-size: 1.7rem;
   background: #1ac65e;
   color: #fff;
-  border-radius: 12px;
+  border-radius: 14px;
   font-weight: bold;
-  box-shadow: 0 4px 16px 0 rgba(18,166,94,0.16);
-  padding: 22px 48px;
+  box-shadow: 0 6px 22px 0 rgba(18,166,94,0.18);
+  padding: 32px 72px;
   border: none;
   cursor: pointer;
   transition: background 0.18s, transform 0.10s;
