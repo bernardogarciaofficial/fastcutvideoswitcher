@@ -16,9 +16,9 @@
     <div class="waveform-container">
       <canvas id="waveform"></canvas>
     </div>
-    <!-- Grid of Video Screens/Recorders -->
-    <div class="videos-grid">
-      <!-- 10 video screens WITH controls restored -->
+    <!-- Stacked Video Screens/Recorders -->
+    <div class="videos-stack">
+      <!-- 10 video screens, large and stacked vertically -->
       <div class="video-wrapper" data-index="0">
         <video id="video0" controls autoplay muted></video>
         <div id="countdown0" class="countdown hidden"></div>
@@ -120,15 +120,18 @@
         </div>
       </div>
     </div>
-    <!-- New section for the dice edit button and master output video -->
+    <!-- Control and Output Section -->
     <div class="master-edit-section">
       <button id="randomDiceEditBtn" class="dice-btn">
-        🎲 Random Dice Edit the Entire Song
+        🎲 Synchronize Random Dice Edit Entire Music Video
       </button>
       <div class="master-video-wrapper">
         <video id="masterOutputVideo" controls></video>
         <div class="master-video-overlay" id="masterOverlay"></div>
       </div>
+    </div>
+    <div class="export-section">
+      <button id="exportBtn" class="export-btn">⬇️ Export Music Video</button>
     </div>
   </div>
   <script src="script.js"></script>
