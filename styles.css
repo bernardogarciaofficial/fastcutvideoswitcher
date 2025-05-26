@@ -159,6 +159,36 @@ button:hover:not(:disabled) {
   transform: scale(1.045);
 }
 
+.master-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 36px;
+  margin-bottom: 24px;
+}
+.master-play-btn,
+.master-stop-btn {
+  font-size: 1.5rem;
+  padding: 18px 46px;
+  border-radius: 11px;
+  background: #27b4f2;
+  color: #fff;
+  border: none;
+  font-weight: bold;
+  transition: background 0.18s, transform 0.1s;
+  box-shadow: 0 2px 14px 0 rgba(39,180,242,0.13);
+}
+.master-play-btn:hover,
+.master-stop-btn:hover {
+  background: #34d7ff;
+  transform: scale(1.06);
+}
+.master-stop-btn {
+  background: #d22929;
+}
+.master-stop-btn:hover {
+  background: #f03d3d;
+}
 .master-video-wrapper {
   width: 96vw;
   max-width: 1550px;
