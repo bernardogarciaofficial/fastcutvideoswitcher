@@ -2,17 +2,30 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Video Recorder/Player</title>
+  <title>Video Recorder/Player with Song Waveform</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="container">
-    <video id="video" controls autoplay muted></video>
+    <!-- Upload Song -->
+    <div class="upload-section">
+      <label for="songInput" class="upload-label">Upload Song</label>
+      <input type="file" id="songInput" accept="audio/*">
+    </div>
+    <!-- Waveform Visual -->
+    <div class="waveform-container">
+      <canvas id="waveform"></canvas>
+    </div>
+    <!-- Video and Controls -->
+    <div class="video-wrapper">
+      <video id="video" controls autoplay muted></video>
+      <div id="countdown" class="countdown hidden"></div>
+      <span id="recIndicator" class="rec-indicator hidden">● REC</span>
+    </div>
     <div class="controls">
       <button id="recordBtn">Record</button>
       <button id="stopBtn" disabled>Stop</button>
       <button id="playBtn" disabled>Play</button>
-      <span id="recIndicator" class="hidden">● REC</span>
     </div>
   </div>
   <script src="script.js"></script>
