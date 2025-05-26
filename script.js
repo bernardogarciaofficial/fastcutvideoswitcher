@@ -15,6 +15,14 @@ let audioBuffer = null;
 let audioContext = null;
 let isSongLoaded = false;
 
+// For master output
+let masterSegments = [];
+let masterEditPlaying = false;
+let masterEditTimeout = null;
+let masterAudioClone = null;
+let currentMasterSegmentIdx = 0;
+let masterSegmentStartTime = 0;
+
 // Per-video screen state
 const videoStates = Array(NUM_VIDEOS).fill().map(() => ({
   video: null,
@@ -341,11 +349,6 @@ function applyTransitionOverlay(type) {
   }, 900);
 }
 
-const masterSegments = [];
-let masterEditPlaying = false;
-let masterEditTimeout = null;
-let masterAudioClone = null;
-
 randomDiceEditBtn.addEventListener('click', () => {
   const usedClips = videoStates
     .map((vs, idx) => ({ idx, blob: vs.recordedVideoBlob, duration: vs.video.duration }))
@@ -375,7 +378,7 @@ randomDiceEditBtn.addEventListener('click', () => {
     shuffledClips = shuffledClips.concat(shuffleArray(usedClips));
   }
 
-  masterSegments.length = 0;
+  masterSegments = [];
   for (let i = 0; i < segmentTimes.length; i++) {
     let idx = i % shuffledClips.length;
     const { blob, duration, idx: vIdx } = shuffledClips[idx];
@@ -424,7 +427,9 @@ function randomEffectCSS() {
   return effects[Math.floor(Math.random() * effects.length)];
 }
 
-function playMasterEdit() {
+// --- Lip Sync Correct Master Output Playback ---
+function playMasterEdit(startAt = 0) {
+  // Reset playback state
   if (masterEditPlaying) {
     masterOutputVideo.pause();
     if (masterAudioClone) masterAudioClone.pause();
@@ -434,17 +439,25 @@ function playMasterEdit() {
 
   if (!masterSegments.length) return;
 
-  masterOutputVideo.src = '';
-  masterOutputVideo.currentTime = 0;
-  masterOutputVideo.controls = false;
-
+  // Init audio
   masterAudioClone = new Audio(audioUrl);
-  masterAudioClone.currentTime = 0;
+  masterAudioClone.currentTime = startAt;
+  masterAudioClone.volume = 1;
+  masterAudioClone.playbackRate = 1;
+  masterAudioClone.pause();
 
-  let segIdx = 0;
-  let segmentStartTime = 0;
+  currentMasterSegmentIdx = 0;
+  let seekInSong = startAt;
+  // Find which segment matches the seek position
+  for (let i = 0; i < masterSegments.length; i++) {
+    const seg = masterSegments[i];
+    if (seekInSong >= seg.segStart && seekInSong < seg.segEnd) {
+      currentMasterSegmentIdx = i;
+      break;
+    }
+  }
 
-  function playSegment(idx) {
+  function playSegment(idx, offset = 0) {
     if (idx >= masterSegments.length) {
       masterAudioClone.pause();
       masterOutputVideo.pause();
@@ -452,53 +465,95 @@ function playMasterEdit() {
       masterEditPlaying = false;
       return;
     }
-
     const seg = masterSegments[idx];
     masterOutputVideo.src = seg.videoSrc;
-    masterOutputVideo.currentTime = 0;
+    masterOutputVideo.currentTime = (offset > 0) ? offset : 0;
     masterOutputVideo.muted = true;
     masterOutputVideo.style.filter = seg.filter || '';
     masterOutputVideo.className = 'master-effect-' + (seg.effect || '');
 
     if (seg.transition) applyTransitionOverlay(seg.transition);
 
+    let segmentRealStart = seg.segStart + (offset > 0 ? offset : 0);
+    masterAudioClone.currentTime = segmentRealStart;
     masterOutputVideo.play();
-    if (masterAudioClone.paused) masterAudioClone.play();
-    masterAudioClone.currentTime = seg.segStart;
+    masterAudioClone.play();
 
     masterEditPlaying = true;
-    segmentStartTime = performance.now();
+    masterSegmentStartTime = performance.now();
 
-    masterEditTimeout = setTimeout(() => {
-      playSegment(idx + 1);
-    }, Math.max(0, (seg.segEnd - seg.segStart) * 1000));
+    // Keep them locked in sync, always force audio to follow masterOutputVideo
+    const sync = () => {
+      if (!masterEditPlaying) return;
+      const absoluteSongTime = seg.segStart + masterOutputVideo.currentTime;
+      if (Math.abs(masterAudioClone.currentTime - absoluteSongTime) > 0.055) {
+        masterAudioClone.currentTime = absoluteSongTime;
+      }
+      if (!masterOutputVideo.paused && masterAudioClone.paused) masterAudioClone.play();
+      if (masterOutputVideo.paused && !masterAudioClone.paused) masterAudioClone.pause();
+      if (!masterOutputVideo.ended) requestAnimationFrame(sync);
+    };
+    sync();
+
+    // When video segment ends, go to next segment
+    const endListener = () => {
+      masterOutputVideo.removeEventListener('ended', endListener);
+      masterAudioClone.pause();
+      playSegment(idx + 1, 0);
+    };
+    masterOutputVideo.addEventListener('ended', endListener);
+
+    // When master output is paused, pause audio
+    masterOutputVideo.onpause = () => {
+      if (!masterAudioClone.paused) masterAudioClone.pause();
+    };
+    masterOutputVideo.onplay = () => {
+      if (masterAudioClone.paused) masterAudioClone.play();
+    };
+
+    // Seek handler: If user seeks, recalculate segment and offset
+    masterOutputVideo.onseeked = () => {
+      const absoluteSeek = seg.segStart + masterOutputVideo.currentTime;
+      // Find which segment and offset
+      for (let i = 0; i < masterSegments.length; i++) {
+        const s = masterSegments[i];
+        if (absoluteSeek >= s.segStart && absoluteSeek < s.segEnd) {
+          // Play this segment at new offset
+          masterEditPlaying = false;
+          if (masterEditTimeout) clearTimeout(masterEditTimeout);
+          playSegment(i, absoluteSeek - s.segStart);
+          return;
+        }
+      }
+    };
   }
 
-  masterOutputVideo.addEventListener('seeked', () => {
-    if (masterEditPlaying) {
-      masterAudioClone.currentTime = masterSegments[segIdx].segStart + masterOutputVideo.currentTime;
-    }
-  });
-
-  masterOutputVideo.onended = () => {
-    masterAudioClone.pause();
-    masterEditPlaying = false;
-    masterOutputVideo.controls = true;
-  };
-
-  playSegment(0);
+  // Start playback at calculated segment and offset
+  const seg = masterSegments[currentMasterSegmentIdx];
+  const offset = startAt - seg.segStart;
+  playSegment(currentMasterSegmentIdx, offset > 0 ? offset : 0);
 }
 
 // Master Output Video Play/Stop Button Functionality
 mainPlayBtn.addEventListener('click', () => {
-  if (masterOutputVideo.paused) {
+  if (!masterSegments.length) return;
+  if (!masterEditPlaying) {
+    // Resume from current position
+    let curTime = masterOutputVideo.currentTime;
+    let segIdx = currentMasterSegmentIdx;
+    let absTime = masterSegments[segIdx].segStart + curTime;
+    playMasterEdit(absTime);
+  } else {
     masterOutputVideo.play();
     if (masterAudioClone) masterAudioClone.play();
   }
 });
 mainStopBtn.addEventListener('click', () => {
-  masterOutputVideo.pause();
-  masterOutputVideo.currentTime = 0;
+  masterEditPlaying = false;
+  if (masterOutputVideo) {
+    masterOutputVideo.pause();
+    masterOutputVideo.currentTime = 0;
+  }
   if (masterAudioClone) {
     masterAudioClone.pause();
     masterAudioClone.currentTime = 0;
@@ -530,6 +585,7 @@ exportBtn.addEventListener('click', () => {
     });
 });
 
+// Style for effects and transitions
 const style = document.createElement('style');
 style.innerHTML = `
 @keyframes master-pulse { 0%{transform:scale(1);} 50%{transform:scale(1.045);} 100%{transform:scale(1);} }
