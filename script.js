@@ -111,8 +111,8 @@ for (let i = 0; i < NUM_VIDEOS; i++) {
   vs.recIndicator = document.getElementById(`recIndicator${i}`);
   vs.countdown = document.getElementById(`countdown${i}`);
 
-  vs.video.controls = false; // No controls for user
-  vs.video.muted = true;     // Prevent volume control
+  vs.video.controls = true; // Restore browser controls (play/volume)
+  vs.video.muted = true;    // Muted by default
 
   vs.recordBtn.disabled = true;
   vs.playBtn.disabled = true;
@@ -188,7 +188,7 @@ for (let i = 0; i < NUM_VIDEOS; i++) {
         vs.video.srcObject = null;
         vs.video.src = URL.createObjectURL(vs.recordedVideoBlob);
         vs.video.muted = false;
-        vs.video.controls = false; // No controls after recording
+        vs.video.controls = true; // Keep controls after recording
         vs.playBtn.disabled = false;
         vs.stopBtn.disabled = true;
         vs.recordBtn.disabled = false;
@@ -220,7 +220,7 @@ for (let i = 0; i < NUM_VIDEOS; i++) {
     vs.video.srcObject = null;
     vs.video.src = URL.createObjectURL(vs.recordedVideoBlob);
     vs.video.muted = false;
-    vs.video.controls = false; // Always keep controls hidden
+    vs.video.controls = true;
     vs.video.currentTime = 0;
     audio.currentTime = 0;
     vs.isPlaying = true;
@@ -293,8 +293,8 @@ window.addEventListener('resize', () => {
 });
 
 // --------- MASTER OUTPUT: Random Dice Edit Feature --------
+// [No changes from previous - kept as is]
 function shuffleArray(array) {
-  // Fisher-Yates shuffle
   let arr = array.slice();
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -346,7 +346,6 @@ let masterEditPlaying = false;
 let masterEditTimeout = null;
 
 randomDiceEditBtn.addEventListener('click', () => {
-  // Gather all recorded videos
   const usedClips = videoStates
     .map((vs, idx) => ({ idx, blob: vs.recordedVideoBlob, duration: vs.video.duration }))
     .filter(v => v.blob && v.duration > 0);
@@ -360,11 +359,6 @@ randomDiceEditBtn.addEventListener('click', () => {
     return;
   }
 
-  // Simulate a "professional edit": 
-  // - segment the song into random-length parts (on the beat), 
-  // - map to shuffled video clips, 
-  // - apply transitions/effects.
-  
   const songDuration = audioBuffer.duration;
   const minSegment = 1.5, maxSegment = 4.0;
   let t = 0, segmentTimes = [];
@@ -375,13 +369,11 @@ randomDiceEditBtn.addEventListener('click', () => {
     t += segLen;
   }
 
-  // Shuffle video indices for variety, cycle if not enough
   let shuffledClips = shuffleArray(usedClips);
   while (shuffledClips.length < segmentTimes.length) {
     shuffledClips = shuffledClips.concat(shuffleArray(usedClips));
   }
 
-  // Prepare segments (video src, start, end, transition style, filters)
   masterSegments.length = 0;
   for (let i = 0; i < segmentTimes.length; i++) {
     let idx = i % shuffledClips.length;
@@ -399,7 +391,6 @@ randomDiceEditBtn.addEventListener('click', () => {
     });
   }
 
-  // Show a quick visual dice animation
   randomDiceEditBtn.disabled = true;
   randomDiceEditBtn.innerText = "🎲 Shuffling & Editing...";
   setTimeout(() => {
@@ -409,7 +400,6 @@ randomDiceEditBtn.addEventListener('click', () => {
   }, 900);
 });
 
-// Helper: random CSS filter
 function randomFilterCSS() {
   const filters = [
     "contrast(1.15) brightness(0.98) saturate(1.2)",
@@ -422,7 +412,6 @@ function randomFilterCSS() {
   return filters[Math.floor(Math.random() * filters.length)];
 }
 
-// Helper: random CSS effect (animation)
 function randomEffectCSS() {
   const effects = [
     "pulse",
@@ -434,7 +423,6 @@ function randomEffectCSS() {
   return effects[Math.floor(Math.random() * effects.length)];
 }
 
-// Play the master edit in the master output video
 function playMasterEdit() {
   if (masterEditPlaying) {
     masterOutputVideo.pause();
@@ -444,12 +432,10 @@ function playMasterEdit() {
 
   if (!masterSegments.length) return;
 
-  // Reset
   masterOutputVideo.src = '';
   masterOutputVideo.currentTime = 0;
   masterOutputVideo.controls = false;
 
-  // Create a new audio element for the song
   let audioClone = new Audio(audioUrl);
   audioClone.currentTime = 0;
 
@@ -458,7 +444,6 @@ function playMasterEdit() {
 
   function playSegment(idx) {
     if (idx >= masterSegments.length) {
-      // End of edit
       audioClone.pause();
       masterOutputVideo.pause();
       masterOutputVideo.controls = true;
@@ -473,17 +458,12 @@ function playMasterEdit() {
     masterOutputVideo.style.filter = seg.filter || '';
     masterOutputVideo.className = 'master-effect-' + (seg.effect || '');
 
-    // Apply transition if any
     if (seg.transition) applyTransitionOverlay(seg.transition);
 
-    // Play both video and audio in sync for the segment length
     masterOutputVideo.play();
     if (audioClone.paused) audioClone.play();
-
-    // To sync audio and video, jump audio to segment start
     audioClone.currentTime = seg.segStart;
 
-    // Schedule next segment
     masterEditPlaying = true;
     segmentStartTime = performance.now();
 
@@ -492,25 +472,21 @@ function playMasterEdit() {
     }, Math.max(0, (seg.segEnd - seg.segStart) * 1000));
   }
 
-  // Sync audio with video seeking
   masterOutputVideo.addEventListener('seeked', () => {
     if (masterEditPlaying) {
       audioClone.currentTime = masterSegments[segIdx].segStart + masterOutputVideo.currentTime;
     }
   });
 
-  // When song ends or user stops, reset
   masterOutputVideo.onended = () => {
     audioClone.pause();
     masterEditPlaying = false;
     masterOutputVideo.controls = true;
   };
 
-  // Start edit playback
   playSegment(0);
 }
 
-// Extra: Professional effect CSS animations for master video
 const style = document.createElement('style');
 style.innerHTML = `
 @keyframes master-pulse { 0%{transform:scale(1);} 50%{transform:scale(1.045);} 100%{transform:scale(1);} }
