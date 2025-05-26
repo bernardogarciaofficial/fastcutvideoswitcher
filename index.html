@@ -18,7 +18,7 @@
     </div>
     <!-- Grid of Video Screens/Recorders -->
     <div class="videos-grid">
-      <!-- Main video screen (index 0) -->
+      <!-- 10 video screens -->
       <div class="video-wrapper" data-index="0">
         <video id="video0" controls autoplay muted></video>
         <div id="countdown0" class="countdown hidden"></div>
@@ -29,7 +29,6 @@
           <button id="playBtn0" disabled>Play</button>
         </div>
       </div>
-      <!-- 9 more duplicates (video1 ... video9) -->
       <div class="video-wrapper" data-index="1">
         <video id="video1" controls autoplay muted></video>
         <div id="countdown1" class="countdown hidden"></div>
@@ -121,11 +120,15 @@
         </div>
       </div>
     </div>
-    <!-- Random Dice Edit Button and Master Output Video -->
+
+    <!-- Dice Edit Button and Master Output Section -->
     <div class="master-output-section">
       <button id="randomDiceEditBtn" class="dice-btn">
-        🎲 Random Dice Edit the Entire Song
+        🎲 Random Dice Edit Entire Music Video
       </button>
+      <div class="master-video-controls">
+        <button id="stopMasterBtn" class="stop-master-btn">⏹ Stop</button>
+      </div>
       <div class="master-video-wrapper">
         <video id="masterOutputVideo" controls></video>
         <div class="master-video-overlay" id="masterOverlay"></div>
