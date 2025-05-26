@@ -2,6 +2,8 @@ const NUM_VIDEOS = 10;
 
 const songInput = document.getElementById('songInput');
 const waveform = document.getElementById('waveform');
+const randomDiceEditBtn = document.getElementById('randomDiceEditBtn');
+const masterOutputVideo = document.getElementById('masterOutputVideo');
 
 let audio = null;
 let audioUrl = null;
@@ -285,3 +287,181 @@ for (let i = 0; i < NUM_VIDEOS; i++) {
 window.addEventListener('resize', () => {
   if (audioBuffer) drawWaveform(audioBuffer);
 });
+
+// ----------- RANDOM DICE EDIT FUNCTIONALITY (PROTOTYPE) -----------
+
+// Helper: Shuffle array (Fisher-Yates)
+function shuffleArray(array) {
+  let arr = array.slice();
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// Helper: Get all available (recorded) videos
+function getAvailableVideos() {
+  return videoStates
+    .map((vs, idx) => ({ idx, blob: vs.recordedVideoBlob }))
+    .filter(v => !!v.blob);
+}
+
+// Helper: Generate random edit points (simulate on-the-beat cuts)
+function getRandomEditPoints(audioDuration, minCut = 1.5, maxCut = 4.5) {
+  let points = [0];
+  let t = 0;
+  while (t < audioDuration - minCut) {
+    let cut = minCut + Math.random() * (maxCut - minCut);
+    t += cut;
+    if (t < audioDuration) points.push(t);
+  }
+  if (points[points.length - 1] < audioDuration) points.push(audioDuration);
+  return points;
+}
+
+// Simulate a random dice edit
+randomDiceEditBtn.addEventListener('click', async () => {
+  // 1. Gather all available video blobs
+  const videoClips = getAvailableVideos();
+  if (!audioBuffer || !audio || videoClips.length === 0) {
+    alert('Please upload a song and record at least one video to use the Random Dice Edit.');
+    return;
+  }
+
+  // 2. Get random order of video indices
+  const shuffledIndices = shuffleArray(videoClips.map(v => v.idx));
+
+  // 3. Generate random edit points (simulate beat cuts)
+  const audioDuration = audioBuffer.duration;
+  const editPoints = getRandomEditPoints(audioDuration);
+
+  // 4. Assign video segments to each cut (cycle through shuffled indices)
+  let segments = [];
+  let currentIdxInShuffle = 0;
+  for (let i = 0; i < editPoints.length - 1; i++) {
+    const start = editPoints[i];
+    const end = editPoints[i + 1];
+    const clipIdx = shuffledIndices[currentIdxInShuffle];
+    segments.push({
+      videoIdx: clipIdx,
+      startTime: start,
+      endTime: end
+    });
+    currentIdxInShuffle = (currentIdxInShuffle + 1) % shuffledIndices.length;
+  }
+
+  // 5. "Render" (simulate) the master output edit
+  simulateMasterEdit(segments, videoClips, audioUrl, audioDuration);
+
+  // 6. UI feedback
+  randomDiceEditBtn.disabled = true;
+  randomDiceEditBtn.innerText = 'Rendering... 🎬';
+  setTimeout(() => {
+    randomDiceEditBtn.disabled = false;
+    randomDiceEditBtn.innerHTML = '<span class="dice-icon">🎲</span> Random Dice Edit the Entire Song';
+  }, 2500);
+});
+
+// Simulate the master output edit by playing segments in sequence using MediaSource or fallback UI
+function simulateMasterEdit(segments, videoClips, audioUrl, audioDuration) {
+  // This is a UI simulation: for each segment, seek the video to the right time and play it, switching on the fly.
+  // Real professional rendering would require ffmpeg/Canvas/MediaRecorder or server-side processing.
+
+  // Set up the master output video
+  const videoElements = {};
+  for (const { idx, blob } of videoClips) {
+    const el = document.createElement('video');
+    el.src = URL.createObjectURL(blob);
+    el.preload = 'auto';
+    el.muted = true;
+    el.playsInline = true;
+    videoElements[idx] = el;
+  }
+
+  // Load audio for sync
+  const outputAudio = new Audio(audioUrl);
+  outputAudio.preload = 'auto';
+  outputAudio.currentTime = 0;
+  outputAudio.volume = 1;
+
+  // Master output video element
+  masterOutputVideo.srcObject = null;
+  masterOutputVideo.src = '';
+  masterOutputVideo.controls = true;
+  masterOutputVideo.muted = false;
+
+  // For UI: We use one video element, swap sources, and seek as needed
+  let segIdx = 0;
+  let isPlaying = false;
+
+  async function playSegment(segmentIdx) {
+    if (segmentIdx >= segments.length) {
+      isPlaying = false;
+      outputAudio.pause();
+      return;
+    }
+    const seg = segments[segmentIdx];
+    const videoEl = videoElements[seg.videoIdx];
+    if (!videoEl) return;
+
+    // Prepare video and audio
+    videoEl.currentTime = seg.startTime;
+    masterOutputVideo.src = videoEl.src;
+    masterOutputVideo.currentTime = seg.startTime;
+    masterOutputVideo.muted = true; // Only the audio track will play
+    masterOutputVideo.play();
+
+    // When segment starts, play audio from correct time
+    outputAudio.currentTime = seg.startTime;
+    if (outputAudio.paused) outputAudio.play();
+
+    isPlaying = true;
+
+    // Wait for segment duration or video end
+    const segDuration = seg.endTime - seg.startTime;
+    const playPromise = new Promise(resolve => {
+      const onTimeUpdate = () => {
+        if (masterOutputVideo.currentTime >= seg.endTime - 0.03 || masterOutputVideo.ended) {
+          masterOutputVideo.removeEventListener('timeupdate', onTimeUpdate);
+          resolve();
+        }
+      };
+      masterOutputVideo.addEventListener('timeupdate', onTimeUpdate);
+    });
+
+    await playPromise;
+    // Move to next segment
+    playSegment(segmentIdx + 1);
+  }
+
+  // Start playback
+  outputAudio.onended = () => {
+    isPlaying = false;
+  };
+  playSegment(0);
+
+  // For a more "pro" look, simulate effects: quick fade-in/out between segments (UI only)
+  masterOutputVideo.style.transition = 'filter 0.3s';
+  masterOutputVideo.style.filter = 'brightness(1)';
+
+  masterOutputVideo.onplay = () => {
+    masterOutputVideo.style.filter = 'brightness(1)';
+  };
+  masterOutputVideo.onpause = () => {
+    masterOutputVideo.style.filter = 'brightness(0.7)';
+  };
+
+  // For more visual feedback, add a "fake" effect indication (UI only)
+  masterOutputVideo.classList.add('master-fx');
+}
+
+// (Optional) Add CSS for master-fx class for simulated effects
+const fxStyle = document.createElement('style');
+fxStyle.innerHTML = `
+.master-fx {
+  box-shadow: 0 0 30px #1de9b6, 0 0 0 5px #3949ab55;
+  transition: box-shadow 0.17s;
+}
+`;
+document.head.appendChild(fxStyle);
