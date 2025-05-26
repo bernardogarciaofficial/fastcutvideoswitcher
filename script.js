@@ -1,9 +1,5 @@
-const video = document.getElementById('video');
-const recordBtn = document.getElementById('recordBtn');
-const stopBtn = document.getElementById('stopBtn');
-const playBtn = document.getElementById('playBtn');
-const recIndicator = document.getElementById('recIndicator');
-const countdown = document.getElementById('countdown');
+const NUM_VIDEOS = 10;
+
 const songInput = document.getElementById('songInput');
 const waveform = document.getElementById('waveform');
 
@@ -12,19 +8,22 @@ let audioUrl = null;
 let audioBuffer = null;
 let audioContext = null;
 let isSongLoaded = false;
-let isRecording = false;
-let isPlaying = false;
 
-let mediaStream = null;
-let mediaRecorder = null;
-let recordedChunks = [];
-let recordedVideoBlob = null;
-
-function enableControls() {
-  recordBtn.disabled = !isSongLoaded;
-  playBtn.disabled = !recordedVideoBlob;
-  stopBtn.disabled = true;
-}
+// Per-video screen state
+const videoStates = Array(NUM_VIDEOS).fill().map(() => ({
+  video: null,
+  recordBtn: null,
+  stopBtn: null,
+  playBtn: null,
+  recIndicator: null,
+  countdown: null,
+  mediaStream: null,
+  mediaRecorder: null,
+  recordedChunks: [],
+  recordedVideoBlob: null,
+  isRecording: false,
+  isPlaying: false
+}));
 
 // Draw waveform for uploaded audio
 function drawWaveform(buffer) {
@@ -70,110 +69,27 @@ songInput.addEventListener('change', async (e) => {
   audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
   drawWaveform(audioBuffer);
   isSongLoaded = true;
-  enableControls();
-});
-
-// Handles play/pause/stop of audio as "slave" to video
-function syncAudioToVideo() {
-  if (!audio) return;
-  // If video is playing, play audio
-  if (!video.paused) {
-    if (audio.paused) {
-      audio.currentTime = video.currentTime;
-      audio.play();
-    }
-  } else {
-    if (!audio.paused) audio.pause();
-  }
-}
-
-// Play video and audio in sync (audio as slave)
-playBtn.addEventListener('click', () => {
-  if (!recordedVideoBlob || !audio) return;
-  video.srcObject = null;
-  video.src = URL.createObjectURL(recordedVideoBlob);
-  video.muted = false;
-  video.currentTime = 0;
-  audio.currentTime = 0;
-  video.controls = true;
-  isPlaying = true;
-  video.play();
-  audio.play();
-
-  stopBtn.disabled = false;
-  playBtn.disabled = true;
-  recordBtn.disabled = false;
-
-  // Keep audio synced to video
-  const sync = () => {
-    if (!isPlaying) return;
-    if (Math.abs(video.currentTime - audio.currentTime) > 0.07) {
-      audio.currentTime = video.currentTime;
-    }
-    if (!video.paused && audio.paused) audio.play();
-    if (video.paused && !audio.paused) audio.pause();
-    if (!video.ended) requestAnimationFrame(sync);
-  };
-  sync();
-
-  // When either ends, stop both
-  video.onended = () => {
-    isPlaying = false;
-    audio.pause();
-    stopBtn.disabled = true;
-    playBtn.disabled = false;
-  };
-  audio.onended = () => {
-    isPlaying = false;
-    video.pause();
-    stopBtn.disabled = true;
-    playBtn.disabled = false;
-  };
-});
-
-// When video is manually paused/stopped, also stop audio
-video.addEventListener('pause', () => {
-  if (isPlaying && audio && !audio.paused) audio.pause();
-});
-video.addEventListener('play', () => {
-  if (isPlaying && audio && audio.paused) audio.play();
-});
-
-// Stop both video and audio
-stopBtn.addEventListener('click', () => {
-  if (isRecording && mediaRecorder && mediaRecorder.state === "recording") {
-    mediaRecorder.stop(); // onstop will handle UI
-    return;
-  }
-  isPlaying = false;
-  if (video && !video.paused) {
-    video.pause();
-    video.currentTime = 0;
-  }
-  if (audio && !audio.paused) {
-    audio.pause();
-    audio.currentTime = 0;
-  }
-  stopBtn.disabled = true;
-  playBtn.disabled = false;
-  recordBtn.disabled = false;
+  // Enable record buttons on all videos
+  videoStates.forEach((vs) => {
+    vs.recordBtn.disabled = false;
+  });
 });
 
 // Countdown utility
-function showCountdown(seconds = 3) {
+function showCountdown(countdownElem, seconds = 3) {
   return new Promise(resolve => {
-    countdown.classList.remove('hidden');
+    countdownElem.classList.remove('hidden');
     let current = seconds;
-    countdown.textContent = current;
+    countdownElem.textContent = current;
     const tick = () => {
       current--;
       if (current > 0) {
-        countdown.textContent = current;
+        countdownElem.textContent = current;
         setTimeout(tick, 1000);
       } else {
-        countdown.textContent = "GO!";
+        countdownElem.textContent = "GO!";
         setTimeout(() => {
-          countdown.classList.add('hidden');
+          countdownElem.classList.add('hidden');
           resolve();
         }, 700);
       }
@@ -182,109 +98,190 @@ function showCountdown(seconds = 3) {
   });
 }
 
-// Start Recording with countdown and REC indicator
-recordBtn.addEventListener('click', async () => {
-  if (isRecording || !isSongLoaded) return;
+// Setup video screens
+for (let i = 0; i < NUM_VIDEOS; i++) {
+  const vs = videoStates[i];
+  vs.video = document.getElementById(`video${i}`);
+  vs.recordBtn = document.getElementById(`recordBtn${i}`);
+  vs.stopBtn = document.getElementById(`stopBtn${i}`);
+  vs.playBtn = document.getElementById(`playBtn${i}`);
+  vs.recIndicator = document.getElementById(`recIndicator${i}`);
+  vs.countdown = document.getElementById(`countdown${i}`);
 
-  try {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      alert("getUserMedia not supported in this browser.");
-      return;
-    }
-    // Start 3-2-1 countdown overlay on video
-    await showCountdown(3);
+  vs.recordBtn.disabled = true;
+  vs.playBtn.disabled = true;
+  vs.stopBtn.disabled = true;
 
-    mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    video.srcObject = mediaStream;
-    video.muted = true;
-    await video.play();
-    recIndicator.classList.remove('hidden');
-    isRecording = true;
-    recordedChunks = [];
-    recordedVideoBlob = null;
-
-    playBtn.disabled = true;
-    stopBtn.disabled = false;
-    recordBtn.disabled = true;
-
-    // Sync: start song audio in sync with recording
-    if (audio) {
-      audio.currentTime = 0;
-      audio.play();
-    }
-
-    // MediaRecorder setup
-    let options = {};
-    if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) {
-      options.mimeType = 'video/webm;codecs=vp9,opus';
-    } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) {
-      options.mimeType = 'video/webm;codecs=vp8,opus';
-    } else if (MediaRecorder.isTypeSupported('video/webm')) {
-      options.mimeType = 'video/webm';
-    }
+  // Record
+  vs.recordBtn.addEventListener('click', async () => {
+    if (vs.isRecording || !isSongLoaded) return;
     try {
-      mediaRecorder = new MediaRecorder(mediaStream, options);
-    } catch (err) {
-      alert("MediaRecorder API is not supported with the selected codec in this browser.");
-      recIndicator.classList.add('hidden');
-      playBtn.disabled = false;
-      stopBtn.disabled = true;
-      recordBtn.disabled = false;
-      isRecording = false;
-      if (mediaStream) {
-        mediaStream.getTracks().forEach(track => track.stop());
-        mediaStream = null;
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("getUserMedia not supported in this browser.");
+        return;
       }
+      await showCountdown(vs.countdown, 3);
+
+      vs.mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      vs.video.srcObject = vs.mediaStream;
+      vs.video.muted = true;
+      await vs.video.play();
+      vs.recIndicator.classList.remove('hidden');
+      vs.isRecording = true;
+      vs.recordedChunks = [];
+      vs.recordedVideoBlob = null;
+
+      vs.playBtn.disabled = true;
+      vs.stopBtn.disabled = false;
+      vs.recordBtn.disabled = true;
+
+      // Sync: start song audio in sync with recording
+      if (audio) {
+        audio.currentTime = 0;
+        audio.play();
+      }
+
+      // MediaRecorder setup
+      let options = {};
+      if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) {
+        options.mimeType = 'video/webm;codecs=vp9,opus';
+      } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) {
+        options.mimeType = 'video/webm;codecs=vp8,opus';
+      } else if (MediaRecorder.isTypeSupported('video/webm')) {
+        options.mimeType = 'video/webm';
+      }
+      try {
+        vs.mediaRecorder = new MediaRecorder(vs.mediaStream, options);
+      } catch (err) {
+        alert("MediaRecorder API is not supported with the selected codec in this browser.");
+        vs.recIndicator.classList.add('hidden');
+        vs.playBtn.disabled = false;
+        vs.stopBtn.disabled = true;
+        vs.recordBtn.disabled = false;
+        vs.isRecording = false;
+        if (vs.mediaStream) {
+          vs.mediaStream.getTracks().forEach(track => track.stop());
+          vs.mediaStream = null;
+        }
+        return;
+      }
+
+      vs.mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          vs.recordedChunks.push(e.data);
+        }
+      };
+
+      vs.mediaRecorder.onstop = () => {
+        vs.recIndicator.classList.add('hidden');
+        if (vs.mediaStream) {
+          vs.mediaStream.getTracks().forEach(track => track.stop());
+          vs.mediaStream = null;
+        }
+        vs.recordedVideoBlob = new Blob(vs.recordedChunks, { type: 'video/webm' });
+        vs.video.srcObject = null;
+        vs.video.src = URL.createObjectURL(vs.recordedVideoBlob);
+        vs.video.muted = false;
+        vs.video.controls = true;
+        vs.playBtn.disabled = false;
+        vs.stopBtn.disabled = true;
+        vs.recordBtn.disabled = false;
+        vs.isRecording = false;
+        // Stop audio
+        if (audio) {
+          audio.pause();
+          audio.currentTime = 0;
+        }
+      };
+
+      vs.mediaRecorder.start();
+    } catch (err) {
+      if (window.isSecureContext === false) {
+        alert("Camera/mic access requires HTTPS or localhost. Please serve your site securely.");
+      } else if (err && err.name === "NotAllowedError") {
+        alert("Camera/mic permission denied. Please allow camera and mic access in your browser settings.");
+      } else if (err && err.name === "NotFoundError") {
+        alert("No camera or microphone found on this device.");
+      } else {
+        alert("Could not access camera or microphone. Error: " + err.message);
+      }
+    }
+  });
+
+  // Play
+  vs.playBtn.addEventListener('click', () => {
+    if (!vs.recordedVideoBlob || !audio) return;
+    vs.video.srcObject = null;
+    vs.video.src = URL.createObjectURL(vs.recordedVideoBlob);
+    vs.video.muted = false;
+    vs.video.currentTime = 0;
+    audio.currentTime = 0;
+    vs.video.controls = true;
+    vs.isPlaying = true;
+    vs.video.play();
+    audio.play();
+
+    vs.stopBtn.disabled = false;
+    vs.playBtn.disabled = true;
+    vs.recordBtn.disabled = false;
+
+    // Keep audio synced to video
+    const sync = () => {
+      if (!vs.isPlaying) return;
+      if (Math.abs(vs.video.currentTime - audio.currentTime) > 0.07) {
+        audio.currentTime = vs.video.currentTime;
+      }
+      if (!vs.video.paused && audio.paused) audio.play();
+      if (vs.video.paused && !audio.paused) audio.pause();
+      if (!vs.video.ended) requestAnimationFrame(sync);
+    };
+    sync();
+
+    // When either ends, stop both
+    vs.video.onended = () => {
+      vs.isPlaying = false;
+      audio.pause();
+      vs.stopBtn.disabled = true;
+      vs.playBtn.disabled = false;
+    };
+    audio.onended = () => {
+      vs.isPlaying = false;
+      vs.video.pause();
+      vs.stopBtn.disabled = true;
+      vs.playBtn.disabled = false;
+    };
+  });
+
+  // When video is manually paused/stopped, also stop audio
+  vs.video.addEventListener('pause', () => {
+    if (vs.isPlaying && audio && !audio.paused) audio.pause();
+  });
+  vs.video.addEventListener('play', () => {
+    if (vs.isPlaying && audio && audio.paused) audio.play();
+  });
+
+  // Stop both video and audio
+  vs.stopBtn.addEventListener('click', () => {
+    if (vs.isRecording && vs.mediaRecorder && vs.mediaRecorder.state === "recording") {
+      vs.mediaRecorder.stop(); // onstop will handle UI
       return;
     }
-
-    mediaRecorder.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) {
-        recordedChunks.push(e.data);
-      }
-    };
-
-    mediaRecorder.onstop = () => {
-      recIndicator.classList.add('hidden');
-      if (mediaStream) {
-        mediaStream.getTracks().forEach(track => track.stop());
-        mediaStream = null;
-      }
-      recordedVideoBlob = new Blob(recordedChunks, { type: 'video/webm' });
-      video.srcObject = null;
-      video.src = URL.createObjectURL(recordedVideoBlob);
-      video.muted = false;
-      video.controls = true;
-      playBtn.disabled = false;
-      stopBtn.disabled = true;
-      recordBtn.disabled = false;
-      isRecording = false;
-      // Stop audio
-      if (audio) {
-        audio.pause();
-        audio.currentTime = 0;
-      }
-    };
-
-    mediaRecorder.start();
-  } catch (err) {
-    if (window.isSecureContext === false) {
-      alert("Camera/mic access requires HTTPS or localhost. Please serve your site securely.");
-    } else if (err && err.name === "NotAllowedError") {
-      alert("Camera/mic permission denied. Please allow camera and mic access in your browser settings.");
-    } else if (err && err.name === "NotFoundError") {
-      alert("No camera or microphone found on this device.");
-    } else {
-      alert("Could not access camera or microphone. Error: " + err.message);
+    vs.isPlaying = false;
+    if (vs.video && !vs.video.paused) {
+      vs.video.pause();
+      vs.video.currentTime = 0;
     }
-  }
-});
-
-// When page loads, set up visuals
-window.addEventListener('DOMContentLoaded', () => {
-  enableControls();
-  // Resize waveform on window resize
-  window.addEventListener('resize', () => {
-    if (audioBuffer) drawWaveform(audioBuffer);
+    if (audio && !audio.paused) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+    vs.stopBtn.disabled = true;
+    vs.playBtn.disabled = false;
+    vs.recordBtn.disabled = false;
   });
+}
+
+// Responsive redraw of waveform
+window.addEventListener('resize', () => {
+  if (audioBuffer) drawWaveform(audioBuffer);
 });
