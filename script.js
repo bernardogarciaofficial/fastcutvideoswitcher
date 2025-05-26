@@ -10,7 +10,6 @@ let recordedChunks = [];
 let recordedVideoBlob = null;
 let isRecording = false;
 
-// Start recording
 recordBtn.addEventListener('click', async () => {
   if (isRecording) return;
 
@@ -24,50 +23,44 @@ recordBtn.addEventListener('click', async () => {
     video.muted = true;
     await video.play();
     recIndicator.classList.remove('hidden');
-    isRecording = true;
-    recordedChunks = [];
-    recordedVideoBlob = null;
-    playBtn.disabled = true;
-    stopBtn.disabled = false;
-    recordBtn.disabled = true;
-
-    mediaRecorder = new MediaRecorder(mediaStream, { mimeType: 'video/webm' });
-    mediaRecorder.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) {
-        recordedChunks.push(e.data);
-      }
-    };
-    mediaRecorder.onstop = () => {
-      recIndicator.classList.add('hidden');
-      recordedVideoBlob = new Blob(recordedChunks, { type: 'video/webm' });
-      video.srcObject = null;
-      video.src = URL.createObjectURL(recordedVideoBlob);
-      video.controls = true;
-      video.muted = false;
-      playBtn.disabled = false;
-      stopBtn.disabled = true;
-      recordBtn.disabled = false;
-      if (mediaStream) {
-        mediaStream.getTracks().forEach(track => track.stop());
-        mediaStream = null;
-      }
-      isRecording = false;
-    };
-    mediaRecorder.start();
+    startRecording();
   } catch (err) {
-    if (window.isSecureContext === false) {
-      alert("Camera access requires HTTPS or localhost. Please serve your site securely.");
-    } else if (err && err.name === "NotAllowedError") {
-      alert("Camera permission denied. Please allow camera access in your browser settings.");
-    } else if (err && err.name === "NotFoundError") {
-      alert("No camera found on this device.");
-    } else {
-      alert("Could not access camera. Error: " + err.message);
-    }
+    alert("Could not access camera. Make sure you use HTTPS and allow camera access.");
   }
 });
 
-// Stop recording
+function startRecording() {
+  isRecording = true;
+  recordedChunks = [];
+  recordedVideoBlob = null;
+  playBtn.disabled = true;
+  stopBtn.disabled = false;
+  recordBtn.disabled = true;
+
+  mediaRecorder = new MediaRecorder(mediaStream, { mimeType: 'video/webm' });
+  mediaRecorder.ondataavailable = (e) => {
+    if (e.data && e.data.size > 0) {
+      recordedChunks.push(e.data);
+    }
+  };
+  mediaRecorder.onstop = () => {
+    recIndicator.classList.add('hidden');
+    recordedVideoBlob = new Blob(recordedChunks, { type: 'video/webm' });
+    video.srcObject = null;
+    video.src = URL.createObjectURL(recordedVideoBlob);
+    video.controls = true;
+    video.muted = false;
+    playBtn.disabled = false;
+    stopBtn.disabled = true;
+    recordBtn.disabled = false;
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(track => track.stop());
+      mediaStream = null;
+    }
+  };
+  mediaRecorder.start();
+}
+
 stopBtn.addEventListener('click', () => {
   if (isRecording && mediaRecorder) {
     mediaRecorder.stop();
@@ -75,7 +68,6 @@ stopBtn.addEventListener('click', () => {
   }
 });
 
-// Play the recorded video
 playBtn.addEventListener('click', () => {
   if (recordedVideoBlob) {
     video.srcObject = null;
