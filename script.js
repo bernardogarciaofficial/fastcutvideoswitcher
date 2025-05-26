@@ -6,6 +6,8 @@ const randomDiceEditBtn = document.getElementById('randomDiceEditBtn');
 const masterOutputVideo = document.getElementById('masterOutputVideo');
 const masterOverlay = document.getElementById('masterOverlay');
 const exportBtn = document.getElementById('exportBtn');
+const mainPlayBtn = document.getElementById('mainPlayBtn');
+const mainStopBtn = document.getElementById('mainStopBtn');
 
 let audio = null;
 let audioUrl = null;
@@ -342,6 +344,7 @@ function applyTransitionOverlay(type) {
 const masterSegments = [];
 let masterEditPlaying = false;
 let masterEditTimeout = null;
+let masterAudioClone = null;
 
 randomDiceEditBtn.addEventListener('click', () => {
   const usedClips = videoStates
@@ -424,6 +427,7 @@ function randomEffectCSS() {
 function playMasterEdit() {
   if (masterEditPlaying) {
     masterOutputVideo.pause();
+    if (masterAudioClone) masterAudioClone.pause();
     masterEditPlaying = false;
     if (masterEditTimeout) clearTimeout(masterEditTimeout);
   }
@@ -434,15 +438,15 @@ function playMasterEdit() {
   masterOutputVideo.currentTime = 0;
   masterOutputVideo.controls = false;
 
-  let audioClone = new Audio(audioUrl);
-  audioClone.currentTime = 0;
+  masterAudioClone = new Audio(audioUrl);
+  masterAudioClone.currentTime = 0;
 
   let segIdx = 0;
   let segmentStartTime = 0;
 
   function playSegment(idx) {
     if (idx >= masterSegments.length) {
-      audioClone.pause();
+      masterAudioClone.pause();
       masterOutputVideo.pause();
       masterOutputVideo.controls = true;
       masterEditPlaying = false;
@@ -459,8 +463,8 @@ function playMasterEdit() {
     if (seg.transition) applyTransitionOverlay(seg.transition);
 
     masterOutputVideo.play();
-    if (audioClone.paused) audioClone.play();
-    audioClone.currentTime = seg.segStart;
+    if (masterAudioClone.paused) masterAudioClone.play();
+    masterAudioClone.currentTime = seg.segStart;
 
     masterEditPlaying = true;
     segmentStartTime = performance.now();
@@ -472,18 +476,34 @@ function playMasterEdit() {
 
   masterOutputVideo.addEventListener('seeked', () => {
     if (masterEditPlaying) {
-      audioClone.currentTime = masterSegments[segIdx].segStart + masterOutputVideo.currentTime;
+      masterAudioClone.currentTime = masterSegments[segIdx].segStart + masterOutputVideo.currentTime;
     }
   });
 
   masterOutputVideo.onended = () => {
-    audioClone.pause();
+    masterAudioClone.pause();
     masterEditPlaying = false;
     masterOutputVideo.controls = true;
   };
 
   playSegment(0);
 }
+
+// Master Output Video Play/Stop Button Functionality
+mainPlayBtn.addEventListener('click', () => {
+  if (masterOutputVideo.paused) {
+    masterOutputVideo.play();
+    if (masterAudioClone) masterAudioClone.play();
+  }
+});
+mainStopBtn.addEventListener('click', () => {
+  masterOutputVideo.pause();
+  masterOutputVideo.currentTime = 0;
+  if (masterAudioClone) {
+    masterAudioClone.pause();
+    masterAudioClone.currentTime = 0;
+  }
+});
 
 // Dummy "export" implementation: download master video if present
 exportBtn.addEventListener('click', () => {
