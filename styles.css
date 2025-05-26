@@ -1,25 +1,73 @@
 .container {
-  max-width: 400px;
+  max-width: 430px;
   margin: 30px auto;
   text-align: center;
+}
+.upload-section {
+  margin-bottom: 16px;
+}
+.upload-label {
+  font-weight: bold;
+  margin-right: 8px;
+}
+.waveform-container {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto 20px auto;
+  background: #191929;
+  border-radius: 6px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+#waveform {
+  width: 100%;
+  height: 80px;
+  display: block;
+}
+.video-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
 }
 video {
   width: 100%;
   height: auto;
   background: #222;
+  z-index: 1;
+  border-radius: 6px;
 }
-.controls {
-  margin-top: 10px;
+#countdown {
+  position: absolute;
+  left: 0; top: 0;
+  width: 100%;
+  height: 100%;
+  color: #fff;
+  font-size: 4rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+  background: rgba(0,0,0,0.45);
+  text-shadow: 2px 2px 9px #000;
 }
-button {
-  margin: 0 5px;
-  padding: 8px 16px;
+.countdown.hidden {
+  display: none;
 }
-#recIndicator {
+.rec-indicator {
+  position: absolute;
+  right: 18px;
+  top: 16px;
   color: red;
   font-weight: bold;
-  margin-left: 10px;
+  font-size: 1.4rem;
+  z-index: 4;
   animation: blink 1s infinite;
+  pointer-events: none;
+  text-shadow: 1px 1px 9px #000;
 }
 .hidden {
   display: none;
@@ -28,4 +76,11 @@ button {
   0% { opacity: 1; }
   50% { opacity: 0.1; }
   100% { opacity: 1; }
+}
+.controls {
+  margin-top: 16px;
+}
+button {
+  margin: 0 5px;
+  padding: 8px 16px;
 }
