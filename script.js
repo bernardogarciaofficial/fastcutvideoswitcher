@@ -5,7 +5,6 @@ const waveform = document.getElementById('waveform');
 const randomDiceEditBtn = document.getElementById('randomDiceEditBtn');
 const masterOutputVideo = document.getElementById('masterOutputVideo');
 const masterOverlay = document.getElementById('masterOverlay');
-const stopMasterBtn = document.getElementById('stopMasterBtn');
 
 let audio = null;
 let audioUrl = null;
@@ -112,8 +111,8 @@ for (let i = 0; i < NUM_VIDEOS; i++) {
   vs.recIndicator = document.getElementById(`recIndicator${i}`);
   vs.countdown = document.getElementById(`countdown${i}`);
 
-  vs.video.controls = false; // Ensure no controls are shown
-  vs.video.muted = true;     // Ensure no volume control by user
+  vs.video.controls = false; // No controls for user
+  vs.video.muted = true;     // Prevent volume control
 
   vs.recordBtn.disabled = true;
   vs.playBtn.disabled = true;
@@ -133,8 +132,6 @@ for (let i = 0; i < NUM_VIDEOS; i++) {
       vs.video.srcObject = vs.mediaStream;
       vs.video.muted = true;
       await vs.video.play();
-
-      // Show big blinking REC
       vs.recIndicator.classList.remove('hidden');
       vs.isRecording = true;
       vs.recordedChunks = [];
@@ -406,7 +403,7 @@ randomDiceEditBtn.addEventListener('click', () => {
   randomDiceEditBtn.disabled = true;
   randomDiceEditBtn.innerText = "🎲 Shuffling & Editing...";
   setTimeout(() => {
-    randomDiceEditBtn.innerText = "🎲 Random Dice Edit Entire Music Video";
+    randomDiceEditBtn.innerText = "🎲 Random Dice Edit the Entire Song";
     randomDiceEditBtn.disabled = false;
     playMasterEdit();
   }, 900);
@@ -512,15 +509,6 @@ function playMasterEdit() {
   // Start edit playback
   playSegment(0);
 }
-
-// Stop button for master output video
-stopMasterBtn.addEventListener('click', () => {
-  masterOutputVideo.pause();
-  masterOutputVideo.currentTime = 0;
-  masterEditPlaying = false;
-  if (masterEditTimeout) clearTimeout(masterEditTimeout);
-});
-
 
 // Extra: Professional effect CSS animations for master video
 const style = document.createElement('style');
