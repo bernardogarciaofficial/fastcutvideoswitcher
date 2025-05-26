@@ -5,6 +5,7 @@ const waveform = document.getElementById('waveform');
 const randomDiceEditBtn = document.getElementById('randomDiceEditBtn');
 const masterOutputVideo = document.getElementById('masterOutputVideo');
 const masterOverlay = document.getElementById('masterOverlay');
+const exportBtn = document.getElementById('exportBtn');
 
 let audio = null;
 let audioUrl = null;
@@ -111,7 +112,7 @@ for (let i = 0; i < NUM_VIDEOS; i++) {
   vs.recIndicator = document.getElementById(`recIndicator${i}`);
   vs.countdown = document.getElementById(`countdown${i}`);
 
-  vs.video.controls = true; // Restore browser controls (play/volume)
+  vs.video.controls = true; // Browser controls for user
   vs.video.muted = true;    // Muted by default
 
   vs.recordBtn.disabled = true;
@@ -188,7 +189,7 @@ for (let i = 0; i < NUM_VIDEOS; i++) {
         vs.video.srcObject = null;
         vs.video.src = URL.createObjectURL(vs.recordedVideoBlob);
         vs.video.muted = false;
-        vs.video.controls = true; // Keep controls after recording
+        vs.video.controls = true;
         vs.playBtn.disabled = false;
         vs.stopBtn.disabled = true;
         vs.recordBtn.disabled = false;
@@ -293,7 +294,6 @@ window.addEventListener('resize', () => {
 });
 
 // --------- MASTER OUTPUT: Random Dice Edit Feature --------
-// [No changes from previous - kept as is]
 function shuffleArray(array) {
   let arr = array.slice();
   for (let i = arr.length - 1; i > 0; i--) {
@@ -351,7 +351,7 @@ randomDiceEditBtn.addEventListener('click', () => {
     .filter(v => v.blob && v.duration > 0);
 
   if (!usedClips.length) {
-    alert("Please record at least one clip before using Random Dice Edit!");
+    alert("Please record at least one clip before using Synchronize Random Dice Edit!");
     return;
   }
   if (!isSongLoaded || !audioBuffer) {
@@ -392,9 +392,9 @@ randomDiceEditBtn.addEventListener('click', () => {
   }
 
   randomDiceEditBtn.disabled = true;
-  randomDiceEditBtn.innerText = "🎲 Shuffling & Editing...";
+  randomDiceEditBtn.innerText = "🎲 Synchronizing & Editing...";
   setTimeout(() => {
-    randomDiceEditBtn.innerText = "🎲 Random Dice Edit the Entire Song";
+    randomDiceEditBtn.innerText = "🎲 Synchronize Random Dice Edit Entire Music Video";
     randomDiceEditBtn.disabled = false;
     playMasterEdit();
   }, 900);
@@ -486,6 +486,32 @@ function playMasterEdit() {
 
   playSegment(0);
 }
+
+// Dummy "export" implementation: download master video if present
+exportBtn.addEventListener('click', () => {
+  if (!masterOutputVideo.src) {
+    alert('Please generate and play a music video first!');
+    return;
+  }
+  // Try to fetch blob and save as file (may not work due to browser limitations if src is not blob)
+  fetch(masterOutputVideo.src)
+    .then(res => res.blob())
+    .then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'exported-music-video.webm';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
+    })
+    .catch(() => {
+      alert('Unable to export video. Try right-clicking the video and choosing "Save video as..." instead.');
+    });
+});
 
 const style = document.createElement('style');
 style.innerHTML = `
