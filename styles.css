@@ -102,3 +102,74 @@ button {
   margin: 0 5px;
   padding: 8px 16px;
 }
+
+/* DICE EDIT BUTTON & MASTER OUTPUT */
+.dice-edit-section {
+  margin: 38px auto 20px auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  background: #101021;
+  border-radius: 14px;
+  max-width: 440px;
+  padding: 28px 20px 34px 20px;
+  box-shadow: 0 2px 18px rgba(0,0,0,0.12);
+}
+.dice-btn {
+  font-size: 1.15rem;
+  font-weight: bold;
+  background: linear-gradient(90deg, #3949ab, #1de9b6);
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  padding: 14px 21px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.09);
+  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dice-btn:hover {
+  background: linear-gradient(90deg, #283593, #00bfae);
+}
+.dice-icon {
+  font-size: 1.25em;
+  margin-right: 6px;
+  user-select: none;
+}
+.master-output-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.master-output-label {
+  font-weight: bold;
+  color: #e4e4e4;
+  margin-bottom: 10px;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+}
+.master-output-video {
+  width: 400px;
+  height: 300px;
+  border-radius: 10px;
+  background: #222;
+  box-shadow: 0 2px 18px rgba(0,0,0,0.11);
+  outline: 1.5px solid #3949ab;
+  margin-bottom: 5px;
+}
+
+@media (max-width: 500px) {
+  .master-output-video {
+    width: 96vw;
+    height: 54vw;
+    min-height: 160px;
+  }
+  .dice-edit-section {
+    max-width: 97vw;
+    padding: 18px 1vw 22px 1vw;
+  }
+}
