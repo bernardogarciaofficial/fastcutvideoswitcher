@@ -2,71 +2,135 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>FinalCut-Inspired Video Editor</title>
+  <title>Video Recorder/Player with Song Waveform</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="fc-container">
-    <header class="fc-header">
-      <h1>FinalCut-Inspired Video Editor</h1>
-      <div class="fc-header-tools">
-        <label class="fc-upload-label">Upload Song
-          <input type="file" id="songInput" accept="audio/*">
-        </label>
-        <label class="fc-upload-label">Upload Video
-          <input type="file" id="videoInput" accept="video/*" multiple>
-        </label>
-        <button id="exportBtn" class="fc-btn export-btn">Export Master</button>
-      </div>
-    </header>
-    <main class="fc-main">
-      <div class="fc-left-panel">
-        <!-- Media Bin -->
-        <section class="fc-media-bin">
-          <h2>Media Bin</h2>
-          <ul id="mediaBinList" class="fc-media-list"></ul>
-        </section>
-        <!-- Inspector -->
-        <section class="fc-inspector" id="inspector">
-          <h2>Inspector</h2>
-          <div id="inspectorContent">Select a clip to edit properties</div>
-        </section>
-      </div>
-      <div class="fc-center-panel">
-        <!-- Preview -->
-        <section class="fc-preview-section">
-          <video id="previewVideo" controls class="fc-preview-video"></video>
-          <canvas id="waveform"></canvas>
-        </section>
-        <!-- Timeline -->
-        <section class="fc-timeline-section">
-          <div id="timelineRuler" class="fc-timeline-ruler"></div>
-          <div id="timeline" class="fc-timeline"></div>
-        </section>
-        <!-- Transport Controls -->
-        <div class="fc-transport">
-          <button id="playTimelineBtn" class="fc-btn">Play</button>
-          <button id="stopTimelineBtn" class="fc-btn">Stop</button>
-          <button id="splitBtn" class="fc-btn">Split</button>
-          <button id="cutBtn" class="fc-btn">Cut</button>
-          <button id="fadeBtn" class="fc-btn">Fade In/Out</button>
+  <div class="container">
+    <!-- Upload Song -->
+    <div class="upload-section">
+      <label for="songInput" class="upload-label">Upload Song</label>
+      <input type="file" id="songInput" accept="audio/*">
+    </div>
+    <!-- Waveform Visual -->
+    <div class="waveform-container">
+      <canvas id="waveform"></canvas>
+    </div>
+    <!-- Grid of Video Screens/Recorders -->
+    <div class="videos-grid">
+      <!-- Main video screen (index 0) -->
+      <div class="video-wrapper" data-index="0">
+        <video id="video0" controls autoplay muted></video>
+        <div id="countdown0" class="countdown hidden"></div>
+        <span id="recIndicator0" class="rec-indicator hidden">● REC</span>
+        <div class="controls">
+          <button id="recordBtn0">Record</button>
+          <button id="stopBtn0" disabled>Stop</button>
+          <button id="playBtn0" disabled>Play</button>
         </div>
       </div>
-      <div class="fc-right-panel">
-        <!-- Effects -->
-        <section class="fc-effects">
-          <h2>Quick Effects</h2>
-          <button class="fc-btn effect-btn" data-effect="fade">Fade</button>
-          <button class="fc-btn effect-btn" data-effect="crossfade">Crossfade</button>
-          <button class="fc-btn effect-btn" data-effect="color">Color Correction</button>
-        </section>
-        <!-- Master Output -->
-        <section class="fc-master-output">
-          <h2>Master Output</h2>
-          <video id="masterOutputVideo" controls class="fc-master-video"></video>
-        </section>
+      <!-- 9 more duplicates (video1 ... video9) -->
+      <div class="video-wrapper" data-index="1">
+        <video id="video1" controls autoplay muted></video>
+        <div id="countdown1" class="countdown hidden"></div>
+        <span id="recIndicator1" class="rec-indicator hidden">● REC</span>
+        <div class="controls">
+          <button id="recordBtn1">Record</button>
+          <button id="stopBtn1" disabled>Stop</button>
+          <button id="playBtn1" disabled>Play</button>
+        </div>
       </div>
-    </main>
+      <div class="video-wrapper" data-index="2">
+        <video id="video2" controls autoplay muted></video>
+        <div id="countdown2" class="countdown hidden"></div>
+        <span id="recIndicator2" class="rec-indicator hidden">● REC</span>
+        <div class="controls">
+          <button id="recordBtn2">Record</button>
+          <button id="stopBtn2" disabled>Stop</button>
+          <button id="playBtn2" disabled>Play</button>
+        </div>
+      </div>
+      <div class="video-wrapper" data-index="3">
+        <video id="video3" controls autoplay muted></video>
+        <div id="countdown3" class="countdown hidden"></div>
+        <span id="recIndicator3" class="rec-indicator hidden">● REC</span>
+        <div class="controls">
+          <button id="recordBtn3">Record</button>
+          <button id="stopBtn3" disabled>Stop</button>
+          <button id="playBtn3" disabled>Play</button>
+        </div>
+      </div>
+      <div class="video-wrapper" data-index="4">
+        <video id="video4" controls autoplay muted></video>
+        <div id="countdown4" class="countdown hidden"></div>
+        <span id="recIndicator4" class="rec-indicator hidden">● REC</span>
+        <div class="controls">
+          <button id="recordBtn4">Record</button>
+          <button id="stopBtn4" disabled>Stop</button>
+          <button id="playBtn4" disabled>Play</button>
+        </div>
+      </div>
+      <div class="video-wrapper" data-index="5">
+        <video id="video5" controls autoplay muted></video>
+        <div id="countdown5" class="countdown hidden"></div>
+        <span id="recIndicator5" class="rec-indicator hidden">● REC</span>
+        <div class="controls">
+          <button id="recordBtn5">Record</button>
+          <button id="stopBtn5" disabled>Stop</button>
+          <button id="playBtn5" disabled>Play</button>
+        </div>
+      </div>
+      <div class="video-wrapper" data-index="6">
+        <video id="video6" controls autoplay muted></video>
+        <div id="countdown6" class="countdown hidden"></div>
+        <span id="recIndicator6" class="rec-indicator hidden">● REC</span>
+        <div class="controls">
+          <button id="recordBtn6">Record</button>
+          <button id="stopBtn6" disabled>Stop</button>
+          <button id="playBtn6" disabled>Play</button>
+        </div>
+      </div>
+      <div class="video-wrapper" data-index="7">
+        <video id="video7" controls autoplay muted></video>
+        <div id="countdown7" class="countdown hidden"></div>
+        <span id="recIndicator7" class="rec-indicator hidden">● REC</span>
+        <div class="controls">
+          <button id="recordBtn7">Record</button>
+          <button id="stopBtn7" disabled>Stop</button>
+          <button id="playBtn7" disabled>Play</button>
+        </div>
+      </div>
+      <div class="video-wrapper" data-index="8">
+        <video id="video8" controls autoplay muted></video>
+        <div id="countdown8" class="countdown hidden"></div>
+        <span id="recIndicator8" class="rec-indicator hidden">● REC</span>
+        <div class="controls">
+          <button id="recordBtn8">Record</button>
+          <button id="stopBtn8" disabled>Stop</button>
+          <button id="playBtn8" disabled>Play</button>
+        </div>
+      </div>
+      <div class="video-wrapper" data-index="9">
+        <video id="video9" controls autoplay muted></video>
+        <div id="countdown9" class="countdown hidden"></div>
+        <span id="recIndicator9" class="rec-indicator hidden">● REC</span>
+        <div class="controls">
+          <button id="recordBtn9">Record</button>
+          <button id="stopBtn9" disabled>Stop</button>
+          <button id="playBtn9" disabled>Play</button>
+        </div>
+      </div>
+    </div>
+    <!-- Random Dice Edit Button and Master Output Video -->
+    <div class="master-output-section">
+      <button id="randomDiceEditBtn" class="dice-btn">
+        🎲 Random Dice Edit the Entire Song
+      </button>
+      <div class="master-video-wrapper">
+        <video id="masterOutputVideo" controls></video>
+        <div class="master-video-overlay" id="masterOverlay"></div>
+      </div>
+    </div>
   </div>
   <script src="script.js"></script>
 </body>
