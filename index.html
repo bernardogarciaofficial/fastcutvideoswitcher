@@ -16,16 +16,110 @@
     <div class="waveform-container">
       <canvas id="waveform"></canvas>
     </div>
-    <!-- Video and Controls -->
-    <div class="video-wrapper">
-      <video id="video" controls autoplay muted></video>
-      <div id="countdown" class="countdown hidden"></div>
-      <span id="recIndicator" class="rec-indicator hidden">● REC</span>
-    </div>
-    <div class="controls">
-      <button id="recordBtn">Record</button>
-      <button id="stopBtn" disabled>Stop</button>
-      <button id="playBtn" disabled>Play</button>
+    <!-- Grid of Video Screens/Recorders -->
+    <div class="videos-grid">
+      <!-- Main video screen (index 0) -->
+      <div class="video-wrapper" data-index="0">
+        <video id="video0" controls autoplay muted></video>
+        <div id="countdown0" class="countdown hidden"></div>
+        <span id="recIndicator0" class="rec-indicator hidden">● REC</span>
+        <div class="controls">
+          <button id="recordBtn0">Record</button>
+          <button id="stopBtn0" disabled>Stop</button>
+          <button id="playBtn0" disabled>Play</button>
+        </div>
+      </div>
+      <!-- 9 more duplicates (video1 ... video9) -->
+      <div class="video-wrapper" data-index="1">
+        <video id="video1" controls autoplay muted></video>
+        <div id="countdown1" class="countdown hidden"></div>
+        <span id="recIndicator1" class="rec-indicator hidden">● REC</span>
+        <div class="controls">
+          <button id="recordBtn1">Record</button>
+          <button id="stopBtn1" disabled>Stop</button>
+          <button id="playBtn1" disabled>Play</button>
+        </div>
+      </div>
+      <div class="video-wrapper" data-index="2">
+        <video id="video2" controls autoplay muted></video>
+        <div id="countdown2" class="countdown hidden"></div>
+        <span id="recIndicator2" class="rec-indicator hidden">● REC</span>
+        <div class="controls">
+          <button id="recordBtn2">Record</button>
+          <button id="stopBtn2" disabled>Stop</button>
+          <button id="playBtn2" disabled>Play</button>
+        </div>
+      </div>
+      <div class="video-wrapper" data-index="3">
+        <video id="video3" controls autoplay muted></video>
+        <div id="countdown3" class="countdown hidden"></div>
+        <span id="recIndicator3" class="rec-indicator hidden">● REC</span>
+        <div class="controls">
+          <button id="recordBtn3">Record</button>
+          <button id="stopBtn3" disabled>Stop</button>
+          <button id="playBtn3" disabled>Play</button>
+        </div>
+      </div>
+      <div class="video-wrapper" data-index="4">
+        <video id="video4" controls autoplay muted></video>
+        <div id="countdown4" class="countdown hidden"></div>
+        <span id="recIndicator4" class="rec-indicator hidden">● REC</span>
+        <div class="controls">
+          <button id="recordBtn4">Record</button>
+          <button id="stopBtn4" disabled>Stop</button>
+          <button id="playBtn4" disabled>Play</button>
+        </div>
+      </div>
+      <div class="video-wrapper" data-index="5">
+        <video id="video5" controls autoplay muted></video>
+        <div id="countdown5" class="countdown hidden"></div>
+        <span id="recIndicator5" class="rec-indicator hidden">● REC</span>
+        <div class="controls">
+          <button id="recordBtn5">Record</button>
+          <button id="stopBtn5" disabled>Stop</button>
+          <button id="playBtn5" disabled>Play</button>
+        </div>
+      </div>
+      <div class="video-wrapper" data-index="6">
+        <video id="video6" controls autoplay muted></video>
+        <div id="countdown6" class="countdown hidden"></div>
+        <span id="recIndicator6" class="rec-indicator hidden">● REC</span>
+        <div class="controls">
+          <button id="recordBtn6">Record</button>
+          <button id="stopBtn6" disabled>Stop</button>
+          <button id="playBtn6" disabled>Play</button>
+        </div>
+      </div>
+      <div class="video-wrapper" data-index="7">
+        <video id="video7" controls autoplay muted></video>
+        <div id="countdown7" class="countdown hidden"></div>
+        <span id="recIndicator7" class="rec-indicator hidden">● REC</span>
+        <div class="controls">
+          <button id="recordBtn7">Record</button>
+          <button id="stopBtn7" disabled>Stop</button>
+          <button id="playBtn7" disabled>Play</button>
+        </div>
+      </div>
+      <div class="video-wrapper" data-index="8">
+        <video id="video8" controls autoplay muted></video>
+        <div id="countdown8" class="countdown hidden"></div>
+        <span id="recIndicator8" class="rec-indicator hidden">● REC</span>
+        <div class="controls">
+          <button id="recordBtn8">Record</button>
+          <button id="stopBtn8" disabled>Stop</button>
+          <button id="playBtn8" disabled>Play</button>
+        </div>
+      </div>
+      <div class="video-wrapper" data-index="9">
+        <video id="video9" controls autoplay muted></video>
+        <div id="countdown9" class="countdown hidden"></div>
+        <span id="recIndicator9" class="rec-indicator hidden">● REC</span>
+        <div class="controls">
+          <button id="recordBtn9">Record</button>
+          <button id="stopBtn9" disabled>Stop</button>
+          <button id="playBtn9" disabled>Play</button>
+        </div>
+      </div>
     </div>
   </div>
   <script src="script.js"></script>
