@@ -73,7 +73,6 @@ songInput.addEventListener('change', async (e) => {
   audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
   drawWaveform(audioBuffer);
   isSongLoaded = true;
-  // Enable record buttons on all videos
   videoStates.forEach((vs) => {
     vs.recordBtn.disabled = false;
   });
@@ -112,8 +111,8 @@ for (let i = 0; i < NUM_VIDEOS; i++) {
   vs.recIndicator = document.getElementById(`recIndicator${i}`);
   vs.countdown = document.getElementById(`countdown${i}`);
 
-  vs.video.controls = true; // Browser controls for user
-  vs.video.muted = true;    // Muted by default
+  vs.video.controls = true;
+  vs.video.muted = true;
 
   vs.recordBtn.disabled = true;
   vs.playBtn.disabled = true;
@@ -142,7 +141,7 @@ for (let i = 0; i < NUM_VIDEOS; i++) {
       vs.stopBtn.disabled = false;
       vs.recordBtn.disabled = true;
 
-      // Sync: start song audio in sync with recording
+      // Always play music in sync with video: slave track mode
       if (audio) {
         audio.currentTime = 0;
         audio.play();
@@ -194,7 +193,6 @@ for (let i = 0; i < NUM_VIDEOS; i++) {
         vs.stopBtn.disabled = true;
         vs.recordBtn.disabled = false;
         vs.isRecording = false;
-        // Stop audio
         if (audio) {
           audio.pause();
           audio.currentTime = 0;
@@ -232,7 +230,7 @@ for (let i = 0; i < NUM_VIDEOS; i++) {
     vs.playBtn.disabled = true;
     vs.recordBtn.disabled = false;
 
-    // Keep audio synced to video
+    // Keep audio (song) always in sync as slave to video
     const sync = () => {
       if (!vs.isPlaying) return;
       if (Math.abs(vs.video.currentTime - audio.currentTime) > 0.07) {
@@ -270,7 +268,7 @@ for (let i = 0; i < NUM_VIDEOS; i++) {
   // Stop both video and audio
   vs.stopBtn.addEventListener('click', () => {
     if (vs.isRecording && vs.mediaRecorder && vs.mediaRecorder.state === "recording") {
-      vs.mediaRecorder.stop(); // onstop will handle UI
+      vs.mediaRecorder.stop();
       return;
     }
     vs.isPlaying = false;
@@ -493,7 +491,6 @@ exportBtn.addEventListener('click', () => {
     alert('Please generate and play a music video first!');
     return;
   }
-  // Try to fetch blob and save as file (may not work due to browser limitations if src is not blob)
   fetch(masterOutputVideo.src)
     .then(res => res.blob())
     .then(blob => {
