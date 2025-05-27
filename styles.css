@@ -1,102 +1,40 @@
 body {
-  font-family: Arial, Helvetica, sans-serif;
-  background: #f6f8fa;
-  margin: 0;
-  padding: 0;
+  font-family: Arial, sans-serif;
+  padding: 20px;
+  background: #f5f5f5;
 }
 
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 18px;
-}
-
-.upload-section, .waveform-container {
-  margin-bottom: 32px;
-  background: #fff;
-  border-radius: 9px;
-  box-shadow: 0 4px 16px rgba(60,60,120,0.09);
-  padding: 24px 32px;
-}
-
-.upload-label {
-  font-weight: bold;
-  margin-right: 10px;
-}
-
-#waveform {
-  display: block;
-  margin: 18px auto 0 auto;
-  width: 100%;
-  height: 80px;
-  background: #e3eafc;
-  border-radius: 5px;
-}
-
-.videos-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  margin: 30px 0;
-}
-
-.video-wrapper {
-  background: #232349;
-  border-radius: 10px;
-  padding: 16px;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  box-shadow: 0 2px 8px rgba(40,40,120,0.08);
-}
-
-.video-wrapper video {
-  width: 320px;
-  height: 180px;
-  background: #000;
-  border-radius: 7px;
+h2 {
+  margin-bottom: 20px;
 }
 
 .controls {
-  display: flex;
-  flex-direction: row;
-  gap: 12px;
+  margin-bottom: 15px;
 }
 
-.controls button {
-  padding: 10px 22px;
+button {
+  padding: 6px 14px;
+  margin-right: 8px;
   font-size: 1rem;
-  border-radius: 5px;
-  border: none;
-  background: #5c6bc0;
-  color: #fff;
-  cursor: pointer;
-  transition: background 0.2s;
 }
 
-.controls button:disabled {
-  background: #b3b8c9;
-  cursor: not-allowed;
-}
-
-.controls button:not(:disabled):hover {
-  background: #283593;
-}
-
-.rec-indicator {
-  color: #ff4040;
+#recIndicator {
+  color: red;
   font-weight: bold;
-  font-size: 1.1rem;
-  margin-left: 12px;
+  visibility: hidden;
 }
 
-.rec-indicator.hidden, .countdown.hidden {
-  display: none;
+.rec-indicator.active {
+  visibility: visible;
 }
 
-.countdown {
-  color: #ffd700;
-  font-size: 2rem;
+#uploadStatus {
+  margin-left: 10px;
   font-weight: bold;
-  margin-left: 18px;
+}
+
+audio, video {
+  display: block;
+  margin-top: 10px;
+  background: #222;
 }
