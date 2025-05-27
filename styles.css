@@ -39,6 +39,7 @@ audio, video {
   background: #222;
 }
 
-#playSyncedBtn {
+#playSyncedBtn,
+#stopSyncedBtn {
   margin-top: 10px;
 }
