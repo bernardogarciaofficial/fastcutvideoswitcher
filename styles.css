@@ -21,14 +21,15 @@ button {
 #recIndicator {
   color: red;
   font-weight: bold;
-  visibility: hidden;
+  opacity: 0;
   transition: opacity 0.2s;
+  /* Always occupies space, but invisible */
 }
 
 .rec-indicator.active {
-  visibility: visible;
   opacity: 1;
   animation: rec-flash 1s infinite;
+  visibility: visible;
 }
 
 @keyframes rec-flash {
