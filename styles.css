@@ -9,11 +9,25 @@ h2 {
   text-align: center;
 }
 
+.audio-track-block {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.08);
+  padding: 28px 30px 32px 30px;
+  margin: 0 auto 40px auto;
+  width: 520px;
+  max-width: 98vw;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 #tracksContainer {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 32px;
+  flex-direction: column;
+  gap: 46px;
+  align-items: center;
 }
 
 .track-block {
@@ -21,9 +35,8 @@ h2 {
   border-radius: 18px;
   box-shadow: 0 6px 24px rgba(0,0,0,0.08);
   padding: 28px 30px 32px 30px;
-  margin-bottom: 16px;
-  width: 480px;
-  max-width: 95vw;
+  width: 620px;
+  max-width: 98vw;
   text-align: center;
   position: relative;
   display: flex;
@@ -32,8 +45,8 @@ h2 {
 }
 
 .track-title {
-  font-size: 1.1rem;
-  margin-bottom: 20px;
+  font-size: 1.15rem;
+  margin-bottom: 18px;
   font-weight: bold;
   color: #405280;
 }
@@ -61,13 +74,12 @@ button:disabled {
   cursor: not-allowed;
 }
 
-#recIndicator,
 .rec-indicator {
   color: red;
   font-weight: bold;
   opacity: 0;
   transition: opacity 0.2s;
-  font-size: 1.2rem;
+  font-size: 1.3rem;
   margin-left: 12px;
   vertical-align: middle;
   letter-spacing: 2px;
@@ -117,16 +129,11 @@ audio, video {
 
 .track-block video {
   width: 100%;
-  max-width: 430px;
-  min-height: 270px;
+  max-width: 560px;
+  min-height: 340px;
   background: #111;
   margin: 0 auto 12px auto;
   box-shadow: 0 2px 14px rgba(0,0,0,0.11);
-}
-
-.track-block audio {
-  width: 100%;
-  max-width: 410px;
 }
 
 .track-controls-bottom {
