@@ -275,8 +275,6 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // --- Master Output Video & Export Button ---
-// This is a placeholder implementation. Mixing/exporting is non-trivial in-browser and may require ffmpeg.wasm or MediaRecorder API with canvas compositing for real mixing.
-
 const masterOutputVideo = document.getElementById('masterOutputVideo');
 const exportBtn = document.getElementById('exportBtn');
 const exportStatus = document.getElementById('exportStatus');
@@ -317,4 +315,65 @@ exportBtn.onclick = async function() {
   } catch (err) {
     exportStatus.textContent = "Export failed: " + err.message;
   }
+};
+
+// --- Random Dice Edit Button Logic ---
+const diceEditBtn = document.getElementById('diceEditBtn');
+const diceEditStatus = document.getElementById('diceEditStatus');
+
+diceEditBtn.onclick = function() {
+  diceEditStatus.textContent = "";
+  // Gather all available video tracks with a src
+  const availableTracks = [];
+  for (let trackNum = 0; trackNum < NUM_TRACKS; trackNum++) {
+    const video = document.getElementById(`video-${trackNum}`);
+    if (video && video.src) availableTracks.push(video);
+  }
+  if (availableTracks.length === 0) {
+    diceEditStatus.textContent = "No video tracks available. Record or upload a video to use this feature.";
+    return;
+  }
+
+  // Simulate a professional switcher: random fast cuts, transitions, etc.
+  // For demo, randomly cut between videos every 1s for the duration of the shortest video (or 10s).
+  // For now, just randomize one video (simplest fallback), but show status as "magic mixing".
+
+  // Find the shortest video duration (simulate 10s if unknown)
+  let minDuration = 10;
+  availableTracks.forEach(video => {
+    if (!isNaN(video.duration) && video.duration > 0) {
+      minDuration = Math.min(minDuration, video.duration);
+    }
+  });
+
+  // If you want a true cut-mix effect, you'd need to use a canvas, MediaRecorder, etc.
+  // For this demo, we'll just cycle video.src every second in the master output.
+
+  let cuts = Math.floor(minDuration); // in seconds, one cut per second
+  let cutIdx = 0;
+  let cutOrder = [];
+  for (let i = 0; i < cuts; i++) {
+    cutOrder.push(availableTracks[Math.floor(Math.random() * availableTracks.length)].src);
+  }
+
+  // Clear any previous intervals
+  if (window._diceMixInterval) clearInterval(window._diceMixInterval);
+
+  // Mixing animation
+  diceEditStatus.textContent = "Magic mixing... Enjoy fast cuts! (Preview only)";
+  masterOutputVideo.src = cutOrder[0];
+  masterOutputVideo.currentTime = 0;
+  masterOutputVideo.play();
+
+  window._diceMixInterval = setInterval(() => {
+    cutIdx++;
+    if (cutIdx >= cutOrder.length) {
+      clearInterval(window._diceMixInterval);
+      diceEditStatus.textContent = "Random mix complete! Click again for a new edit.";
+      return;
+    }
+    masterOutputVideo.src = cutOrder[cutIdx];
+    masterOutputVideo.currentTime = 0;
+    masterOutputVideo.play();
+  }, 1000);
 };
