@@ -2,18 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Multi-Track Video Recorder & Song Uploader</title>
+  <title>DiceCut Music Video Mixer</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h2>Multi-Track Video Recorder & Song Uploader</h2>
+  <h2>DiceCut Multi-Track Music Video Editor</h2>
 
-  <div id="audioTrackBlock" class="audio-track-block">
-    <div class="controls">
-      <input type="file" id="songInput" accept="audio/*">
-      <button id="uploadSongBtn" disabled>Upload Song</button>
-      <span id="uploadStatus"></span>
-    </div>
+  <div class="audio-track-block">
+    <input type="file" id="songInput" accept="audio/*">
+    <span id="audioStatus"></span>
     <audio id="audio" controls style="display:none"></audio>
   </div>
 
@@ -21,21 +18,22 @@
 
   <div id="trackSwitcher" class="track-switcher"></div>
 
-  <!-- 🎲 Random Dice Edit Button -->
-  <div id="diceButtonContainer" style="text-align:center; margin:38px 0 38px 0;">
+  <div style="text-align:center; margin:32px 0;">
     <button id="diceEditBtn" class="dice-edit-btn">🎲 Random Dice Edit Entire Music Video</button>
     <span id="diceEditStatus" class="dice-edit-status"></span>
   </div>
 
-  <!-- Master Output Video -->
-  <div id="masterOutputSection" class="master-output-section">
+  <div class="master-output-section">
     <h3>Master Output Video</h3>
-    <video id="masterOutputVideo" controls width="700" height="420"></video>
+    <video id="masterOutputVideo" controls width="600" height="340"></video>
     <div style="margin-top:16px;">
       <button id="exportBtn" class="export-btn">Export Music Video</button>
       <span id="exportStatus" class="export-status"></span>
     </div>
   </div>
+
+  <!-- Hidden canvas for rendering the mixed video -->
+  <canvas id="mixCanvas" width="600" height="340" style="display:none"></canvas>
 
   <script src="script.js"></script>
 </body>
