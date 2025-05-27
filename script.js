@@ -1,17 +1,66 @@
 const NUM_TRACKS = 10;
 
+// Main (slave) audio track DOM
+const songInput = document.getElementById('songInput');
+const uploadSongBtn = document.getElementById('uploadSongBtn');
+const uploadStatus = document.getElementById('uploadStatus');
+const audio = document.getElementById('audio');
+
+let selectedSongFile = null;
+
+// --- Main audio file selection & preview ---
+songInput.onchange = function(e) {
+  const file = e.target.files[0];
+  selectedSongFile = file;
+  if (file) {
+    audio.src = URL.createObjectURL(file);
+    audio.style.display = 'block';
+    audio.load();
+    uploadSongBtn.disabled = false;
+  } else {
+    audio.style.display = 'none';
+    uploadSongBtn.disabled = true;
+  }
+  enableAllTrackPlayButtons();
+};
+
+// --- Main audio upload ---
+uploadSongBtn.onclick = async function() {
+  if (!selectedSongFile) return;
+  const formData = new FormData();
+  formData.append('song', selectedSongFile);
+  uploadStatus.textContent = "Uploading...";
+  try {
+    // CHANGE THIS URL to your real backend endpoint if needed!
+    const response = await fetch('https://webhook.site/YOUR_UNIQUE_URL', {
+      method: 'POST',
+      body: formData
+    });
+    if (response.ok) {
+      uploadStatus.textContent = "Song uploaded successfully!";
+    } else {
+      uploadStatus.textContent = "Song upload failed.";
+    }
+  } catch (err) {
+    uploadStatus.textContent = "Error uploading song: " + err.message;
+  }
+};
+
+// --- Helper: Enable play/stop buttons across all tracks when audio is loaded ---
+function enableAllTrackPlayButtons() {
+  const enabled = !!audio.src;
+  for (let trackNum = 0; trackNum < NUM_TRACKS; trackNum++) {
+    const playStopBtn = document.getElementById(`playStopSyncedBtn-${trackNum}`);
+    playStopBtn.disabled = !enabled || !document.getElementById(`video-${trackNum}`).src;
+  }
+}
+
+
+// --- Video Tracks ---
 function createTrackHTML(trackNum) {
   return `
     <div class="track-block" id="track-block-${trackNum}">
-      <div class="track-title">Track ${trackNum + 1}</div>
-
-      <div class="controls">
-        <input type="file" id="songInput-${trackNum}" accept="audio/*">
-        <button id="uploadSongBtn-${trackNum}" disabled>Upload Song</button>
-        <span id="uploadStatus-${trackNum}" class="uploadStatus"></span>
-      </div>
-
-      <audio id="audio-${trackNum}" controls style="display:none"></audio>
+      <div class="track-title">Video Track ${trackNum + 1}</div>
 
       <div class="controls">
         <button id="recordBtn-${trackNum}">Record Video</button>
@@ -25,124 +74,75 @@ function createTrackHTML(trackNum) {
         <button id="playStopSyncedBtn-${trackNum}" disabled>Play (Sync Audio + Video)</button>
       </div>
 
-      <video id="video-${trackNum}" width="430" height="270" controls></video>
+      <video id="video-${trackNum}" width="560" height="340" controls></video>
     </div>
   `;
 }
 
-function isMediaPlaying(audio, video) {
-  return (!audio.paused && !audio.ended) ||
-         (!video.paused && !video.ended && !video.seeking);
-}
-
-function updatePlayStopButtonText(audio, video, playStopBtn) {
-  if (isMediaPlaying(audio, video)) {
-    playStopBtn.textContent = "Stop";
-  } else {
-    playStopBtn.textContent = "Play (Sync Audio + Video)";
-  }
-}
-
-function updatePlayButtonState(audio, video, playStopBtn) {
-  playStopBtn.disabled = !(audio.src && video.src);
-  updatePlayStopButtonText(audio, video, playStopBtn);
-}
-
-function doCountdown(countdownDiv, seconds = 3) {
-  return new Promise(resolve => {
-    countdownDiv.style.display = "block";
-    let current = seconds;
-    countdownDiv.textContent = current;
-    const tick = () => {
-      if (current > 1) {
-        current -= 1;
-        countdownDiv.textContent = current;
-        setTimeout(tick, 1000);
-      } else {
-        countdownDiv.textContent = "GO!";
-        setTimeout(() => {
-          countdownDiv.style.display = "none";
-          resolve();
-        }, 700);
-      }
-    };
-    setTimeout(tick, 1000);
-  });
-}
-
-function startRecFlash(recIndicator) {
-  recIndicator.classList.add('active');
-}
-function stopRecFlash(recIndicator) {
-  recIndicator.classList.remove('active');
-}
-
-// --- MAIN SETUP ---
 const tracksContainer = document.getElementById("tracksContainer");
 tracksContainer.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => createTrackHTML(i)).join("");
 
+// --- Per-Track Logic ---
 for (let trackNum = 0; trackNum < NUM_TRACKS; trackNum++) {
-  let selectedSongFile = null;
   let mediaRecorder = null;
   let recordedChunks = [];
 
   // DOM refs
-  const songInput = document.getElementById(`songInput-${trackNum}`);
-  const uploadSongBtn = document.getElementById(`uploadSongBtn-${trackNum}`);
-  const uploadStatus = document.getElementById(`uploadStatus-${trackNum}`);
-  const audio = document.getElementById(`audio-${trackNum}`);
-
   const recordBtn = document.getElementById(`recordBtn-${trackNum}`);
   const stopBtn = document.getElementById(`stopBtn-${trackNum}`);
   const recIndicator = document.getElementById(`recIndicator-${trackNum}`);
   const countdown = document.getElementById(`countdown-${trackNum}`);
-
   const video = document.getElementById(`video-${trackNum}`);
   const playStopSyncedBtn = document.getElementById(`playStopSyncedBtn-${trackNum}`);
 
-  // --- SONG FILE SELECTION & PREVIEW ---
-  songInput.onchange = function(e) {
-    const file = e.target.files[0];
-    selectedSongFile = file;
-    if (file) {
-      audio.src = URL.createObjectURL(file);
-      audio.style.display = 'block';
-      audio.load();
-      uploadSongBtn.disabled = false;
+  // --- Helper ---
+  function updatePlayStopButtonState() {
+    playStopSyncedBtn.disabled = !(audio.src && video.src);
+    updatePlayStopButtonText();
+  }
+  function updatePlayStopButtonText() {
+    if (isMediaPlaying()) {
+      playStopSyncedBtn.textContent = "Stop";
     } else {
-      audio.style.display = 'none';
-      uploadSongBtn.disabled = true;
+      playStopSyncedBtn.textContent = "Play (Sync Audio + Video)";
     }
-    updatePlayButtonState(audio, video, playStopSyncedBtn);
-  };
-
-  // --- SONG UPLOAD ---
-  uploadSongBtn.onclick = async function() {
-    if (!selectedSongFile) return;
-    const formData = new FormData();
-    formData.append('song', selectedSongFile);
-    uploadStatus.textContent = "Uploading...";
-    try {
-      // CHANGE THIS URL to your real backend endpoint if needed!
-      const response = await fetch('https://webhook.site/YOUR_UNIQUE_URL', {
-        method: 'POST',
-        body: formData
-      });
-      if (response.ok) {
-        uploadStatus.textContent = "Song uploaded successfully!";
-      } else {
-        uploadStatus.textContent = "Song upload failed.";
-      }
-    } catch (err) {
-      uploadStatus.textContent = "Error uploading song: " + err.message;
-    }
-  };
+  }
+  function isMediaPlaying() {
+    return (!audio.paused && !audio.ended) || (!video.paused && !video.ended && !video.seeking);
+  }
+  function doCountdown(seconds = 3) {
+    return new Promise(resolve => {
+      countdown.style.display = "block";
+      let current = seconds;
+      countdown.textContent = current;
+      const tick = () => {
+        if (current > 1) {
+          current -= 1;
+          countdown.textContent = current;
+          setTimeout(tick, 1000);
+        } else {
+          countdown.textContent = "GO!";
+          setTimeout(() => {
+            countdown.style.display = "none";
+            resolve();
+          }, 700);
+        }
+      };
+      setTimeout(tick, 1000);
+    });
+  }
+  function startRecFlash() {
+    recIndicator.classList.add('active');
+  }
+  function stopRecFlash() {
+    recIndicator.classList.remove('active');
+  }
 
   // --- VIDEO RECORDING ---
   recordBtn.onclick = async () => {
     recordBtn.disabled = true;
     stopBtn.disabled = true;
-    await doCountdown(countdown, 3);
+    await doCountdown(3);
 
     recordedChunks = [];
     try {
@@ -171,21 +171,21 @@ for (let trackNum = 0; trackNum < NUM_TRACKS; trackNum++) {
         // UI reset
         recordBtn.disabled = false;
         stopBtn.disabled = true;
-        stopRecFlash(recIndicator);
+        stopRecFlash();
         // Optionally stop song when recording stops
         if (!audio.paused) {
           audio.pause();
           audio.currentTime = 0;
         }
-        updatePlayButtonState(audio, video, playStopSyncedBtn);
+        updatePlayStopButtonState();
       };
 
       mediaRecorder.start();
-      startRecFlash(recIndicator);
+      startRecFlash();
       recordBtn.disabled = true;
       stopBtn.disabled = false;
 
-      // Play song in sync with recording
+      // Play main song in sync with recording
       if (audio.src) {
         audio.currentTime = 0;
         audio.play();
@@ -194,7 +194,7 @@ for (let trackNum = 0; trackNum < NUM_TRACKS; trackNum++) {
       alert("Webcam access denied or error: " + err.message);
       recordBtn.disabled = false;
       stopBtn.disabled = true;
-      stopRecFlash(recIndicator);
+      stopRecFlash();
     }
   };
 
@@ -202,7 +202,7 @@ for (let trackNum = 0; trackNum < NUM_TRACKS; trackNum++) {
     if (mediaRecorder && mediaRecorder.state !== "inactive") {
       mediaRecorder.stop();
     }
-    stopRecFlash(recIndicator);
+    stopRecFlash();
     recordBtn.disabled = false;
     stopBtn.disabled = true;
   };
@@ -210,31 +210,39 @@ for (let trackNum = 0; trackNum < NUM_TRACKS; trackNum++) {
   // --- PLAY/STOP AUDIO & VIDEO IN SYNC (TOGGLE BUTTON) ---
   playStopSyncedBtn.onclick = () => {
     if (!audio.src || !video.src) return;
-    if (isMediaPlaying(audio, video)) {
+    if (isMediaPlaying()) {
       // STOP both
       audio.pause();
       video.pause();
       audio.currentTime = 0;
       video.currentTime = 0;
-      updatePlayStopButtonText(audio, video, playStopSyncedBtn);
+      updatePlayStopButtonText();
     } else {
       // PLAY both from the beginning
       audio.currentTime = 0;
       video.currentTime = 0;
       audio.play();
       video.play();
-      updatePlayStopButtonText(audio, video, playStopSyncedBtn);
+      updatePlayStopButtonText();
     }
   };
 
   // --- Keep button text updated if user plays/pauses using media controls ---
-  audio.addEventListener('play', () => updatePlayStopButtonText(audio, video, playStopSyncedBtn));
-  audio.addEventListener('pause', () => updatePlayStopButtonText(audio, video, playStopSyncedBtn));
-  audio.addEventListener('ended', () => updatePlayStopButtonText(audio, video, playStopSyncedBtn));
+  audio.addEventListener('play', updatePlayStopButtonText);
+  audio.addEventListener('pause', updatePlayStopButtonText);
+  audio.addEventListener('ended', updatePlayStopButtonText);
 
-  video.addEventListener('play', () => updatePlayStopButtonText(audio, video, playStopSyncedBtn));
-  video.addEventListener('pause', () => updatePlayStopButtonText(audio, video, playStopSyncedBtn));
-  video.addEventListener('ended', () => updatePlayStopButtonText(audio, video, playStopSyncedBtn));
-  video.addEventListener('seeking', () => updatePlayStopButtonText(audio, video, playStopSyncedBtn));
-  video.addEventListener('seeked', () => updatePlayStopButtonText(audio, video, playStopSyncedBtn));
+  video.addEventListener('play', updatePlayStopButtonText);
+  video.addEventListener('pause', updatePlayStopButtonText);
+  video.addEventListener('ended', updatePlayStopButtonText);
+  video.addEventListener('seeking', updatePlayStopButtonText);
+  video.addEventListener('seeked', updatePlayStopButtonText);
+
+  // When video src changes, update play/stop button state
+  video.addEventListener('loadeddata', () => {
+    updatePlayStopButtonState();
+  });
 }
+
+// When main audio changes, enable/disable all play/stop buttons
+audio.addEventListener('loadeddata', enableAllTrackPlayButtons);
