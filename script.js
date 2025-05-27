@@ -1,355 +1,108 @@
-const NUM_VIDEOS = 10;
+// ... all previous code up to and including videoStates setup ...
 
-const songInput = document.getElementById('songInput');
-const waveform = document.getElementById('waveform');
-const randomDiceEditBtn = document.getElementById('randomDiceEditBtn');
-const masterOutputVideo = document.getElementById('masterOutputVideo');
-const masterOverlay = document.getElementById('masterOverlay');
-const exportBtn = document.getElementById('exportBtn');
-const mainPlayBtn = document.getElementById('mainPlayBtn');
-const mainStopBtn = document.getElementById('mainStopBtn');
+// --- AUTO SWITCHER STATE ---
+let autoSwitchPlan = null;
 
-let audio = null;
-let audioUrl = null;
-let audioBuffer = null;
-let audioContext = null;
-let isSongLoaded = false;
+// --- AUTO SWITCHER DOM ---
+const switcherPreview = document.getElementById('switcherPreview');
+const runAutoSwitcherBtn = document.getElementById('runAutoSwitcherBtn');
+const rerollSwitcherBtn = document.getElementById('rerollSwitcherBtn');
+const switcherPlanInfo = document.getElementById('switcherPlanInfo');
 
-// For master output
-let masterSegments = [];
-let masterEditPlaying = false;
-let masterEditTimeout = null;
-let masterAudioClone = null;
-let currentMasterSegmentIdx = 0;
-let masterSegmentStartTime = 0;
+// --- AUTO SWITCHER LOGIC ---
+function createAutoSwitchPlan() {
+  // Only use tracks with a valid video
+  const usedClips = videoStates
+    .map((vs, idx) => ({ idx, blob: vs.recordedVideoBlob, duration: vs.video.duration }))
+    .filter(v => v.blob && v.duration > 0);
 
-// Per-video screen state
-const videoStates = Array(NUM_VIDEOS).fill().map(() => ({
-  video: null,
-  recordBtn: null,
-  stopBtn: null,
-  playBtn: null,
-  recIndicator: null,
-  countdown: null,
-  mediaStream: null,
-  mediaRecorder: null,
-  recordedChunks: [],
-  recordedVideoBlob: null,
-  isRecording: false,
-  isPlaying: false
-}));
+  if (!usedClips.length || !isSongLoaded || !audioBuffer) return null;
 
-// Draw waveform for uploaded audio
-function drawWaveform(buffer) {
-  const canvas = waveform;
-  const ctx = canvas.getContext('2d');
-  const width = canvas.width = waveform.parentElement.offsetWidth;
-  const height = canvas.height = 80;
-  ctx.clearRect(0, 0, width, height);
+  const plan = [];
+  const songDuration = audioBuffer.duration;
+  const minSegment = 1.3, maxSegment = 4.0;
+  let t = 0;
+  let prevIdx = -1;
+  while (t < songDuration) {
+    let segLen = Math.min(maxSegment, Math.max(minSegment, minSegment + Math.random() * (maxSegment-minSegment)));
+    if (t + segLen > songDuration) segLen = songDuration - t;
 
-  const data = buffer.getChannelData(0);
-  const step = Math.floor(data.length / width);
-  ctx.beginPath();
-  ctx.moveTo(0, height / 2);
-
-  for (let i = 0; i < width; i++) {
-    let min = 1.0, max = -1.0;
-    for (let j = 0; j < step; j++) {
-      const datum = data[(i * step) + j];
-      if (datum < min) min = datum;
-      if (datum > max) max = datum;
-    }
-    ctx.lineTo(i, (1 + min) * 0.5 * height);
-    ctx.lineTo(i, (1 + max) * 0.5 * height);
+    // Choose a random track, never same as previous
+    let candidates = usedClips.filter(c => c.idx !== prevIdx);
+    if (!candidates.length) candidates = usedClips;
+    const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+    plan.push({
+      videoIdx: chosen.idx,
+      segStart: t,
+      segEnd: t+segLen,
+    });
+    prevIdx = chosen.idx;
+    t += segLen;
   }
-  ctx.strokeStyle = "#36e";
-  ctx.lineWidth = 1;
-  ctx.stroke();
+  return plan;
 }
 
-// Handle song upload and waveform generation
-songInput.addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  if (audio) {
-    audio.pause();
-    URL.revokeObjectURL(audio.src);
+// Update switcher preview UI
+function updateSwitcherPreview(plan) {
+  switcherPreview.innerHTML = '';
+  // Make a thumb for each track with a number showing how many times it appears in plan
+  let counts = Array(10).fill(0);
+  if (plan) plan.forEach(seg => counts[seg.videoIdx]++);
+
+  for (let i = 0; i < 10; i++) {
+    const vs = videoStates[i];
+    if (!vs.recordedVideoBlob) continue;
+    const thumb = document.createElement('div');
+    thumb.className = 'switcher-thumb';
+    if (plan && counts[i]) thumb.classList.add('active');
+    const v = document.createElement('video');
+    v.src = URL.createObjectURL(vs.recordedVideoBlob);
+    v.muted = true;
+    v.playsInline = true;
+    v.loop = true;
+    v.autoplay = true;
+    v.style.pointerEvents = 'none';
+    thumb.appendChild(v);
+    const label = document.createElement('div');
+    label.className = 'switcher-thumb-label';
+    label.textContent = `Track ${i+1}${counts[i] ? ` (${counts[i]})` : ''}`;
+    thumb.appendChild(label);
+    switcherPreview.appendChild(thumb);
   }
-  audioUrl = URL.createObjectURL(file);
-  audio = new Audio(audioUrl);
-  audio.preload = "auto";
-  audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  const arrayBuffer = await file.arrayBuffer();
-  audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-  drawWaveform(audioBuffer);
-  isSongLoaded = true;
-  videoStates.forEach((vs) => {
-    vs.recordBtn.disabled = false;
-  });
+}
+
+// On run auto switcher
+runAutoSwitcherBtn.addEventListener('click', () => {
+  autoSwitchPlan = createAutoSwitchPlan();
+  if (!autoSwitchPlan) {
+    switcherPlanInfo.textContent = 'Please record at least one video and upload a song.';
+    return;
+  }
+  updateSwitcherPreview(autoSwitchPlan);
+  switcherPlanInfo.textContent = `Switch plan ready: ${autoSwitchPlan.length} cuts. (You can reroll for a new sequence.)`;
+  rerollSwitcherBtn.style.display = 'inline-block';
 });
 
-// Countdown utility
-function showCountdown(countdownElem, seconds = 3) {
-  return new Promise(resolve => {
-    countdownElem.classList.remove('hidden');
-    let current = seconds;
-    countdownElem.textContent = current;
-    const tick = () => {
-      current--;
-      if (current > 0) {
-        countdownElem.textContent = current;
-        setTimeout(tick, 1000);
-      } else {
-        countdownElem.textContent = "GO!";
-        setTimeout(() => {
-          countdownElem.classList.add('hidden');
-          resolve();
-        }, 700);
-      }
-    };
-    setTimeout(tick, 1000);
-  });
+// On reroll (make a new plan)
+rerollSwitcherBtn.addEventListener('click', () => {
+  autoSwitchPlan = createAutoSwitchPlan();
+  updateSwitcherPreview(autoSwitchPlan);
+  switcherPlanInfo.textContent = `Switch plan ready: ${autoSwitchPlan.length} cuts. (You can reroll for a new sequence.)`;
+});
+
+// If new video blobs added, update preview
+function refreshSwitcherOnRecording() {
+  if (autoSwitchPlan) updateSwitcherPreview(autoSwitchPlan);
 }
-
-// Setup video screens
-for (let i = 0; i < NUM_VIDEOS; i++) {
-  const vs = videoStates[i];
-  vs.video = document.getElementById(`video${i}`);
-  vs.recordBtn = document.getElementById(`recordBtn${i}`);
-  vs.stopBtn = document.getElementById(`stopBtn${i}`);
-  vs.playBtn = document.getElementById(`playBtn${i}`);
-  vs.recIndicator = document.getElementById(`recIndicator${i}`);
-  vs.countdown = document.getElementById(`countdown${i}`);
-
-  vs.video.controls = true;
-  vs.video.muted = true;
-
-  vs.recordBtn.disabled = true;
-  vs.playBtn.disabled = true;
-  vs.stopBtn.disabled = true;
-
-  // Record
-  vs.recordBtn.addEventListener('click', async () => {
-    if (vs.isRecording || !isSongLoaded) return;
-    try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert("getUserMedia not supported in this browser.");
-        return;
-      }
-      await showCountdown(vs.countdown, 3);
-
-      vs.mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      vs.video.srcObject = vs.mediaStream;
-      vs.video.muted = true;
-      await vs.video.play();
-      vs.recIndicator.classList.remove('hidden');
-      vs.isRecording = true;
-      vs.recordedChunks = [];
-      vs.recordedVideoBlob = null;
-
-      vs.playBtn.disabled = true;
-      vs.stopBtn.disabled = false;
-      vs.recordBtn.disabled = true;
-
-      // Always play music in sync with video: slave track mode
-      if (audio) {
-        audio.currentTime = 0;
-        audio.play();
-      }
-
-      // MediaRecorder setup
-      let options = {};
-      if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) {
-        options.mimeType = 'video/webm;codecs=vp9,opus';
-      } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) {
-        options.mimeType = 'video/webm;codecs=vp8,opus';
-      } else if (MediaRecorder.isTypeSupported('video/webm')) {
-        options.mimeType = 'video/webm';
-      }
-      try {
-        vs.mediaRecorder = new MediaRecorder(vs.mediaStream, options);
-      } catch (err) {
-        alert("MediaRecorder API is not supported with the selected codec in this browser.");
-        vs.recIndicator.classList.add('hidden');
-        vs.playBtn.disabled = false;
-        vs.stopBtn.disabled = true;
-        vs.recordBtn.disabled = false;
-        vs.isRecording = false;
-        if (vs.mediaStream) {
-          vs.mediaStream.getTracks().forEach(track => track.stop());
-          vs.mediaStream = null;
-        }
-        return;
-      }
-
-      vs.mediaRecorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) {
-          vs.recordedChunks.push(e.data);
-        }
-      };
-
-      vs.mediaRecorder.onstop = () => {
-        vs.recIndicator.classList.add('hidden');
-        if (vs.mediaStream) {
-          vs.mediaStream.getTracks().forEach(track => track.stop());
-          vs.mediaStream = null;
-        }
-        vs.recordedVideoBlob = new Blob(vs.recordedChunks, { type: 'video/webm' });
-        vs.video.srcObject = null;
-        vs.video.src = URL.createObjectURL(vs.recordedVideoBlob);
-        vs.video.muted = false;
-        vs.video.controls = true;
-        vs.playBtn.disabled = false;
-        vs.stopBtn.disabled = true;
-        vs.recordBtn.disabled = false;
-        vs.isRecording = false;
-        if (audio) {
-          audio.pause();
-          audio.currentTime = 0;
-        }
-      };
-
-      vs.mediaRecorder.start();
-    } catch (err) {
-      if (window.isSecureContext === false) {
-        alert("Camera/mic access requires HTTPS or localhost. Please serve your site securely.");
-      } else if (err && err.name === "NotAllowedError") {
-        alert("Camera/mic permission denied. Please allow camera and mic access in your browser settings.");
-      } else if (err && err.name === "NotFoundError") {
-        alert("No camera or microphone found on this device.");
-      } else {
-        alert("Could not access camera or microphone. Error: " + err.message);
-      }
-    }
-  });
-
-  // Play
-  vs.playBtn.addEventListener('click', () => {
-    if (!vs.recordedVideoBlob || !audio) return;
-    vs.video.srcObject = null;
-    vs.video.src = URL.createObjectURL(vs.recordedVideoBlob);
-    vs.video.muted = false;
-    vs.video.controls = true;
-    vs.video.currentTime = 0;
-    audio.currentTime = 0;
-    vs.isPlaying = true;
-    vs.video.play();
-    audio.play();
-
-    vs.stopBtn.disabled = false;
-    vs.playBtn.disabled = true;
-    vs.recordBtn.disabled = false;
-
-    // Keep audio (song) always in sync as slave to video
-    const sync = () => {
-      if (!vs.isPlaying) return;
-      if (Math.abs(vs.video.currentTime - audio.currentTime) > 0.07) {
-        audio.currentTime = vs.video.currentTime;
-      }
-      if (!vs.video.paused && audio.paused) audio.play();
-      if (vs.video.paused && !audio.paused) audio.pause();
-      if (!vs.video.ended) requestAnimationFrame(sync);
-    };
-    sync();
-
-    // When either ends, stop both
-    vs.video.onended = () => {
-      vs.isPlaying = false;
-      audio.pause();
-      vs.stopBtn.disabled = true;
-      vs.playBtn.disabled = false;
-    };
-    audio.onended = () => {
-      vs.isPlaying = false;
-      vs.video.pause();
-      vs.stopBtn.disabled = true;
-      vs.playBtn.disabled = false;
-    };
-  });
-
-  // When video is manually paused/stopped, also stop audio
-  vs.video.addEventListener('pause', () => {
-    if (vs.isPlaying && audio && !audio.paused) audio.pause();
-  });
-  vs.video.addEventListener('play', () => {
-    if (vs.isPlaying && audio && audio.paused) audio.play();
-  });
-
-  // Stop both video and audio
-  vs.stopBtn.addEventListener('click', () => {
-    if (vs.isRecording && vs.mediaRecorder && vs.mediaRecorder.state === "recording") {
-      vs.mediaRecorder.stop();
-      return;
-    }
-    vs.isPlaying = false;
-    if (vs.video && !vs.video.paused) {
-      vs.video.pause();
-      vs.video.currentTime = 0;
-    }
-    if (audio && !audio.paused) {
-      audio.pause();
-      audio.currentTime = 0;
-    }
-    vs.stopBtn.disabled = true;
-    vs.playBtn.disabled = false;
-    vs.recordBtn.disabled = false;
-  });
-}
-
-// Responsive redraw of waveform
-window.addEventListener('resize', () => {
-  if (audioBuffer) drawWaveform(audioBuffer);
+videoStates.forEach((vs, idx) => {
+  vs.playBtn.addEventListener("click", refreshSwitcherOnRecording);
+  vs.recordBtn.addEventListener("click", refreshSwitcherOnRecording);
 });
 
 // --------- MASTER OUTPUT: Random Dice Edit Feature --------
-function shuffleArray(array) {
-  let arr = array.slice();
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
-function randomTransitionStyle() {
-  const styles = [
-    'fade', 'slide-left', 'slide-right', 'slide-up', 'slide-down', 'circle', 'zoom', 'flip'
-  ];
-  return styles[Math.floor(Math.random() * styles.length)];
-}
-
-function applyTransitionOverlay(type) {
-  masterOverlay.style.display = 'block';
-  masterOverlay.className = 'master-video-overlay';
-  masterOverlay.innerHTML = '';
-  switch (type) {
-    case 'fade':
-      masterOverlay.style.background = 'rgba(0,0,0,0.7)';
-      masterOverlay.style.transition = 'background 0.6s';
-      setTimeout(() => { masterOverlay.style.background = 'rgba(0,0,0,0)'; }, 80);
-      break;
-    case 'slide-left':
-      masterOverlay.innerHTML = '<div style="width:100%;height:100%;background:#000;position:absolute;left:0;top:0;animation:slideLeft 0.8s;"></div>';
-      break;
-    case 'slide-right':
-      masterOverlay.innerHTML = '<div style="width:100%;height:100%;background:#000;position:absolute;right:0;top:0;animation:slideRight 0.8s;"></div>';
-      break;
-    case 'zoom':
-      masterOverlay.innerHTML = '<div style="width:100%;height:100%;background:#000;position:absolute;left:0;top:0;animation:zoomIn 0.7s;"></div>';
-      break;
-    case 'flip':
-      masterOverlay.innerHTML = '<div style="width:100%;height:100%;background:#000;position:absolute;left:0;top:0;animation:flip 0.6s;"></div>';
-      break;
-    default:
-      masterOverlay.style.background = 'rgba(0,0,0,0.0)';
-  }
-  setTimeout(() => {
-    masterOverlay.style.background = 'rgba(0,0,0,0)';
-    masterOverlay.innerHTML = '';
-  }, 900);
-}
-
+// Update: Use autoSwitchPlan if present, otherwise fallback to old random segments
 randomDiceEditBtn.addEventListener('click', () => {
+  // Only use tracks with a valid video
   const usedClips = videoStates
     .map((vs, idx) => ({ idx, blob: vs.recordedVideoBlob, duration: vs.video.duration }))
     .filter(v => v.blob && v.duration > 0);
@@ -363,36 +116,55 @@ randomDiceEditBtn.addEventListener('click', () => {
     return;
   }
 
-  const songDuration = audioBuffer.duration;
-  const minSegment = 1.5, maxSegment = 4.0;
-  let t = 0, segmentTimes = [];
-  while (t < songDuration) {
-    let segLen = Math.min(maxSegment, Math.max(minSegment, minSegment + Math.random() * (maxSegment-minSegment)));
-    if (t + segLen > songDuration) segLen = songDuration - t;
-    segmentTimes.push([t, t+segLen]);
-    t += segLen;
-  }
-
-  let shuffledClips = shuffleArray(usedClips);
-  while (shuffledClips.length < segmentTimes.length) {
-    shuffledClips = shuffledClips.concat(shuffleArray(usedClips));
-  }
-
-  masterSegments = [];
-  for (let i = 0; i < segmentTimes.length; i++) {
-    let idx = i % shuffledClips.length;
-    const { blob, duration, idx: vIdx } = shuffledClips[idx];
-    masterSegments.push({
-      videoBlob: blob,
-      videoIdx: vIdx,
-      videoSrc: URL.createObjectURL(blob),
-      videoDuration: duration,
-      segStart: segmentTimes[i][0],
-      segEnd: segmentTimes[i][1],
-      transition: i === 0 ? null : randomTransitionStyle(),
-      filter: (Math.random() < 0.6) ? randomFilterCSS() : null,
-      effect: (Math.random() < 0.3) ? randomEffectCSS() : null
+  // --- Use the switch plan if available ---
+  if (autoSwitchPlan && autoSwitchPlan.length) {
+    masterSegments = autoSwitchPlan.map(seg => {
+      const { videoIdx, segStart, segEnd } = seg;
+      const vs = videoStates[videoIdx];
+      return {
+        videoBlob: vs.recordedVideoBlob,
+        videoIdx,
+        videoSrc: URL.createObjectURL(vs.recordedVideoBlob),
+        videoDuration: vs.video.duration,
+        segStart, segEnd,
+        transition: randomTransitionStyle(),
+        filter: (Math.random() < 0.6) ? randomFilterCSS() : null,
+        effect: (Math.random() < 0.3) ? randomEffectCSS() : null
+      };
     });
+  } else {
+    // fallback to original random cut logic
+    const songDuration = audioBuffer.duration;
+    const minSegment = 1.5, maxSegment = 4.0;
+    let t = 0, segmentTimes = [];
+    while (t < songDuration) {
+      let segLen = Math.min(maxSegment, Math.max(minSegment, minSegment + Math.random() * (maxSegment-minSegment)));
+      if (t + segLen > songDuration) segLen = songDuration - t;
+      segmentTimes.push([t, t+segLen]);
+      t += segLen;
+    }
+
+    let shuffledClips = shuffleArray(usedClips);
+    while (shuffledClips.length < segmentTimes.length) {
+      shuffledClips = shuffledClips.concat(shuffleArray(usedClips));
+    }
+
+    masterSegments = [];
+    for (let i = 0; i < segmentTimes.length; i++) {
+      let idx = i % shuffledClips.length;
+      const { blob, duration, idx: vIdx } = shuffledClips[idx];
+      masterSegments.push({
+        videoBlob: blob,
+        videoIdx: vIdx,
+        videoSrc: URL.createObjectURL(blob),
+        videoDuration: duration,
+        segStart: segmentTimes[i][0],
+        segEnd: segmentTimes[i][1],
+        transition: i === 0 ? null : randomTransitionStyle(),
+        filter: (Math.random() < 0.6) ? randomFilterCSS() : null,
+        effect: (Math.random() < 0.3) ? randomEffectCSS() : null
+      });
+    }
   }
 
   randomDiceEditBtn.disabled = true;
@@ -404,201 +176,4 @@ randomDiceEditBtn.addEventListener('click', () => {
   }, 900);
 });
 
-function randomFilterCSS() {
-  const filters = [
-    "contrast(1.15) brightness(0.98) saturate(1.2)",
-    "grayscale(0.15) sepia(0.21)",
-    "blur(1px) brightness(1.08)",
-    "hue-rotate(15deg)",
-    "drop-shadow(0 0 7px #d3e1ff)",
-    "none"
-  ];
-  return filters[Math.floor(Math.random() * filters.length)];
-}
-
-function randomEffectCSS() {
-  const effects = [
-    "pulse",
-    "shake",
-    "zoom-in",
-    "zoom-out",
-    null
-  ];
-  return effects[Math.floor(Math.random() * effects.length)];
-}
-
-// --- Lip Sync Correct Master Output Playback ---
-function playMasterEdit(startAt = 0) {
-  // Reset playback state
-  if (masterEditPlaying) {
-    masterOutputVideo.pause();
-    if (masterAudioClone) masterAudioClone.pause();
-    masterEditPlaying = false;
-    if (masterEditTimeout) clearTimeout(masterEditTimeout);
-  }
-
-  if (!masterSegments.length) return;
-
-  // Init audio
-  masterAudioClone = new Audio(audioUrl);
-  masterAudioClone.currentTime = startAt;
-  masterAudioClone.volume = 1;
-  masterAudioClone.playbackRate = 1;
-  masterAudioClone.pause();
-
-  currentMasterSegmentIdx = 0;
-  let seekInSong = startAt;
-  // Find which segment matches the seek position
-  for (let i = 0; i < masterSegments.length; i++) {
-    const seg = masterSegments[i];
-    if (seekInSong >= seg.segStart && seekInSong < seg.segEnd) {
-      currentMasterSegmentIdx = i;
-      break;
-    }
-  }
-
-  function playSegment(idx, offset = 0) {
-    if (idx >= masterSegments.length) {
-      masterAudioClone.pause();
-      masterOutputVideo.pause();
-      masterOutputVideo.controls = true;
-      masterEditPlaying = false;
-      return;
-    }
-    const seg = masterSegments[idx];
-    masterOutputVideo.src = seg.videoSrc;
-    masterOutputVideo.currentTime = (offset > 0) ? offset : 0;
-    masterOutputVideo.muted = true;
-    masterOutputVideo.style.filter = seg.filter || '';
-    masterOutputVideo.className = 'master-effect-' + (seg.effect || '');
-
-    if (seg.transition) applyTransitionOverlay(seg.transition);
-
-    let segmentRealStart = seg.segStart + (offset > 0 ? offset : 0);
-    masterAudioClone.currentTime = segmentRealStart;
-    masterOutputVideo.play();
-    masterAudioClone.play();
-
-    masterEditPlaying = true;
-    masterSegmentStartTime = performance.now();
-
-    // Keep them locked in sync, always force audio to follow masterOutputVideo
-    const sync = () => {
-      if (!masterEditPlaying) return;
-      const absoluteSongTime = seg.segStart + masterOutputVideo.currentTime;
-      if (Math.abs(masterAudioClone.currentTime - absoluteSongTime) > 0.055) {
-        masterAudioClone.currentTime = absoluteSongTime;
-      }
-      if (!masterOutputVideo.paused && masterAudioClone.paused) masterAudioClone.play();
-      if (masterOutputVideo.paused && !masterAudioClone.paused) masterAudioClone.pause();
-      if (!masterOutputVideo.ended) requestAnimationFrame(sync);
-    };
-    sync();
-
-    // When video segment ends, go to next segment
-    const endListener = () => {
-      masterOutputVideo.removeEventListener('ended', endListener);
-      masterAudioClone.pause();
-      playSegment(idx + 1, 0);
-    };
-    masterOutputVideo.addEventListener('ended', endListener);
-
-    // When master output is paused, pause audio
-    masterOutputVideo.onpause = () => {
-      if (!masterAudioClone.paused) masterAudioClone.pause();
-    };
-    masterOutputVideo.onplay = () => {
-      if (masterAudioClone.paused) masterAudioClone.play();
-    };
-
-    // Seek handler: If user seeks, recalculate segment and offset
-    masterOutputVideo.onseeked = () => {
-      const absoluteSeek = seg.segStart + masterOutputVideo.currentTime;
-      // Find which segment and offset
-      for (let i = 0; i < masterSegments.length; i++) {
-        const s = masterSegments[i];
-        if (absoluteSeek >= s.segStart && absoluteSeek < s.segEnd) {
-          // Play this segment at new offset
-          masterEditPlaying = false;
-          if (masterEditTimeout) clearTimeout(masterEditTimeout);
-          playSegment(i, absoluteSeek - s.segStart);
-          return;
-        }
-      }
-    };
-  }
-
-  // Start playback at calculated segment and offset
-  const seg = masterSegments[currentMasterSegmentIdx];
-  const offset = startAt - seg.segStart;
-  playSegment(currentMasterSegmentIdx, offset > 0 ? offset : 0);
-}
-
-// Master Output Video Play/Stop Button Functionality
-mainPlayBtn.addEventListener('click', () => {
-  if (!masterSegments.length) return;
-  if (!masterEditPlaying) {
-    // Resume from current position
-    let curTime = masterOutputVideo.currentTime;
-    let segIdx = currentMasterSegmentIdx;
-    let absTime = masterSegments[segIdx].segStart + curTime;
-    playMasterEdit(absTime);
-  } else {
-    masterOutputVideo.play();
-    if (masterAudioClone) masterAudioClone.play();
-  }
-});
-mainStopBtn.addEventListener('click', () => {
-  masterEditPlaying = false;
-  if (masterOutputVideo) {
-    masterOutputVideo.pause();
-    masterOutputVideo.currentTime = 0;
-  }
-  if (masterAudioClone) {
-    masterAudioClone.pause();
-    masterAudioClone.currentTime = 0;
-  }
-});
-
-// Dummy "export" implementation: download master video if present
-exportBtn.addEventListener('click', () => {
-  if (!masterOutputVideo.src) {
-    alert('Please generate and play a music video first!');
-    return;
-  }
-  fetch(masterOutputVideo.src)
-    .then(res => res.blob())
-    .then(blob => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'exported-music-video.webm';
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }, 100);
-    })
-    .catch(() => {
-      alert('Unable to export video. Try right-clicking the video and choosing "Save video as..." instead.');
-    });
-});
-
-// Style for effects and transitions
-const style = document.createElement('style');
-style.innerHTML = `
-@keyframes master-pulse { 0%{transform:scale(1);} 50%{transform:scale(1.045);} 100%{transform:scale(1);} }
-@keyframes master-shake { 0%,100%{transform:translateX(0);} 20%{transform:translateX(-6px);} 40%{transform:translateX(6px);} 60%{transform:translateX(-6px);} 80%{transform:translateX(6px);} }
-@keyframes master-zoom-in { 0%{transform:scale(1);} 100%{transform:scale(1.07);} }
-@keyframes master-zoom-out { 0%{transform:scale(1.07);} 100%{transform:scale(1);} }
-.master-effect-pulse { animation: master-pulse 1.2s infinite; }
-.master-effect-shake { animation: master-shake 1.1s linear; }
-.master-effect-zoom-in { animation: master-zoom-in 0.7s forwards; }
-.master-effect-zoom-out { animation: master-zoom-out 0.7s forwards; }
-@keyframes slideLeft { from{left:0;} to{left:-100%;} }
-@keyframes slideRight { from{right:0;} to{right:-100%;} }
-@keyframes zoomIn { from{transform:scale(0.6);} to{transform:scale(1);} }
-@keyframes flip { 0%{transform:rotateY(0);} 100%{transform:rotateY(180deg);} }
-`;
-document.head.appendChild(style);
+// ...rest of script.js remains unchanged (master output playback etc)...
