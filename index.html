@@ -2,152 +2,29 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Video Recorder/Player with Song Waveform</title>
+  <title>Audio Upload & 10-Track Video Record Demo</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="container">
-    <!-- Upload Song -->
-    <div class="upload-section">
-      <label for="songInput" class="upload-label">Upload Song</label>
-      <input type="file" id="songInput" accept="audio/*">
-    </div>
-    <!-- Waveform Visual -->
-    <div class="waveform-container">
-      <canvas id="waveform"></canvas>
-    </div>
-    <!-- Stacked Video Screens/Recorders -->
-    <div class="videos-stack">
-      <!-- 10 video screens, large and stacked vertically -->
-      <!-- (looped in JS, but written here for clarity) -->
-      <div class="video-wrapper" data-index="0">
-        <video id="video0" controls autoplay muted></video>
-        <div id="countdown0" class="countdown hidden"></div>
-        <span id="recIndicator0" class="rec-indicator hidden">● REC</span>
-        <div class="controls">
-          <button id="recordBtn0">Record</button>
-          <button id="stopBtn0" disabled>Stop</button>
-          <button id="playBtn0" disabled>Play</button>
-        </div>
-      </div>
-      <div class="video-wrapper" data-index="1">
-        <video id="video1" controls autoplay muted></video>
-        <div id="countdown1" class="countdown hidden"></div>
-        <span id="recIndicator1" class="rec-indicator hidden">● REC</span>
-        <div class="controls">
-          <button id="recordBtn1">Record</button>
-          <button id="stopBtn1" disabled>Stop</button>
-          <button id="playBtn1" disabled>Play</button>
-        </div>
-      </div>
-      <div class="video-wrapper" data-index="2">
-        <video id="video2" controls autoplay muted></video>
-        <div id="countdown2" class="countdown hidden"></div>
-        <span id="recIndicator2" class="rec-indicator hidden">● REC</span>
-        <div class="controls">
-          <button id="recordBtn2">Record</button>
-          <button id="stopBtn2" disabled>Stop</button>
-          <button id="playBtn2" disabled>Play</button>
-        </div>
-      </div>
-      <div class="video-wrapper" data-index="3">
-        <video id="video3" controls autoplay muted></video>
-        <div id="countdown3" class="countdown hidden"></div>
-        <span id="recIndicator3" class="rec-indicator hidden">● REC</span>
-        <div class="controls">
-          <button id="recordBtn3">Record</button>
-          <button id="stopBtn3" disabled>Stop</button>
-          <button id="playBtn3" disabled>Play</button>
-        </div>
-      </div>
-      <div class="video-wrapper" data-index="4">
-        <video id="video4" controls autoplay muted></video>
-        <div id="countdown4" class="countdown hidden"></div>
-        <span id="recIndicator4" class="rec-indicator hidden">● REC</span>
-        <div class="controls">
-          <button id="recordBtn4">Record</button>
-          <button id="stopBtn4" disabled>Stop</button>
-          <button id="playBtn4" disabled>Play</button>
-        </div>
-      </div>
-      <div class="video-wrapper" data-index="5">
-        <video id="video5" controls autoplay muted></video>
-        <div id="countdown5" class="countdown hidden"></div>
-        <span id="recIndicator5" class="rec-indicator hidden">● REC</span>
-        <div class="controls">
-          <button id="recordBtn5">Record</button>
-          <button id="stopBtn5" disabled>Stop</button>
-          <button id="playBtn5" disabled>Play</button>
-        </div>
-      </div>
-      <div class="video-wrapper" data-index="6">
-        <video id="video6" controls autoplay muted></video>
-        <div id="countdown6" class="countdown hidden"></div>
-        <span id="recIndicator6" class="rec-indicator hidden">● REC</span>
-        <div class="controls">
-          <button id="recordBtn6">Record</button>
-          <button id="stopBtn6" disabled>Stop</button>
-          <button id="playBtn6" disabled>Play</button>
-        </div>
-      </div>
-      <div class="video-wrapper" data-index="7">
-        <video id="video7" controls autoplay muted></video>
-        <div id="countdown7" class="countdown hidden"></div>
-        <span id="recIndicator7" class="rec-indicator hidden">● REC</span>
-        <div class="controls">
-          <button id="recordBtn7">Record</button>
-          <button id="stopBtn7" disabled>Stop</button>
-          <button id="playBtn7" disabled>Play</button>
-        </div>
-      </div>
-      <div class="video-wrapper" data-index="8">
-        <video id="video8" controls autoplay muted></video>
-        <div id="countdown8" class="countdown hidden"></div>
-        <span id="recIndicator8" class="rec-indicator hidden">● REC</span>
-        <div class="controls">
-          <button id="recordBtn8">Record</button>
-          <button id="stopBtn8" disabled>Stop</button>
-          <button id="playBtn8" disabled>Play</button>
-        </div>
-      </div>
-      <div class="video-wrapper" data-index="9">
-        <video id="video9" controls autoplay muted></video>
-        <div id="countdown9" class="countdown hidden"></div>
-        <span id="recIndicator9" class="rec-indicator hidden">● REC</span>
-        <div class="controls">
-          <button id="recordBtn9">Record</button>
-          <button id="stopBtn9" disabled>Stop</button>
-          <button id="playBtn9" disabled>Play</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- AUTO SWITCHER TOOL -->
-    <div id="autoSwitcherSection">
-      <h2>Automatic Video Track Switcher</h2>
-      <div id="switcherPreview" class="switcher-preview"></div>
-      <button id="runAutoSwitcherBtn" class="switcher-btn">🎬 Run Auto Switcher</button>
-      <button id="rerollSwitcherBtn" class="switcher-btn" style="display:none;">🔁 Reroll Switch Plan</button>
-      <div id="switcherPlanInfo" class="switcher-plan-info"></div>
-    </div>
-
-    <!-- Control and Output Section -->
-    <div class="master-edit-section">
-      <button id="randomDiceEditBtn" class="dice-btn">
-        🎲 Synchronize Random Dice Edit Entire Music Video
-      </button>
-      <!-- Main output video controls -->
-      <div class="master-controls">
-        <button id="mainPlayBtn" class="master-play-btn">▶️ Play</button>
-        <button id="mainStopBtn" class="master-stop-btn">⏹ Stop</button>
-      </div>
-      <div class="master-video-wrapper">
-        <video id="masterOutputVideo" controls></video>
-        <div class="master-video-overlay" id="masterOverlay"></div>
-      </div>
-    </div>
-    <div class="export-section">
-      <button id="exportBtn" class="export-btn">⬇️ Export Music Video</button>
+  <h1>Audio Upload & 10-Track Video Record Demo</h1>
+  <div class="upload-section">
+    <label for="songInput">Upload a song:</label>
+    <input type="file" id="songInput" accept="audio/*">
+    <canvas id="waveform"></canvas>
+  </div>
+  <div class="record-section">
+    <h2>Video Tracks</h2>
+    <div id="recordButtons">
+      <button id="recordBtn1" class="record-btn">Record 1</button>
+      <button id="recordBtn2" class="record-btn">Record 2</button>
+      <button id="recordBtn3" class="record-btn">Record 3</button>
+      <button id="recordBtn4" class="record-btn">Record 4</button>
+      <button id="recordBtn5" class="record-btn">Record 5</button>
+      <button id="recordBtn6" class="record-btn">Record 6</button>
+      <button id="recordBtn7" class="record-btn">Record 7</button>
+      <button id="recordBtn8" class="record-btn">Record 8</button>
+      <button id="recordBtn9" class="record-btn">Record 9</button>
+      <button id="recordBtn10" class="record-btn">Record 10</button>
     </div>
   </div>
   <script src="script.js"></script>
