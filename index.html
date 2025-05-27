@@ -2,21 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Webcam Video Recorder with Song Playback</title>
+  <title>Webcam Video Recorder with Song Upload</title>
   <style>
-    #recIndicator {
-      color: red;
-      font-weight: bold;
-      visibility: hidden;
-    }
-    #video, #audio {
-      display: block;
-      margin-top: 10px;
-    }
+    #recIndicator { color: red; font-weight: bold; visibility: hidden; }
+    #video, #audio { display: block; margin-top: 10px; }
   </style>
 </head>
 <body>
-  <h2>Webcam Video Recorder with Song</h2>
+  <h2>Webcam Video Recorder with Song Upload</h2>
   <button id="recordBtn">Record</button>
   <button id="stopBtn" disabled>Stop</button>
   <span id="recIndicator">● REC</span>
@@ -24,24 +17,56 @@
   <video id="video" width="320" height="240" controls></video>
   <br>
   <input type="file" id="songInput" accept="audio/*">
+  <button id="uploadSongBtn" disabled>Upload Song</button>
   <audio id="audio" controls></audio>
+  <div id="uploadStatus"></div>
   <script>
     let mediaRecorder;
     let recordedChunks = [];
+    let selectedSongFile = null;
+
     const recordBtn = document.getElementById('recordBtn');
     const stopBtn = document.getElementById('stopBtn');
     const recIndicator = document.getElementById('recIndicator');
     const video = document.getElementById('video');
     const audio = document.getElementById('audio');
     const songInput = document.getElementById('songInput');
+    const uploadSongBtn = document.getElementById('uploadSongBtn');
+    const uploadStatus = document.getElementById('uploadStatus');
 
     // Handle song (audio) file selection
     songInput.onchange = function(e) {
       const file = e.target.files[0];
+      selectedSongFile = file;
       if (file) {
         audio.src = URL.createObjectURL(file);
         audio.load();
         audio.style.display = 'block';
+        uploadSongBtn.disabled = false;
+      } else {
+        uploadSongBtn.disabled = true;
+      }
+    };
+
+    // Upload song to server (replace URL with your endpoint)
+    uploadSongBtn.onclick = async function() {
+      if (!selectedSongFile) return;
+      const formData = new FormData();
+      formData.append('song', selectedSongFile);
+      uploadStatus.textContent = "Uploading...";
+      try {
+        // Change '/upload-song' to your upload endpoint
+        const response = await fetch('/upload-song', {
+          method: 'POST',
+          body: formData
+        });
+        if (response.ok) {
+          uploadStatus.textContent = "Song uploaded successfully!";
+        } else {
+          uploadStatus.textContent = "Song upload failed.";
+        }
+      } catch (err) {
+        uploadStatus.textContent = "Error uploading song: " + err.message;
       }
     };
 
@@ -61,12 +86,10 @@
           if (e.data.size > 0) recordedChunks.push(e.data);
         };
         mediaRecorder.onstop = () => {
-          // Stop and clear webcam preview
           if (video.srcObject) {
             video.srcObject.getTracks().forEach(track => track.stop());
             video.srcObject = null;
           }
-          // Show the recorded video
           const blob = new Blob(recordedChunks, { type: "video/webm" });
           video.src = URL.createObjectURL(blob);
           video.controls = true;
@@ -75,10 +98,8 @@
           recordBtn.disabled = false;
           stopBtn.disabled = true;
           recIndicator.style.visibility = "hidden";
-          // Do NOT pause/reset audio here, let the user control it
         };
         mediaRecorder.start();
-        // Start playing the song at the same time, if loaded
         if (audio.src) {
           audio.currentTime = 0;
           audio.play();
@@ -95,8 +116,6 @@
       if (mediaRecorder && mediaRecorder.state !== "inactive") {
         mediaRecorder.stop();
       }
-      // Optionally, you can pause the audio here if you want:
-      // if (!audio.paused) audio.pause();
     };
   </script>
 </body>
