@@ -102,7 +102,7 @@ const videoStates = [];
 for (let i = 1; i <= 10; i++) {
   const recordBtn = document.getElementById('recordBtn' + i);
   if (!recordBtn) {
-    console.warn(`Button recordBtn${i} not found`);
+    console.warn(`Button recordBtn${i} not found in the DOM.`);
     continue;
   }
   recordBtn.disabled = true; // disable until song loaded
@@ -114,8 +114,11 @@ for (let i = 1; i <= 10; i++) {
 
 // --- Enable record buttons after song upload ---
 function enableRecordButtons() {
-  videoStates.forEach((vs) => {
-    if (vs && vs.recordBtn) vs.recordBtn.disabled = false;
+  videoStates.forEach((vs, idx) => {
+    if (vs && vs.recordBtn) {
+      vs.recordBtn.disabled = false;
+      console.log(`Enabled Record button ${idx + 1}`);
+    }
   });
 }
 
@@ -123,5 +126,5 @@ function enableRecordButtons() {
 function onRecordButtonClicked(trackNumber) {
   console.log(`Record button ${trackNumber} clicked!`);
   alert(`Record button ${trackNumber} clicked!`);
-  // Put your recording logic here.
+  // Here you can implement your recording logic per track
 }
