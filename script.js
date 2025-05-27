@@ -1,265 +1,58 @@
 const NUM_TRACKS = 10;
+const TRACK_WIDTH = 600, TRACK_HEIGHT = 340;
 
-// Main (slave) audio track DOM
+// Song/audio logic
 const songInput = document.getElementById('songInput');
-const uploadSongBtn = document.getElementById('uploadSongBtn');
-const uploadStatus = document.getElementById('uploadStatus');
 const audio = document.getElementById('audio');
-
-let selectedSongFile = null;
-
-// --- Main audio file selection & preview ---
-songInput.onchange = function(e) {
+const audioStatus = document.getElementById('audioStatus');
+let masterAudioFile = null;
+songInput.onchange = e => {
   const file = e.target.files[0];
-  selectedSongFile = file;
+  masterAudioFile = file;
   if (file) {
     audio.src = URL.createObjectURL(file);
     audio.style.display = 'block';
     audio.load();
-    uploadSongBtn.disabled = false;
+    audioStatus.textContent = "Audio loaded!";
   } else {
     audio.style.display = 'none';
-    uploadSongBtn.disabled = true;
-  }
-  enableAllTrackPlayButtons();
-};
-
-// --- Main audio upload ---
-uploadSongBtn.onclick = async function() {
-  if (!selectedSongFile) return;
-  const formData = new FormData();
-  formData.append('song', selectedSongFile);
-  uploadStatus.textContent = "Uploading...";
-  try {
-    // CHANGE THIS URL to your real backend endpoint if needed!
-    const response = await fetch('https://webhook.site/YOUR_UNIQUE_URL', {
-      method: 'POST',
-      body: formData
-    });
-    if (response.ok) {
-      uploadStatus.textContent = "Song uploaded successfully!";
-    } else {
-      uploadStatus.textContent = "Song upload failed.";
-    }
-  } catch (err) {
-    uploadStatus.textContent = "Error uploading song: " + err.message;
+    audioStatus.textContent = "";
   }
 };
 
-// --- Helper: Enable play/stop buttons across all tracks when audio is loaded ---
-function enableAllTrackPlayButtons() {
-  const enabled = !!audio.src;
-  for (let trackNum = 0; trackNum < NUM_TRACKS; trackNum++) {
-    const playStopBtn = document.getElementById(`playStopSyncedBtn-${trackNum}`);
-    playStopBtn.disabled = !enabled || !document.getElementById(`video-${trackNum}`).src;
-  }
-}
-
-
-// --- Video Tracks ---
+// Video tracks
 function createTrackHTML(trackNum) {
   return `
     <div class="track-block" id="track-block-${trackNum}">
       <div class="track-title">Video Track ${trackNum + 1}</div>
-
-      <div class="controls">
-        <button id="recordBtn-${trackNum}">Record Video</button>
-        <button id="stopBtn-${trackNum}" disabled>Stop Recording</button>
-        <span id="recIndicator-${trackNum}" class="rec-indicator">● REC</span>
-      </div>
-
-      <div id="countdown-${trackNum}" class="countdown"></div>
-
-      <div class="controls track-controls-bottom">
-        <button id="playStopSyncedBtn-${trackNum}" disabled>Play (Sync Audio + Video)</button>
-      </div>
-
-      <video id="video-${trackNum}" width="560" height="340" controls></video>
+      <input type="file" id="fileInput-${trackNum}" accept="video/*">
+      <video id="video-${trackNum}" width="${TRACK_WIDTH}" height="${TRACK_HEIGHT}" controls style="margin-top:12px;"></video>
     </div>
   `;
 }
-
 const tracksContainer = document.getElementById("tracksContainer");
 tracksContainer.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => createTrackHTML(i)).join("");
 
-// --- Per-Track Logic ---
-for (let trackNum = 0; trackNum < NUM_TRACKS; trackNum++) {
-  let mediaRecorder = null;
-  let recordedChunks = [];
-
-  // DOM refs
-  const recordBtn = document.getElementById(`recordBtn-${trackNum}`);
-  const stopBtn = document.getElementById(`stopBtn-${trackNum}`);
-  const recIndicator = document.getElementById(`recIndicator-${trackNum}`);
-  const countdown = document.getElementById(`countdown-${trackNum}`);
-  const video = document.getElementById(`video-${trackNum}`);
-  const playStopSyncedBtn = document.getElementById(`playStopSyncedBtn-${trackNum}`);
-
-  // --- Helper ---
-  function updatePlayStopButtonState() {
-    playStopSyncedBtn.disabled = !(audio.src && video.src);
-    updatePlayStopButtonText();
-  }
-  function updatePlayStopButtonText() {
-    if (isMediaPlaying()) {
-      playStopSyncedBtn.textContent = "Stop";
-    } else {
-      playStopSyncedBtn.textContent = "Play (Sync Audio + Video)";
-    }
-  }
-  function isMediaPlaying() {
-    return (!audio.paused && !audio.ended) || (!video.paused && !video.ended && !video.seeking);
-  }
-  function doCountdown(seconds = 3) {
-    return new Promise(resolve => {
-      countdown.style.display = "block";
-      let current = seconds;
-      countdown.textContent = current;
-      const tick = () => {
-        if (current > 1) {
-          current -= 1;
-          countdown.textContent = current;
-          setTimeout(tick, 1000);
-        } else {
-          countdown.textContent = "GO!";
-          setTimeout(() => {
-            countdown.style.display = "none";
-            resolve();
-          }, 700);
-        }
-      };
-      setTimeout(tick, 1000);
-    });
-  }
-  function startRecFlash() {
-    recIndicator.classList.add('active');
-  }
-  function stopRecFlash() {
-    recIndicator.classList.remove('active');
-  }
-
-  // --- VIDEO RECORDING ---
-  recordBtn.onclick = async () => {
-    recordBtn.disabled = true;
-    stopBtn.disabled = true;
-    await doCountdown(3);
-
-    recordedChunks = [];
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      video.srcObject = stream;
-      video.muted = true;
-      video.controls = false;
-      video.play();
-
-      mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
-      mediaRecorder.ondataavailable = e => {
-        if (e.data.size > 0) recordedChunks.push(e.data);
-      };
-      mediaRecorder.onstop = () => {
-        // Stop camera
-        if (video.srcObject) {
-          video.srcObject.getTracks().forEach(track => track.stop());
-          video.srcObject = null;
-        }
-        // Show recorded video
-        const blob = new Blob(recordedChunks, { type: "video/webm" });
-        video.src = URL.createObjectURL(blob);
-        video.controls = true;
-        video.muted = false;
-        video.play();
-        // UI reset
-        recordBtn.disabled = false;
-        stopBtn.disabled = true;
-        stopRecFlash();
-        // Optionally stop song when recording stops
-        if (!audio.paused) {
-          audio.pause();
-          audio.currentTime = 0;
-        }
-        updatePlayStopButtonState();
-      };
-
-      mediaRecorder.start();
-      startRecFlash();
-      recordBtn.disabled = true;
-      stopBtn.disabled = false;
-
-      // Play main song in sync with recording
-      if (audio.src) {
-        audio.currentTime = 0;
-        audio.play();
-      }
-    } catch (err) {
-      alert("Webcam access denied or error: " + err.message);
-      recordBtn.disabled = false;
-      stopBtn.disabled = true;
-      stopRecFlash();
+for (let i = 0; i < NUM_TRACKS; i++) {
+  const fileInput = document.getElementById(`fileInput-${i}`);
+  const video = document.getElementById(`video-${i}`);
+  fileInput.onchange = e => {
+    const file = e.target.files[0];
+    if (file) {
+      video.src = URL.createObjectURL(file);
+      video.load();
     }
   };
-
-  stopBtn.onclick = () => {
-    if (mediaRecorder && mediaRecorder.state !== "inactive") {
-      mediaRecorder.stop();
-    }
-    stopRecFlash();
-    recordBtn.disabled = false;
-    stopBtn.disabled = true;
-  };
-
-  // --- PLAY/STOP AUDIO & VIDEO IN SYNC (TOGGLE BUTTON) ---
-  playStopSyncedBtn.onclick = () => {
-    if (!audio.src || !video.src) return;
-    if (isMediaPlaying()) {
-      // STOP both
-      audio.pause();
-      video.pause();
-      audio.currentTime = 0;
-      video.currentTime = 0;
-      updatePlayStopButtonText();
-    } else {
-      // PLAY both from the beginning
-      audio.currentTime = 0;
-      video.currentTime = 0;
-      audio.play();
-      video.play();
-      updatePlayStopButtonText();
-    }
-  };
-
-  // --- Keep button text updated if user plays/pauses using media controls ---
-  audio.addEventListener('play', updatePlayStopButtonText);
-  audio.addEventListener('pause', updatePlayStopButtonText);
-  audio.addEventListener('ended', updatePlayStopButtonText);
-
-  video.addEventListener('play', updatePlayStopButtonText);
-  video.addEventListener('pause', updatePlayStopButtonText);
-  video.addEventListener('ended', updatePlayStopButtonText);
-  video.addEventListener('seeking', updatePlayStopButtonText);
-  video.addEventListener('seeked', updatePlayStopButtonText);
-
-  // When video src changes, update play/stop button state
-  video.addEventListener('loadeddata', () => {
-    updatePlayStopButtonState();
-  });
 }
 
-// When main audio changes, enable/disable all play/stop buttons
-audio.addEventListener('loadeddata', enableAllTrackPlayButtons);
-
-// --- Switcher logic ---
+// Switcher
 const switcherDiv = document.getElementById('trackSwitcher');
 switcherDiv.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) =>
   `<button id="switchBtn-${i}" onclick="scrollToTrack(${i})">Track ${i+1}</button>`
 ).join('');
-
-// Add the function to window for inline onclick
 window.scrollToTrack = function(trackNum) {
-  // Remove previous highlight
   document.querySelectorAll('.track-block').forEach(el => el.classList.remove('switcher-active'));
   document.querySelectorAll('.track-switcher button').forEach(el => el.classList.remove('active'));
-
-  // Highlight selected
   const block = document.getElementById('track-block-' + trackNum);
   const btn = document.getElementById('switchBtn-' + trackNum);
   if (block) {
@@ -268,112 +61,112 @@ window.scrollToTrack = function(trackNum) {
   }
   if (btn) btn.classList.add('active');
 };
+window.addEventListener('DOMContentLoaded', () => scrollToTrack(0));
 
-// Optionally, auto-highlight first track at start
-window.addEventListener('DOMContentLoaded', () => {
-  scrollToTrack(0);
-});
-
-// --- Master Output Video & Export Button ---
+// Dice edit: Browser-based fast-cut mixing!
+const diceEditBtn = document.getElementById('diceEditBtn');
+const diceEditStatus = document.getElementById('diceEditStatus');
 const masterOutputVideo = document.getElementById('masterOutputVideo');
 const exportBtn = document.getElementById('exportBtn');
 const exportStatus = document.getElementById('exportStatus');
+const mixCanvas = document.getElementById('mixCanvas');
 
-// DEMO: For now, masterOutputVideo will show the first available video uploaded/recorded.
-// For a real mixer, you'd combine videos and audio in a canvas and export.
-function updateMasterOutputVideo() {
-  for (let trackNum = 0; trackNum < NUM_TRACKS; trackNum++) {
-    const video = document.getElementById(`video-${trackNum}`);
-    if (video && video.src) {
-      masterOutputVideo.src = video.src;
-      masterOutputVideo.load();
-      break;
-    }
+diceEditBtn.onclick = async function() {
+  diceEditStatus.textContent = "";
+  exportStatus.textContent = "";
+  // Gather all loaded video tracks
+  const videos = [];
+  for (let i = 0; i < NUM_TRACKS; i++) {
+    const v = document.getElementById(`video-${i}`);
+    if (v && v.src && v.readyState >= 2) videos.push(v);
   }
-}
-for (let trackNum = 0; trackNum < NUM_TRACKS; trackNum++) {
-  const video = document.getElementById(`video-${trackNum}`);
-  video.addEventListener('loadeddata', updateMasterOutputVideo);
-}
+  if (!masterAudioFile) {
+    diceEditStatus.textContent = "Load your audio track first!";
+    return;
+  }
+  if (videos.length < 2) {
+    diceEditStatus.textContent = "Upload at least 2 videos for mixing!";
+    return;
+  }
+  diceEditStatus.textContent = "Mixing... this will take a few seconds.";
 
-exportBtn.onclick = async function() {
-  exportStatus.textContent = "Exporting... (demo only)";
-  // In a real app: Mix selected video & audio into a single file.
-  // Here, just download the currently displayed masterOutputVideo as a demo.
+  // Get master audio duration
+  const audioBlobURL = URL.createObjectURL(masterAudioFile);
+  const tempAudio = new Audio(audioBlobURL);
+  await new Promise(r => { tempAudio.onloadedmetadata = r; });
+  const duration = tempAudio.duration;
+  URL.revokeObjectURL(audioBlobURL);
+
+  // Prepare for mixing
+  const ctx = mixCanvas.getContext('2d');
+  ctx.fillStyle = "#111";
+  ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
+
+  // Prepare MediaRecorder to record from the canvas
+  const stream = mixCanvas.captureStream(30);
+  let recordedChunks = [];
+  const mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+
+  // Load audio into an <audio> element (for MediaRecorder)
+  let audioTrack;
+  try {
+    const audioCtx = new AudioContext();
+    const source = audioCtx.createBufferSource();
+    const audioFileBuffer = await masterAudioFile.arrayBuffer();
+    const decoded = await audioCtx.decodeAudioData(audioFileBuffer);
+    source.buffer = decoded;
+    const dest = audioCtx.createMediaStreamDestination();
+    source.connect(dest);
+    audioTrack = dest.stream.getAudioTracks()[0];
+    stream.addTrack(audioTrack);
+    source.start();
+  } catch (e) {
+    diceEditStatus.textContent = "Cannot mix audio - browser does not support advanced audio mixing.";
+    return;
+  }
+
+  // Mixing: for every 0.5 second, randomly pick a video, draw its current frame to canvas
+  const cutLen = 0.5; // seconds per cut
+  let t = 0;
+  mediaRecorder.start();
+  function drawFrame() {
+    if (t >= duration) {
+      mediaRecorder.stop();
+      return;
+    }
+    const vid = videos[Math.floor(Math.random() * videos.length)];
+    // Seek video to the right time
+    vid.currentTime = Math.min(t, vid.duration - 0.05);
+    vid.onseeked = () => {
+      ctx.drawImage(vid, 0, 0, TRACK_WIDTH, TRACK_HEIGHT);
+      t += cutLen;
+      setTimeout(drawFrame, cutLen * 1000);
+    };
+  }
+  drawFrame();
+
+  // When finished, show video
+  mediaRecorder.onstop = () => {
+    const blob = new Blob(recordedChunks, { type: "video/webm" });
+    masterOutputVideo.src = URL.createObjectURL(blob);
+    masterOutputVideo.load();
+    diceEditStatus.textContent = "DiceCut magic done! Preview below.";
+    exportBtn.disabled = false;
+  };
+  exportBtn.disabled = true;
+};
+
+exportBtn.onclick = () => {
   if (!masterOutputVideo.src) {
     exportStatus.textContent = "No master video to export!";
     return;
   }
-  try {
-    const a = document.createElement('a');
-    a.href = masterOutputVideo.src;
-    a.download = 'exported_music_video.webm';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    exportStatus.textContent = "Download started (video only, demo).";
-  } catch (err) {
-    exportStatus.textContent = "Export failed: " + err.message;
-  }
-};
-
-// --- Random Dice Edit Button Logic ---
-const diceEditBtn = document.getElementById('diceEditBtn');
-const diceEditStatus = document.getElementById('diceEditStatus');
-
-diceEditBtn.onclick = function() {
-  diceEditStatus.textContent = "";
-  // Gather all available video tracks with a src
-  const availableTracks = [];
-  for (let trackNum = 0; trackNum < NUM_TRACKS; trackNum++) {
-    const video = document.getElementById(`video-${trackNum}`);
-    if (video && video.src) availableTracks.push(video);
-  }
-  if (availableTracks.length === 0) {
-    diceEditStatus.textContent = "No video tracks available. Record or upload a video to use this feature.";
-    return;
-  }
-
-  // Simulate a professional switcher: random fast cuts, transitions, etc.
-  // For demo, randomly cut between videos every 1s for the duration of the shortest video (or 10s).
-  // For now, just randomize one video (simplest fallback), but show status as "magic mixing".
-
-  // Find the shortest video duration (simulate 10s if unknown)
-  let minDuration = 10;
-  availableTracks.forEach(video => {
-    if (!isNaN(video.duration) && video.duration > 0) {
-      minDuration = Math.min(minDuration, video.duration);
-    }
-  });
-
-  // If you want a true cut-mix effect, you'd need to use a canvas, MediaRecorder, etc.
-  // For this demo, we'll just cycle video.src every second in the master output.
-
-  let cuts = Math.floor(minDuration); // in seconds, one cut per second
-  let cutIdx = 0;
-  let cutOrder = [];
-  for (let i = 0; i < cuts; i++) {
-    cutOrder.push(availableTracks[Math.floor(Math.random() * availableTracks.length)].src);
-  }
-
-  // Clear any previous intervals
-  if (window._diceMixInterval) clearInterval(window._diceMixInterval);
-
-  // Mixing animation
-  diceEditStatus.textContent = "Magic mixing... Enjoy fast cuts! (Preview only)";
-  masterOutputVideo.src = cutOrder[0];
-  masterOutputVideo.currentTime = 0;
-  masterOutputVideo.play();
-
-  window._diceMixInterval = setInterval(() => {
-    cutIdx++;
-    if (cutIdx >= cutOrder.length) {
-      clearInterval(window._diceMixInterval);
-      diceEditStatus.textContent = "Random mix complete! Click again for a new edit.";
-      return;
-    }
-    masterOutputVideo.src = cutOrder[cutIdx];
-    masterOutputVideo.currentTime = 0;
-    masterOutputVideo.play();
-  }, 1000);
+  const a = document.createElement('a');
+  a.href = masterOutputVideo.src;
+  a.download = 'dicecut_music_video.webm';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  exportStatus.textContent = "Download started!";
 };
