@@ -1,213 +1,25 @@
-body {
-  font-family: Arial, sans-serif;
-  padding: 20px;
-  background: #f5f5f5;
-}
+/* ...previous styles... */
 
-h2 {
-  margin-bottom: 32px;
-  text-align: center;
-}
-
-.audio-track-block {
-  background: #fff;
-  border-radius: 18px;
-  box-shadow: 0 6px 24px rgba(0,0,0,0.08);
-  padding: 28px 30px 32px 30px;
-  margin: 0 auto 40px auto;
-  width: 520px;
-  max-width: 98vw;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-#tracksContainer {
-  display: flex;
-  flex-direction: column;
-  gap: 46px;
-  align-items: center;
-}
-
-.track-block {
-  background: #fff;
-  border-radius: 18px;
-  box-shadow: 0 6px 24px rgba(0,0,0,0.08);
-  padding: 28px 30px 32px 30px;
-  width: 620px;
-  max-width: 98vw;
-  text-align: center;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.track-title {
-  font-size: 1.15rem;
-  margin-bottom: 18px;
-  font-weight: bold;
-  color: #405280;
-}
-
-.controls {
-  margin-bottom: 15px;
-}
-
-button {
-  padding: 8px 18px;
-  margin-right: 8px;
-  margin-top: 5px;
-  font-size: 1.05rem;
-  border-radius: 7px;
-  border: none;
-  background: #3054aa;
+.dice-edit-btn {
+  background: #ff9800;
   color: #fff;
-  font-weight: 500;
+  font-size: 1.13rem;
+  font-weight: 700;
+  padding: 14px 38px;
+  border: none;
+  border-radius: 9px;
   cursor: pointer;
+  box-shadow: 0 2px 10px rgba(255,152,0,0.13);
   transition: background 0.18s;
 }
-
-button:disabled {
-  background: #aaa;
-  cursor: not-allowed;
+.dice-edit-btn:hover {
+  background: #f57c00;
 }
-
-.export-btn {
-  background: #e53935;
-  font-size: 1.13rem;
-  margin-right: 0;
-  margin-top: 0;
-  font-weight: 700;
-  padding: 12px 34px;
-  border-radius: 9px;
-}
-
-.export-status {
-  margin-left: 16px;
+.dice-edit-status {
+  margin-left: 18px;
   font-weight: 600;
-  color: #405280;
-}
-
-.rec-indicator {
-  color: red;
-  font-weight: bold;
-  opacity: 0;
-  transition: opacity 0.2s;
-  font-size: 1.3rem;
-  margin-left: 12px;
-  vertical-align: middle;
-  letter-spacing: 2px;
-  user-select: none;
-}
-
-.rec-indicator.active {
-  opacity: 1;
-  animation: rec-flash 1s infinite;
-  visibility: visible;
-}
-
-@keyframes rec-flash {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0; }
-}
-
-.countdown {
-  position: absolute;
-  top: 38%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 4rem;
-  font-weight: bold;
   color: #e53935;
-  background: rgba(255,255,255,0.95);
-  border-radius: 1rem;
-  padding: 22px 50px;
-  z-index: 20;
-  text-align: center;
-  box-shadow: 0 6px 32px rgba(0,0,0,0.13);
-  display: none;
+  font-size: 1.09rem;
 }
 
-.uploadStatus {
-  margin-left: 10px;
-  font-weight: bold;
-}
-
-audio, video {
-  display: block;
-  margin-top: 12px;
-  margin-bottom: 10px;
-  background: #222;
-  border-radius: 8px;
-}
-
-.track-block video {
-  width: 100%;
-  max-width: 560px;
-  min-height: 340px;
-  background: #111;
-  margin: 0 auto 12px auto;
-  box-shadow: 0 2px 14px rgba(0,0,0,0.11);
-}
-
-.master-output-section {
-  background: #fff;
-  border-radius: 18px;
-  box-shadow: 0 6px 24px rgba(0,0,0,0.08);
-  padding: 30px 30px 38px 30px;
-  width: 770px;
-  max-width: 99vw;
-  margin: 60px auto 25px auto;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.master-output-section h3 {
-  margin-bottom: 16px;
-  font-size: 1.35rem;
-  color: #222;
-  font-weight: bold;
-}
-
-.master-output-section video {
-  width: 100%;
-  max-width: 700px;
-  min-height: 420px;
-  margin-bottom: 20px;
-  background: #111;
-  box-shadow: 0 2px 14px rgba(0,0,0,0.13);
-}
-
-.track-switcher {
-  display: flex;
-  justify-content: center;
-  gap: 14px;
-  margin: 50px auto 0 auto;
-  flex-wrap: wrap;
-}
-.track-switcher button {
-  padding: 10px 22px;
-  border-radius: 8px;
-  background: #3054aa;
-  color: #fff;
-  border: none;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 1.06rem;
-  transition: background 0.16s, box-shadow 0.16s;
-  box-shadow: 0 2px 10px rgba(48,84,170,0.08);
-}
-.track-switcher button.active,
-.track-block.switcher-active {
-  background: #e53935 !important;
-  color: #fff !important;
-  box-shadow: 0 2px 10px rgba(229,57,53,0.17);
-}
-.track-block.switcher-active {
-  border: 2.3px solid #e53935;
-  box-shadow: 0 0 0 4px rgba(229,57,53,0.08);
-}
+/* Keep all your previous CSS for layout, tracks, switcher, output, etc. */
