@@ -5,7 +5,6 @@ let audioContext;         // AudioContext for decoding
 let audioBuffer;          // Decoded audio data
 let isSongLoaded = false; // Flag for song upload status
 
-// DOM elements
 const songInput = document.getElementById('songInput');
 const waveform = document.getElementById('waveform');
 
@@ -50,6 +49,7 @@ songInput.addEventListener('change', async (e) => {
 
     drawWaveform(audioBuffer);
     isSongLoaded = true;
+    enableRecordButtons();
     alert("Song uploaded successfully!");
   } catch (err) {
     isSongLoaded = false;
@@ -98,3 +98,28 @@ function drawWaveform(buffer) {
 window.addEventListener('resize', () => {
   if (audioBuffer) drawWaveform(audioBuffer);
 });
+
+// --- VIDEO STATE SETUP FOR 10 TRACKS ---
+const videoStates = [];
+for (let i = 1; i <= 10; i++) {
+  const recordBtn = document.getElementById('recordBtn' + i);
+  if (!recordBtn) continue;
+  recordBtn.disabled = true; // disable until song loaded
+  recordBtn.addEventListener('click', () => {
+    onRecordButtonClicked(i);
+  });
+  videoStates[i - 1] = { recordBtn, isRecording: false };
+}
+
+// --- Enable record buttons after song upload ---
+function enableRecordButtons() {
+  videoStates.forEach((vs) => {
+    if (vs && vs.recordBtn) vs.recordBtn.disabled = false;
+  });
+}
+
+// --- Example record handler ---
+function onRecordButtonClicked(trackNumber) {
+  alert(`Record button ${trackNumber} clicked!`);
+  // Here you can implement your recording logic per track
+}
