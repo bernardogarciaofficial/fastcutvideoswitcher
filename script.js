@@ -1,9 +1,9 @@
 // --- GLOBAL STATE VARIABLES ---
-let audio;                // Main audio element for playback
-let audioUrl;             // URL for the audio file
-let audioContext;         // AudioContext for decoding
-let audioBuffer;          // Decoded audio data
-let isSongLoaded = false; // Flag for song upload status
+let audio;
+let audioUrl;
+let audioContext;
+let audioBuffer;
+let isSongLoaded = false;
 
 const songInput = document.getElementById('songInput');
 const waveform = document.getElementById('waveform');
@@ -28,7 +28,6 @@ songInput.addEventListener('change', async (e) => {
     audio = new Audio(audioUrl);
     audio.preload = "auto";
 
-    // Create or reuse AudioContext
     if (!audioContext) {
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
     }
@@ -37,7 +36,6 @@ songInput.addEventListener('change', async (e) => {
     }
     const arrayBuffer = await file.arrayBuffer();
 
-    // Try to decode the audio file
     try {
       audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
     } catch (decodeErr) {
@@ -103,7 +101,10 @@ window.addEventListener('resize', () => {
 const videoStates = [];
 for (let i = 1; i <= 10; i++) {
   const recordBtn = document.getElementById('recordBtn' + i);
-  if (!recordBtn) continue;
+  if (!recordBtn) {
+    console.warn(`Button recordBtn${i} not found`);
+    continue;
+  }
   recordBtn.disabled = true; // disable until song loaded
   recordBtn.addEventListener('click', () => {
     onRecordButtonClicked(i);
@@ -120,6 +121,7 @@ function enableRecordButtons() {
 
 // --- Example record handler ---
 function onRecordButtonClicked(trackNumber) {
+  console.log(`Record button ${trackNumber} clicked!`);
   alert(`Record button ${trackNumber} clicked!`);
-  // Here you can implement your recording logic per track
+  // Put your recording logic here.
 }
