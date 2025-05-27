@@ -2,40 +2,24 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>DiceCut Multi-Track Music Video Editor</title>
+  <title>DiceCut Pro Video Switcher</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h2>DiceCut Multi-Track Music Video Editor</h2>
-
-  <div class="audio-track-block">
-    <label for="songInput"><b>Main Music Track:</b></label>
-    <input type="file" id="songInput" accept="audio/*">
-    <span id="audioStatus"></span>
-    <audio id="audio" controls style="display:none"></audio>
-  </div>
-
-  <div id="tracksContainer"></div>
-
-  <div id="trackSwitcher" class="track-switcher"></div>
-
-  <div style="text-align:center; margin:32px 0;">
-    <button id="diceEditBtn" class="dice-edit-btn">🎲 Random Dice Edit Entire Music Video</button>
-    <span id="diceEditStatus" class="dice-edit-status"></span>
-  </div>
-
-  <div class="master-output-section">
-    <h3>Master Output Video</h3>
-    <video id="masterOutputVideo" controls width="600" height="340"></video>
-    <div style="margin-top:16px;">
-      <button id="exportBtn" class="export-btn">Export Music Video</button>
-      <span id="exportStatus" class="export-status"></span>
+  <h2>DiceCut Pro Video Switcher</h2>
+  <div class="switcher-container">
+    <div class="preview-tracks" id="previewTracks"></div>
+    <div class="switcher-panel">
+      <button id="cutBtn" class="switch-btn">Cut</button>
+      <button id="fadeBtn" class="switch-btn">Fade</button>
+      <select id="sourceSelect"></select>
+    </div>
+    <div class="program-output">
+      <h4>Program Output</h4>
+      <video id="programVideo" width="480" height="270" controls></video>
     </div>
   </div>
-
-  <!-- Hidden canvas for rendering the mixed video -->
-  <canvas id="mixCanvas" width="600" height="340" style="display:none"></canvas>
-
+  <input type="file" id="videoInput" accept="video/*" multiple>
   <script src="script.js"></script>
 </body>
 </html>
