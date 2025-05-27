@@ -9,9 +9,11 @@ const stopBtn = document.getElementById('stopBtn');
 const recIndicator = document.getElementById('recIndicator');
 const video = document.getElementById('video');
 const playStopSyncedBtn = document.getElementById('playStopSyncedBtn');
+const countdown = document.getElementById('countdown');
 
 let mediaRecorder = null;
 let recordedChunks = [];
+let recFlashInterval = null;
 
 // --- Enable/disable Play/Stop (Sync Audio + Video) button ---
 function updatePlayButtonState() {
@@ -69,8 +71,44 @@ uploadSongBtn.onclick = async function() {
   }
 };
 
+// --- COUNTDOWN ANIMATION ---
+function doCountdown(seconds = 3) {
+  return new Promise(resolve => {
+    countdown.style.display = "block";
+    let current = seconds;
+    countdown.textContent = current;
+    const tick = () => {
+      if (current > 1) {
+        current -= 1;
+        countdown.textContent = current;
+        setTimeout(tick, 1000);
+      } else {
+        countdown.textContent = "GO!";
+        setTimeout(() => {
+          countdown.style.display = "none";
+          resolve();
+        }, 700);
+      }
+    };
+    setTimeout(tick, 1000);
+  });
+}
+
+// --- REC FLASHING ---
+function startRecFlash() {
+  recIndicator.classList.add('active');
+}
+
+function stopRecFlash() {
+  recIndicator.classList.remove('active');
+}
+
 // --- VIDEO RECORDING ---
 recordBtn.onclick = async () => {
+  recordBtn.disabled = true;
+  stopBtn.disabled = true;
+  await doCountdown(3);
+
   recordedChunks = [];
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -98,7 +136,7 @@ recordBtn.onclick = async () => {
       // UI reset
       recordBtn.disabled = false;
       stopBtn.disabled = true;
-      recIndicator.classList.remove('active');
+      stopRecFlash();
       // Optionally stop song when recording stops
       if (!audio.paused) {
         audio.pause();
@@ -108,7 +146,7 @@ recordBtn.onclick = async () => {
     };
 
     mediaRecorder.start();
-    recIndicator.classList.add('active');
+    startRecFlash();
     recordBtn.disabled = true;
     stopBtn.disabled = false;
 
@@ -121,7 +159,7 @@ recordBtn.onclick = async () => {
     alert("Webcam access denied or error: " + err.message);
     recordBtn.disabled = false;
     stopBtn.disabled = true;
-    recIndicator.classList.remove('active');
+    stopRecFlash();
   }
 };
 
@@ -129,7 +167,7 @@ stopBtn.onclick = () => {
   if (mediaRecorder && mediaRecorder.state !== "inactive") {
     mediaRecorder.stop();
   }
-  recIndicator.classList.remove('active');
+  stopRecFlash();
   recordBtn.disabled = false;
   stopBtn.disabled = true;
 };
