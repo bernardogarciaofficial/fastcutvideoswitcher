@@ -124,7 +124,8 @@ function enableRecordButtons() {
 
 // --- Example record handler ---
 function onRecordButtonClicked(trackNumber) {
-  console.log(`Record button ${trackNumber} clicked!`);
-  alert(`Record button ${trackNumber} clicked!`);
-  // Here you can implement your recording logic per track
+  // Show the "REC" indicator
+  document.getElementById('recIndicator' + trackNumber).classList.remove('hidden');
+  // Other recording logic goes here...
+  console.log(`Record button ${trackNumber} clicked and REC indicator shown.`);
 }
