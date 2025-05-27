@@ -8,9 +8,15 @@ const recordBtn = document.getElementById('recordBtn');
 const stopBtn = document.getElementById('stopBtn');
 const recIndicator = document.getElementById('recIndicator');
 const video = document.getElementById('video');
+const playSyncedBtn = document.getElementById('playSyncedBtn');
 
 let mediaRecorder = null;
 let recordedChunks = [];
+
+// --- Enable/disable the Play (Sync Audio + Video) button ---
+function updatePlayButtonState() {
+  playSyncedBtn.disabled = !(audio.src && video.src);
+}
 
 // --- SONG FILE SELECTION & PREVIEW ---
 songInput.onchange = function(e) {
@@ -25,6 +31,7 @@ songInput.onchange = function(e) {
     audio.style.display = 'none';
     uploadSongBtn.disabled = true;
   }
+  updatePlayButtonState();
 };
 
 // --- SONG UPLOAD ---
@@ -84,6 +91,7 @@ recordBtn.onclick = async () => {
         audio.pause();
         audio.currentTime = 0;
       }
+      updatePlayButtonState();
     };
 
     mediaRecorder.start();
@@ -111,4 +119,13 @@ stopBtn.onclick = () => {
   recIndicator.classList.remove('active');
   recordBtn.disabled = false;
   stopBtn.disabled = true;
+};
+
+// --- PLAY AUDIO & VIDEO IN SYNC ---
+playSyncedBtn.onclick = () => {
+  if (!audio.src || !video.src) return;
+  audio.currentTime = 0;
+  video.currentTime = 0;
+  audio.play();
+  video.play();
 };
