@@ -22,10 +22,35 @@ button {
   color: red;
   font-weight: bold;
   visibility: hidden;
+  transition: opacity 0.2s;
 }
 
 .rec-indicator.active {
   visibility: visible;
+  opacity: 1;
+  animation: rec-flash 1s infinite;
+}
+
+@keyframes rec-flash {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+
+.countdown {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -60%);
+  font-size: 5rem;
+  font-weight: bold;
+  color: #e53935;
+  background: rgba(255,255,255,0.85);
+  border-radius: 1rem;
+  padding: 30px 60px;
+  z-index: 9999;
+  text-align: center;
+  box-shadow: 0 6px 32px rgba(0,0,0,0.1);
+  display: none;
 }
 
 #uploadStatus {
