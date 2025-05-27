@@ -1,290 +1,77 @@
-const NUM_TRACKS = 10;
-const TRACK_WIDTH = 600, TRACK_HEIGHT = 340;
+const previewTracks = document.getElementById('previewTracks');
+const videoInput = document.getElementById('videoInput');
+const programVideo = document.getElementById('programVideo');
+const sourceSelect = document.getElementById('sourceSelect');
+const cutBtn = document.getElementById('cutBtn');
+const fadeBtn = document.getElementById('fadeBtn');
 
-// Song/audio logic
-const songInput = document.getElementById('songInput');
-const audio = document.getElementById('audio');
-const audioStatus = document.getElementById('audioStatus');
-let masterAudioFile = null;
-songInput.onchange = e => {
-  const file = e.target.files[0];
-  masterAudioFile = file;
-  if (file) {
-    audio.src = URL.createObjectURL(file);
-    audio.style.display = 'block';
-    audio.load();
-    audioStatus.textContent = "Audio loaded!";
-  } else {
-    audio.style.display = 'none';
-    audioStatus.textContent = "";
+let videos = [];
+let currentSource = null;
+
+// Load videos
+videoInput.onchange = () => {
+  previewTracks.innerHTML = '';
+  sourceSelect.innerHTML = '';
+  videos = [];
+  Array.from(videoInput.files).forEach((file, idx) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.src = url;
+    video.width = 180;
+    video.height = 100;
+    video.controls = true;
+    video.className = 'track-preview';
+    previewTracks.appendChild(video);
+
+    videos.push({ url, video });
+    const option = document.createElement('option');
+    option.value = idx;
+    option.text = `Track ${idx + 1}`;
+    sourceSelect.appendChild(option);
+  });
+};
+
+// Cut transition
+cutBtn.onclick = () => {
+  const idx = parseInt(sourceSelect.value);
+  if (videos[idx]) {
+    programVideo.src = videos[idx].url;
+    programVideo.currentTime = videos[idx].video.currentTime;
+    programVideo.play();
+    currentSource = idx;
   }
 };
 
-// Video tracks (record only, no file input)
-function createTrackHTML(trackNum) {
-  return `
-    <div class="track-block" id="track-block-${trackNum}">
-      <div class="track-title">Video Track ${trackNum + 1}</div>
-      <div class="track-controls">
-        <button id="recordBtn-${trackNum}">Record Video</button>
-        <button id="stopBtn-${trackNum}" disabled>Stop Recording</button>
-        <button id="playBtn-${trackNum}" disabled>Play</button>
-        <button id="stopPlayBtn-${trackNum}" disabled>Stop</button>
-        <span id="recIndicator-${trackNum}" class="rec-indicator" style="display:none;">● REC</span>
-      </div>
-      <video id="video-${trackNum}" width="${TRACK_WIDTH}" height="${TRACK_HEIGHT}" controls style="margin-top:12px;"></video>
-    </div>
-  `;
-}
-const tracksContainer = document.getElementById("tracksContainer");
-tracksContainer.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => createTrackHTML(i)).join("");
+// Fade transition (simple crossfade)
+fadeBtn.onclick = () => {
+  const idx = parseInt(sourceSelect.value);
+  if (videos[idx]) {
+    let fadeOut = programVideo;
+    let fadeIn = document.createElement('video');
+    fadeIn.src = videos[idx].url;
+    fadeIn.currentTime = videos[idx].video.currentTime;
+    fadeIn.muted = true;
+    fadeIn.width = fadeOut.width;
+    fadeIn.height = fadeOut.height;
+    fadeIn.style.position = 'absolute';
+    fadeIn.style.top = '0';
+    fadeIn.style.left = '0';
+    fadeIn.style.opacity = '0';
+    fadeOut.parentNode.appendChild(fadeIn);
+    fadeIn.play();
 
-// Video track logic
-for (let i = 0; i < NUM_TRACKS; i++) {
-  let mediaRecorder = null;
-  let recordedChunks = [];
-  let stream = null;
-
-  const recordBtn = document.getElementById(`recordBtn-${i}`);
-  const stopBtn = document.getElementById(`stopBtn-${i}`);
-  const playBtn = document.getElementById(`playBtn-${i}`);
-  const stopPlayBtn = document.getElementById(`stopPlayBtn-${i}`);
-  const video = document.getElementById(`video-${i}`);
-  const recIndicator = document.getElementById(`recIndicator-${i}`);
-
-  // Record button
-  recordBtn.onclick = async () => {
-    recordBtn.disabled = true;
-    stopBtn.disabled = false;
-    playBtn.disabled = true;
-    stopPlayBtn.disabled = true;
-    recIndicator.style.display = "inline";
-    recordedChunks = [];
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      video.srcObject = stream;
-      video.muted = true;
-      video.controls = false;
-      video.play();
-
-      // Start slave audio in sync with recording
-      if (audio.src) {
-        audio.currentTime = 0;
-        // To ensure audio can play (autoplay policy), resume context if needed
-        // and catch play() rejection (user gesture needed for first play)
-        audio.play().catch(() => {
-          // If autoplay blocked, inform user
-          audioStatus.textContent = "Click the audio controls once to enable music sync.";
-        });
+    let op = 0;
+    let fadeInterval = setInterval(() => {
+      op += 0.05;
+      fadeIn.style.opacity = '' + op;
+      if (op >= 1) {
+        clearInterval(fadeInterval);
+        programVideo.src = fadeIn.src;
+        programVideo.currentTime = fadeIn.currentTime;
+        programVideo.play();
+        fadeIn.remove();
+        currentSource = idx;
       }
-
-      mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
-      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
-      mediaRecorder.onstop = () => {
-        if (video.srcObject) {
-          video.srcObject.getTracks().forEach(track => track.stop());
-          video.srcObject = null;
-        }
-        const blob = new Blob(recordedChunks, { type: "video/webm" });
-        video.src = URL.createObjectURL(blob);
-        video.controls = true;
-        video.muted = false;
-        video.load();
-        recIndicator.style.display = "none";
-        playBtn.disabled = false;
-        stopPlayBtn.disabled = false;
-
-        // Stop and reset slave audio
-        if (!audio.paused) {
-          audio.pause();
-          audio.currentTime = 0;
-        }
-      };
-      mediaRecorder.start();
-    } catch (err) {
-      alert("Webcam access denied or error: " + err.message);
-      recordBtn.disabled = false;
-      stopBtn.disabled = true;
-      recIndicator.style.display = "none";
-    }
-  };
-
-  // Stop recording
-  stopBtn.onclick = () => {
-    if (mediaRecorder && mediaRecorder.state !== "inactive") {
-      mediaRecorder.stop();
-    }
-    recordBtn.disabled = false;
-    stopBtn.disabled = true;
-    recIndicator.style.display = "none";
-
-    // Stop and reset slave audio
-    if (!audio.paused) {
-      audio.pause();
-      audio.currentTime = 0;
-    }
-  };
-
-  // Play video with audio (sync)
-  playBtn.onclick = () => {
-    if (!audio.src || !video.src) return;
-    // Always play from the start
-    video.currentTime = 0;
-    audio.currentTime = 0;
-    video.play();
-    audio.play();
-    stopPlayBtn.disabled = false;
-    playBtn.disabled = true;
-    // When either ends, stop both
-    const stopBoth = () => {
-      video.pause(); audio.pause();
-      video.currentTime = 0; audio.currentTime = 0;
-      playBtn.disabled = false;
-      stopPlayBtn.disabled = true;
-    };
-    video.onended = stopBoth;
-    audio.onended = stopBoth;
-  };
-
-  // Stop playback
-  stopPlayBtn.onclick = () => {
-    video.pause();
-    audio.pause();
-    video.currentTime = 0;
-    audio.currentTime = 0;
-    playBtn.disabled = false;
-    stopPlayBtn.disabled = true;
-  };
-
-  // When video is ready, enable play button if audio is loaded
-  video.onloadeddata = () => {
-    playBtn.disabled = !(audio.src && video.src);
-    stopPlayBtn.disabled = true;
-  };
-}
-
-// Switcher
-const switcherDiv = document.getElementById('trackSwitcher');
-switcherDiv.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) =>
-  `<button id="switchBtn-${i}" onclick="scrollToTrack(${i})">Track ${i+1}</button>`
-).join('');
-window.scrollToTrack = function(trackNum) {
-  document.querySelectorAll('.track-block').forEach(el => el.classList.remove('switcher-active'));
-  document.querySelectorAll('.track-switcher button').forEach(el => el.classList.remove('active'));
-  const block = document.getElementById('track-block-' + trackNum);
-  const btn = document.getElementById('switchBtn-' + trackNum);
-  if (block) {
-    block.classList.add('switcher-active');
-    block.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 40);
   }
-  if (btn) btn.classList.add('active');
-};
-window.addEventListener('DOMContentLoaded', () => scrollToTrack(0));
-
-// Dice edit & export (same as before, no file input for video)
-const diceEditBtn = document.getElementById('diceEditBtn');
-const diceEditStatus = document.getElementById('diceEditStatus');
-const masterOutputVideo = document.getElementById('masterOutputVideo');
-const exportBtn = document.getElementById('exportBtn');
-const exportStatus = document.getElementById('exportStatus');
-const mixCanvas = document.getElementById('mixCanvas');
-
-diceEditBtn.onclick = async function() {
-  diceEditStatus.textContent = "";
-  exportStatus.textContent = "";
-  // Gather all loaded video tracks
-  const videos = [];
-  for (let i = 0; i < NUM_TRACKS; i++) {
-    const v = document.getElementById(`video-${i}`);
-    if (v && v.src && v.readyState >= 2) videos.push(v);
-  }
-  if (!masterAudioFile) {
-    diceEditStatus.textContent = "Load your audio track first!";
-    return;
-  }
-  if (videos.length < 2) {
-    diceEditStatus.textContent = "Record at least 2 videos for mixing!";
-    return;
-  }
-  diceEditStatus.textContent = "Mixing... this will take a few seconds.";
-
-  // Get master audio duration
-  const audioBlobURL = URL.createObjectURL(masterAudioFile);
-  const tempAudio = new Audio(audioBlobURL);
-  await new Promise(r => { tempAudio.onloadedmetadata = r; });
-  const duration = tempAudio.duration;
-  URL.revokeObjectURL(audioBlobURL);
-
-  // Prepare for mixing
-  const ctx = mixCanvas.getContext('2d');
-  ctx.fillStyle = "#111";
-  ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
-
-  // Prepare MediaRecorder to record from the canvas
-  const stream = mixCanvas.captureStream(30);
-  let recordedChunks = [];
-  const mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
-  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
-
-  // Load audio into an <audio> element (for MediaRecorder)
-  let audioTrack;
-  try {
-    const audioCtx = new AudioContext();
-    const source = audioCtx.createBufferSource();
-    const audioFileBuffer = await masterAudioFile.arrayBuffer();
-    const decoded = await audioCtx.decodeAudioData(audioFileBuffer);
-    source.buffer = decoded;
-    const dest = audioCtx.createMediaStreamDestination();
-    source.connect(dest);
-    audioTrack = dest.stream.getAudioTracks()[0];
-    stream.addTrack(audioTrack);
-    source.start();
-  } catch (e) {
-    diceEditStatus.textContent = "Cannot mix audio - browser does not support advanced audio mixing.";
-    return;
-  }
-
-  // Mixing: for every 0.5 second, randomly pick a video, draw its current frame to canvas
-  const cutLen = 0.5; // seconds per cut
-  let t = 0;
-  mediaRecorder.start();
-  function drawFrame() {
-    if (t >= duration) {
-      mediaRecorder.stop();
-      return;
-    }
-    const vid = videos[Math.floor(Math.random() * videos.length)];
-    // Seek video to the right time
-    vid.currentTime = Math.min(t, vid.duration - 0.05);
-    vid.onseeked = () => {
-      ctx.drawImage(vid, 0, 0, TRACK_WIDTH, TRACK_HEIGHT);
-      t += cutLen;
-      setTimeout(drawFrame, cutLen * 1000);
-    };
-  }
-  drawFrame();
-
-  // When finished, show video
-  mediaRecorder.onstop = () => {
-    const blob = new Blob(recordedChunks, { type: "video/webm" });
-    masterOutputVideo.src = URL.createObjectURL(blob);
-    masterOutputVideo.load();
-    diceEditStatus.textContent = "DiceCut magic done! Preview below.";
-    exportBtn.disabled = false;
-  };
-  exportBtn.disabled = true;
-};
-
-exportBtn.onclick = () => {
-  if (!masterOutputVideo.src) {
-    exportStatus.textContent = "No master video to export!";
-    return;
-  }
-  const a = document.createElement('a');
-  a.href = masterOutputVideo.src;
-  a.download = 'dicecut_music_video.webm';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  exportStatus.textContent = "Download started!";
 };
