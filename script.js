@@ -105,6 +105,7 @@ for (let i = 0; i < 10; i++) {
   const playBtn = document.getElementById('playBtn' + i);
   const recIndicator = document.getElementById('recIndicator' + i);
   const video = document.getElementById('video' + i);
+  const countdown = document.getElementById('countdown' + i);
 
   videoStates[i] = {
     recordBtn,
@@ -112,9 +113,11 @@ for (let i = 0; i < 10; i++) {
     playBtn,
     recIndicator,
     video,
+    countdown,
     mediaRecorder: null,
     recordedChunks: [],
-    isRecording: false
+    isRecording: false,
+    recFlashInterval: null
   };
 
   recordBtn.disabled = true;
@@ -137,10 +140,34 @@ function enableRecordButtons() {
   });
 }
 
-// --- Record button logic ---
+// --- Record button logic with countdown, flashing REC, and song sync ---
 async function onRecordButtonClicked(trackNumber) {
   const vs = videoStates[trackNumber];
   if (!vs) return;
+  vs.recordBtn.disabled = true;
+  vs.stopBtn.disabled = true;
+  vs.playBtn.disabled = true;
+  vs.recIndicator.classList.add('hidden');
+  vs.countdown.classList.remove('hidden');
+  vs.countdown.textContent = "3";
+
+  // Countdown: 3, 2, 1
+  let count = 3;
+  const countdownInterval = setInterval(() => {
+    count--;
+    if (count > 0) {
+      vs.countdown.textContent = count;
+    } else {
+      clearInterval(countdownInterval);
+      vs.countdown.classList.add('hidden');
+      startRecording(trackNumber);
+    }
+  }, 700);
+}
+
+// --- Start recording after countdown ---
+async function startRecording(trackNumber) {
+  const vs = videoStates[trackNumber];
   // Request webcam
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -164,7 +191,13 @@ async function onRecordButtonClicked(trackNumber) {
       vs.recordBtn.disabled = false;
       vs.stopBtn.disabled = true;
       vs.playBtn.disabled = false;
+      stopRecFlash(vs);
       vs.recIndicator.classList.add('hidden');
+      // Stop the song if it's playing
+      if (audio && !audio.paused) {
+        audio.pause();
+        audio.currentTime = 0;
+      }
     };
 
     vs.mediaRecorder.start();
@@ -175,10 +208,23 @@ async function onRecordButtonClicked(trackNumber) {
     vs.recIndicator.classList.remove('hidden');
     vs.video.controls = false;
     vs.video.muted = true;
+    startRecFlash(vs);
+
+    // Play music at the same time
+    if (audio) {
+      audio.currentTime = 0;
+      audio.play();
+    }
+
     console.log(`Recording started on track ${trackNumber}`);
   } catch (err) {
     alert("Webcam access denied or error: " + err.message);
     console.error(err);
+    vs.recordBtn.disabled = false;
+    vs.stopBtn.disabled = true;
+    vs.playBtn.disabled = true;
+    stopRecFlash(vs);
+    vs.recIndicator.classList.add('hidden');
   }
 }
 
@@ -188,18 +234,40 @@ function onStopButtonClicked(trackNumber) {
   if (vs && vs.isRecording && vs.mediaRecorder) {
     vs.mediaRecorder.stop();
     vs.isRecording = false;
+    stopRecFlash(vs);
     vs.recIndicator.classList.add('hidden');
     vs.recordBtn.disabled = false;
     vs.stopBtn.disabled = true;
     vs.playBtn.disabled = false;
+    // Pause the song and reset
+    if (audio && !audio.paused) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
     console.log(`Recording stopped on track ${trackNumber}`);
   }
 }
 
-// --- Play button logic ---
+// --- Play button logic (video only, not re-syncing audio yet) ---
 function onPlayButtonClicked(trackNumber) {
   const vs = videoStates[trackNumber];
   if (vs && vs.video.src) {
     vs.video.play();
   }
+}
+
+// --- Flashing REC indicator ---
+function startRecFlash(vs) {
+  if (vs.recFlashInterval) clearInterval(vs.recFlashInterval);
+  let visible = true;
+  vs.recIndicator.classList.remove('hidden');
+  vs.recIndicator.style.opacity = "1";
+  vs.recFlashInterval = setInterval(() => {
+    visible = !visible;
+    vs.recIndicator.style.opacity = visible ? "1" : "0.2";
+  }, 400);
+}
+function stopRecFlash(vs) {
+  if (vs.recFlashInterval) clearInterval(vs.recFlashInterval);
+  vs.recIndicator.style.opacity = "1";
 }
