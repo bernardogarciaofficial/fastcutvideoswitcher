@@ -2,33 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Video Recorder & Song Uploader</title>
+  <title>Multi-Track Video Recorder & Song Uploader</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h2>Video Recorder & Song Uploader</h2>
+  <h2>Multi-Track Video Recorder & Song Uploader</h2>
 
-  <div class="controls">
-    <input type="file" id="songInput" accept="audio/*">
-    <button id="uploadSongBtn" disabled>Upload Song</button>
-    <span id="uploadStatus"></span>
-  </div>
-
-  <audio id="audio" controls style="display:none"></audio>
-
-  <div class="controls">
-    <button id="recordBtn">Record Video</button>
-    <button id="stopBtn" disabled>Stop Recording</button>
-    <span id="recIndicator" class="rec-indicator">● REC</span>
-  </div>
-
-  <div id="countdown" class="countdown"></div>
-
-  <div class="controls">
-    <button id="playStopSyncedBtn" disabled>Play (Sync Audio + Video)</button>
-  </div>
-
-  <video id="video" width="320" height="240" controls></video>
+  <div id="tracksContainer"></div>
 
   <script src="script.js"></script>
 </body>
