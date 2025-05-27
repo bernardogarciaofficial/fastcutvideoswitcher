@@ -52,6 +52,11 @@ h2 { text-align: center; margin-bottom: 28px; }
   cursor: not-allowed;
 }
 
+.rec-indicator {
+  color: red;
+  font-weight: bold;
+}
+
 .track-switcher {
   display: flex; justify-content: center; gap: 14px; margin: 32px auto 0 auto; flex-wrap: wrap;
 }
