@@ -8,6 +8,15 @@
 <body>
   <h2>Multi-Track Video Recorder & Song Uploader</h2>
 
+  <div id="audioTrackBlock" class="audio-track-block">
+    <div class="controls">
+      <input type="file" id="songInput" accept="audio/*">
+      <button id="uploadSongBtn" disabled>Upload Song</button>
+      <span id="uploadStatus"></span>
+    </div>
+    <audio id="audio" controls style="display:none"></audio>
+  </div>
+
   <div id="tracksContainer"></div>
 
   <script src="script.js"></script>
