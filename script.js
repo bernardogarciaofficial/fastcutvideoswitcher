@@ -126,6 +126,8 @@ function enableRecordButtons() {
 function onRecordButtonClicked(trackNumber) {
   // Show the "REC" indicator
   document.getElementById('recIndicator' + trackNumber).classList.remove('hidden');
+  // Optionally, disable the record button to prevent double clicks
+  videoStates[trackNumber].recordBtn.disabled = true;
   // Other recording logic goes here...
   console.log(`Record button ${trackNumber} clicked and REC indicator shown.`);
 }
