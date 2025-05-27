@@ -5,20 +5,20 @@ let audioContext;         // AudioContext for decoding
 let audioBuffer;          // Decoded audio data
 let isSongLoaded = false; // Flag for song upload status
 
-// (Assume videoStates and other variables are defined as in your base code)
-// ... (rest of your other initializations and code) ...
+// You may need these if referenced elsewhere
+let videoStates = [];     // Array for your 10 video tracks, you can initialize this later if needed
 
+// DOM elements
 const songInput = document.getElementById('songInput');
 const waveform = document.getElementById('waveform');
 
-// Your improved audio upload & waveform code:
+// --- Song Upload and Waveform Visualization ---
 songInput.addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) {
     alert("No file selected.");
     return;
   }
-  // Accept any audio file type for maximal compatibility
   if (!file.type.startsWith("audio/")) {
     alert("Unsupported file type. Please upload an audio file.");
     return;
@@ -31,7 +31,8 @@ songInput.addEventListener('change', async (e) => {
     audioUrl = URL.createObjectURL(file);
     audio = new Audio(audioUrl);
     audio.preload = "auto";
-    // Resume audio context if needed (for some browsers)
+
+    // Create or reuse AudioContext
     if (!audioContext) {
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
     }
@@ -40,7 +41,7 @@ songInput.addEventListener('change', async (e) => {
     }
     const arrayBuffer = await file.arrayBuffer();
 
-    // Try/catch decode for better error reporting
+    // Try to decode the audio file
     try {
       audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
     } catch (decodeErr) {
@@ -52,9 +53,11 @@ songInput.addEventListener('change', async (e) => {
 
     drawWaveform(audioBuffer);
     isSongLoaded = true;
-    if(typeof videoStates !== "undefined") {
+
+    // Enable record buttons if your videoStates are set up
+    if (Array.isArray(videoStates) && videoStates.length > 0) {
       videoStates.forEach((vs) => {
-        vs.recordBtn.disabled = false;
+        if(vs && vs.recordBtn) vs.recordBtn.disabled = false;
       });
     }
     alert("Song uploaded successfully!");
@@ -65,11 +68,12 @@ songInput.addEventListener('change', async (e) => {
   }
 });
 
-// Draw waveform for uploaded audio
+// --- Draw waveform for uploaded audio ---
 function drawWaveform(buffer) {
   const canvas = waveform;
+  if (!canvas) return;
   const ctx = canvas.getContext('2d');
-  const width = canvas.width = waveform.parentElement.offsetWidth || 800;
+  const width = canvas.width = canvas.parentElement.offsetWidth || 800;
   const height = canvas.height = 80;
   ctx.clearRect(0, 0, width, height);
 
@@ -100,9 +104,11 @@ function drawWaveform(buffer) {
   ctx.stroke();
 }
 
-// Responsive redraw of waveform
+// --- Responsive redraw of waveform when resizing window ---
 window.addEventListener('resize', () => {
   if (audioBuffer) drawWaveform(audioBuffer);
 });
 
-// ... (rest of your script.js code) ...
+// --- Add any other features below ---
+// If you have video recording, playback, or switcher logic, it goes here.
+// This boilerplate ensures song upload and waveform visualization works reliably.
