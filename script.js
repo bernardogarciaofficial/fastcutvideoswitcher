@@ -8,17 +8,27 @@ const recordBtn = document.getElementById('recordBtn');
 const stopBtn = document.getElementById('stopBtn');
 const recIndicator = document.getElementById('recIndicator');
 const video = document.getElementById('video');
-const playSyncedBtn = document.getElementById('playSyncedBtn');
-const stopSyncedBtn = document.getElementById('stopSyncedBtn');
+const playStopSyncedBtn = document.getElementById('playStopSyncedBtn');
 
 let mediaRecorder = null;
 let recordedChunks = [];
 
-// --- Enable/disable the Play (Sync Audio + Video) and Stop buttons ---
+// --- Enable/disable Play/Stop (Sync Audio + Video) button ---
 function updatePlayButtonState() {
-  const enabled = !!(audio.src && video.src);
-  playSyncedBtn.disabled = !enabled;
-  stopSyncedBtn.disabled = !enabled;
+  playStopSyncedBtn.disabled = !(audio.src && video.src);
+  updatePlayStopButtonText();
+}
+
+function updatePlayStopButtonText() {
+  if (isMediaPlaying()) {
+    playStopSyncedBtn.textContent = "Stop";
+  } else {
+    playStopSyncedBtn.textContent = "Play (Sync Audio + Video)";
+  }
+}
+
+function isMediaPlaying() {
+  return (!audio.paused && !audio.ended) || (!video.paused && !video.ended && !video.seeking);
 }
 
 // --- SONG FILE SELECTION & PREVIEW ---
@@ -124,23 +134,33 @@ stopBtn.onclick = () => {
   stopBtn.disabled = true;
 };
 
-// --- PLAY AUDIO & VIDEO IN SYNC ---
-playSyncedBtn.onclick = () => {
+// --- PLAY/STOP AUDIO & VIDEO IN SYNC (TOGGLE BUTTON) ---
+playStopSyncedBtn.onclick = () => {
   if (!audio.src || !video.src) return;
-  audio.currentTime = 0;
-  video.currentTime = 0;
-  audio.play();
-  video.play();
+  if (isMediaPlaying()) {
+    // STOP both
+    audio.pause();
+    video.pause();
+    audio.currentTime = 0;
+    video.currentTime = 0;
+    updatePlayStopButtonText();
+  } else {
+    // PLAY both from the beginning
+    audio.currentTime = 0;
+    video.currentTime = 0;
+    audio.play();
+    video.play();
+    updatePlayStopButtonText();
+  }
 };
 
-// --- STOP AUDIO & VIDEO IN SYNC ---
-stopSyncedBtn.onclick = () => {
-  if (audio.src) {
-    audio.pause();
-    audio.currentTime = 0;
-  }
-  if (video.src) {
-    video.pause();
-    video.currentTime = 0;
-  }
-};
+// --- Keep button text updated if user plays/pauses using media controls ---
+audio.addEventListener('play', updatePlayStopButtonText);
+audio.addEventListener('pause', updatePlayStopButtonText);
+audio.addEventListener('ended', updatePlayStopButtonText);
+
+video.addEventListener('play', updatePlayStopButtonText);
+video.addEventListener('pause', updatePlayStopButtonText);
+video.addEventListener('ended', updatePlayStopButtonText);
+video.addEventListener('seeking', updatePlayStopButtonText);
+video.addEventListener('seeked', updatePlayStopButtonText);
