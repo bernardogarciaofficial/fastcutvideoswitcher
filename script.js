@@ -246,3 +246,75 @@ for (let trackNum = 0; trackNum < NUM_TRACKS; trackNum++) {
 
 // When main audio changes, enable/disable all play/stop buttons
 audio.addEventListener('loadeddata', enableAllTrackPlayButtons);
+
+// --- Switcher logic ---
+const switcherDiv = document.getElementById('trackSwitcher');
+switcherDiv.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) =>
+  `<button id="switchBtn-${i}" onclick="scrollToTrack(${i})">Track ${i+1}</button>`
+).join('');
+
+// Add the function to window for inline onclick
+window.scrollToTrack = function(trackNum) {
+  // Remove previous highlight
+  document.querySelectorAll('.track-block').forEach(el => el.classList.remove('switcher-active'));
+  document.querySelectorAll('.track-switcher button').forEach(el => el.classList.remove('active'));
+
+  // Highlight selected
+  const block = document.getElementById('track-block-' + trackNum);
+  const btn = document.getElementById('switchBtn-' + trackNum);
+  if (block) {
+    block.classList.add('switcher-active');
+    block.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  if (btn) btn.classList.add('active');
+};
+
+// Optionally, auto-highlight first track at start
+window.addEventListener('DOMContentLoaded', () => {
+  scrollToTrack(0);
+});
+
+// --- Master Output Video & Export Button ---
+// This is a placeholder implementation. Mixing/exporting is non-trivial in-browser and may require ffmpeg.wasm or MediaRecorder API with canvas compositing for real mixing.
+
+const masterOutputVideo = document.getElementById('masterOutputVideo');
+const exportBtn = document.getElementById('exportBtn');
+const exportStatus = document.getElementById('exportStatus');
+
+// DEMO: For now, masterOutputVideo will show the first available video uploaded/recorded.
+// For a real mixer, you'd combine videos and audio in a canvas and export.
+function updateMasterOutputVideo() {
+  for (let trackNum = 0; trackNum < NUM_TRACKS; trackNum++) {
+    const video = document.getElementById(`video-${trackNum}`);
+    if (video && video.src) {
+      masterOutputVideo.src = video.src;
+      masterOutputVideo.load();
+      break;
+    }
+  }
+}
+for (let trackNum = 0; trackNum < NUM_TRACKS; trackNum++) {
+  const video = document.getElementById(`video-${trackNum}`);
+  video.addEventListener('loadeddata', updateMasterOutputVideo);
+}
+
+exportBtn.onclick = async function() {
+  exportStatus.textContent = "Exporting... (demo only)";
+  // In a real app: Mix selected video & audio into a single file.
+  // Here, just download the currently displayed masterOutputVideo as a demo.
+  if (!masterOutputVideo.src) {
+    exportStatus.textContent = "No master video to export!";
+    return;
+  }
+  try {
+    const a = document.createElement('a');
+    a.href = masterOutputVideo.src;
+    a.download = 'exported_music_video.webm';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    exportStatus.textContent = "Download started (video only, demo).";
+  } catch (err) {
+    exportStatus.textContent = "Export failed: " + err.message;
+  }
+};
