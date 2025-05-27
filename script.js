@@ -101,15 +101,30 @@ window.addEventListener('resize', () => {
 const videoStates = [];
 for (let i = 0; i < 10; i++) {
   const recordBtn = document.getElementById('recordBtn' + i);
-  if (!recordBtn) {
-    console.warn(`Button recordBtn${i} not found in the DOM.`);
-    continue;
-  }
-  recordBtn.disabled = true; // disable until song loaded
-  recordBtn.addEventListener('click', () => {
-    onRecordButtonClicked(i);
-  });
-  videoStates[i] = { recordBtn, isRecording: false };
+  const stopBtn = document.getElementById('stopBtn' + i);
+  const playBtn = document.getElementById('playBtn' + i);
+  const recIndicator = document.getElementById('recIndicator' + i);
+  const video = document.getElementById('video' + i);
+
+  videoStates[i] = {
+    recordBtn,
+    stopBtn,
+    playBtn,
+    recIndicator,
+    video,
+    mediaRecorder: null,
+    recordedChunks: [],
+    isRecording: false
+  };
+
+  recordBtn.disabled = true;
+  stopBtn.disabled = true;
+  playBtn.disabled = true;
+
+  // Event listeners for each button
+  recordBtn.addEventListener('click', () => onRecordButtonClicked(i));
+  stopBtn.addEventListener('click', () => onStopButtonClicked(i));
+  playBtn.addEventListener('click', () => onPlayButtonClicked(i));
 }
 
 // --- Enable record buttons after song upload ---
@@ -122,12 +137,69 @@ function enableRecordButtons() {
   });
 }
 
-// --- Example record handler ---
-function onRecordButtonClicked(trackNumber) {
-  // Show the "REC" indicator
-  document.getElementById('recIndicator' + trackNumber).classList.remove('hidden');
-  // Optionally, disable the record button to prevent double clicks
-  videoStates[trackNumber].recordBtn.disabled = true;
-  // Other recording logic goes here...
-  console.log(`Record button ${trackNumber} clicked and REC indicator shown.`);
+// --- Record button logic ---
+async function onRecordButtonClicked(trackNumber) {
+  const vs = videoStates[trackNumber];
+  if (!vs) return;
+  // Request webcam
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    vs.video.srcObject = stream;
+    vs.mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+    vs.recordedChunks = [];
+
+    vs.mediaRecorder.ondataavailable = e => {
+      if (e.data.size > 0) {
+        vs.recordedChunks.push(e.data);
+      }
+    };
+    vs.mediaRecorder.onstop = () => {
+      // Stop webcam preview
+      vs.video.srcObject.getTracks().forEach(track => track.stop());
+      // Create video blob and show it
+      const blob = new Blob(vs.recordedChunks, { type: "video/webm" });
+      vs.video.src = URL.createObjectURL(blob);
+      vs.video.controls = true;
+      vs.video.muted = false;
+      vs.recordBtn.disabled = false;
+      vs.stopBtn.disabled = true;
+      vs.playBtn.disabled = false;
+      vs.recIndicator.classList.add('hidden');
+    };
+
+    vs.mediaRecorder.start();
+    vs.isRecording = true;
+    vs.recordBtn.disabled = true;
+    vs.stopBtn.disabled = false;
+    vs.playBtn.disabled = true;
+    vs.recIndicator.classList.remove('hidden');
+    vs.video.controls = false;
+    vs.video.muted = true;
+    console.log(`Recording started on track ${trackNumber}`);
+  } catch (err) {
+    alert("Webcam access denied or error: " + err.message);
+    console.error(err);
+  }
+}
+
+// --- Stop button logic ---
+function onStopButtonClicked(trackNumber) {
+  const vs = videoStates[trackNumber];
+  if (vs && vs.isRecording && vs.mediaRecorder) {
+    vs.mediaRecorder.stop();
+    vs.isRecording = false;
+    vs.recIndicator.classList.add('hidden');
+    vs.recordBtn.disabled = false;
+    vs.stopBtn.disabled = true;
+    vs.playBtn.disabled = false;
+    console.log(`Recording stopped on track ${trackNumber}`);
+  }
+}
+
+// --- Play button logic ---
+function onPlayButtonClicked(trackNumber) {
+  const vs = videoStates[trackNumber];
+  if (vs && vs.video.src) {
+    vs.video.play();
+  }
 }
