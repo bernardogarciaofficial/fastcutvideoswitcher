@@ -2,53 +2,28 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Song Upload Demo</title>
+  <title>Video Recorder & Song Uploader</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <input type="file" id="songInput" accept="audio/*">
-  <button id="uploadSongBtn" disabled>Upload Song</button>
-  <div id="uploadStatus"></div>
+  <h2>Video Recorder & Song Uploader</h2>
+
+  <div class="controls">
+    <input type="file" id="songInput" accept="audio/*">
+    <button id="uploadSongBtn" disabled>Upload Song</button>
+    <span id="uploadStatus"></span>
+  </div>
+
   <audio id="audio" controls style="display:none"></audio>
-  <script>
-    let selectedSongFile = null;
-    const songInput = document.getElementById('songInput');
-    const uploadSongBtn = document.getElementById('uploadSongBtn');
-    const uploadStatus = document.getElementById('uploadStatus');
-    const audio = document.getElementById('audio');
 
-    songInput.onchange = function(e) {
-      const file = e.target.files[0];
-      selectedSongFile = file;
-      if (file) {
-        audio.src = URL.createObjectURL(file);
-        audio.style.display = 'block';
-        audio.load();
-        uploadSongBtn.disabled = false;
-      } else {
-        uploadSongBtn.disabled = true;
-      }
-    };
+  <div class="controls">
+    <button id="recordBtn">Record Video</button>
+    <button id="stopBtn" disabled>Stop Recording</button>
+    <span id="recIndicator" class="rec-indicator">● REC</span>
+  </div>
 
-    uploadSongBtn.onclick = async function() {
-      if (!selectedSongFile) return;
-      const formData = new FormData();
-      formData.append('song', selectedSongFile);
-      uploadStatus.textContent = "Uploading...";
-      try {
-        // CHANGE THIS URL to match your backend
-        const response = await fetch('/upload-song', {
-          method: 'POST',
-          body: formData
-        });
-        if (response.ok) {
-          uploadStatus.textContent = "Song uploaded successfully!";
-        } else {
-          uploadStatus.textContent = "Song upload failed.";
-        }
-      } catch (err) {
-        uploadStatus.textContent = "Error uploading song: " + err.message;
-      }
-    };
-  </script>
+  <video id="video" width="320" height="240" controls></video>
+
+  <script src="script.js"></script>
 </body>
 </html>
