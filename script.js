@@ -1,5 +1,17 @@
-// ... (rest of your code above)
+// --- GLOBAL STATE VARIABLES ---
+let audio;                // Main audio element for playback
+let audioUrl;             // URL for the audio file
+let audioContext;         // AudioContext for decoding
+let audioBuffer;          // Decoded audio data
+let isSongLoaded = false; // Flag for song upload status
 
+// (Assume videoStates and other variables are defined as in your base code)
+// ... (rest of your other initializations and code) ...
+
+const songInput = document.getElementById('songInput');
+const waveform = document.getElementById('waveform');
+
+// Your improved audio upload & waveform code:
 songInput.addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) {
@@ -40,9 +52,11 @@ songInput.addEventListener('change', async (e) => {
 
     drawWaveform(audioBuffer);
     isSongLoaded = true;
-    videoStates.forEach((vs) => {
-      vs.recordBtn.disabled = false;
-    });
+    if(typeof videoStates !== "undefined") {
+      videoStates.forEach((vs) => {
+        vs.recordBtn.disabled = false;
+      });
+    }
     alert("Song uploaded successfully!");
   } catch (err) {
     isSongLoaded = false;
@@ -91,4 +105,4 @@ window.addEventListener('resize', () => {
   if (audioBuffer) drawWaveform(audioBuffer);
 });
 
-// ... rest of your script.js code remains unchanged ...
+// ... (rest of your script.js code) ...
