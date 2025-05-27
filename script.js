@@ -20,12 +20,18 @@ songInput.onchange = e => {
   }
 };
 
-// Video tracks
+// Video tracks (record only, no file input)
 function createTrackHTML(trackNum) {
   return `
     <div class="track-block" id="track-block-${trackNum}">
       <div class="track-title">Video Track ${trackNum + 1}</div>
-      <input type="file" id="fileInput-${trackNum}" accept="video/*">
+      <div class="track-controls">
+        <button id="recordBtn-${trackNum}">Record Video</button>
+        <button id="stopBtn-${trackNum}" disabled>Stop</button>
+        <button id="playBtn-${trackNum}" disabled>Play</button>
+        <button id="stopPlayBtn-${trackNum}" disabled>Stop Video</button>
+        <span id="recIndicator-${trackNum}" class="rec-indicator" style="color:red;display:none;font-weight:bold;">● REC</span>
+      </div>
       <video id="video-${trackNum}" width="${TRACK_WIDTH}" height="${TRACK_HEIGHT}" controls style="margin-top:12px;"></video>
     </div>
   `;
@@ -33,15 +39,104 @@ function createTrackHTML(trackNum) {
 const tracksContainer = document.getElementById("tracksContainer");
 tracksContainer.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => createTrackHTML(i)).join("");
 
+// Video track logic
 for (let i = 0; i < NUM_TRACKS; i++) {
-  const fileInput = document.getElementById(`fileInput-${i}`);
+  let mediaRecorder = null;
+  let recordedChunks = [];
+  let stream = null;
+
+  const recordBtn = document.getElementById(`recordBtn-${i}`);
+  const stopBtn = document.getElementById(`stopBtn-${i}`);
+  const playBtn = document.getElementById(`playBtn-${i}`);
+  const stopPlayBtn = document.getElementById(`stopPlayBtn-${i}`);
   const video = document.getElementById(`video-${i}`);
-  fileInput.onchange = e => {
-    const file = e.target.files[0];
-    if (file) {
-      video.src = URL.createObjectURL(file);
-      video.load();
+  const recIndicator = document.getElementById(`recIndicator-${i}`);
+
+  // Record button
+  recordBtn.onclick = async () => {
+    recordBtn.disabled = true;
+    stopBtn.disabled = false;
+    playBtn.disabled = true;
+    stopPlayBtn.disabled = true;
+    recIndicator.style.display = "inline";
+    recordedChunks = [];
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      video.srcObject = stream;
+      video.muted = true;
+      video.controls = false;
+      video.play();
+
+      mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+      mediaRecorder.onstop = () => {
+        if (video.srcObject) {
+          video.srcObject.getTracks().forEach(track => track.stop());
+          video.srcObject = null;
+        }
+        const blob = new Blob(recordedChunks, { type: "video/webm" });
+        video.src = URL.createObjectURL(blob);
+        video.controls = true;
+        video.muted = false;
+        video.load();
+        recIndicator.style.display = "none";
+        playBtn.disabled = false;
+        stopPlayBtn.disabled = false;
+      };
+      mediaRecorder.start();
+    } catch (err) {
+      alert("Webcam access denied or error: " + err.message);
+      recordBtn.disabled = false;
+      stopBtn.disabled = true;
+      recIndicator.style.display = "none";
     }
+  };
+
+  // Stop recording
+  stopBtn.onclick = () => {
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      mediaRecorder.stop();
+    }
+    recordBtn.disabled = false;
+    stopBtn.disabled = true;
+    recIndicator.style.display = "none";
+  };
+
+  // Play video with audio (sync)
+  playBtn.onclick = () => {
+    if (!audio.src || !video.src) return;
+    // Always play from the start
+    video.currentTime = 0;
+    audio.currentTime = 0;
+    video.play();
+    audio.play();
+    stopPlayBtn.disabled = false;
+    playBtn.disabled = true;
+    // When either ends, stop both
+    const stopBoth = () => {
+      video.pause(); audio.pause();
+      video.currentTime = 0; audio.currentTime = 0;
+      playBtn.disabled = false;
+      stopPlayBtn.disabled = true;
+    };
+    video.onended = stopBoth;
+    audio.onended = stopBoth;
+  };
+
+  // Stop playback
+  stopPlayBtn.onclick = () => {
+    video.pause();
+    audio.pause();
+    video.currentTime = 0;
+    audio.currentTime = 0;
+    playBtn.disabled = false;
+    stopPlayBtn.disabled = true;
+  };
+
+  // When video is ready, enable play button if audio is loaded
+  video.onloadeddata = () => {
+    playBtn.disabled = !(audio.src && video.src);
+    stopPlayBtn.disabled = true;
   };
 }
 
@@ -63,7 +158,7 @@ window.scrollToTrack = function(trackNum) {
 };
 window.addEventListener('DOMContentLoaded', () => scrollToTrack(0));
 
-// Dice edit: Browser-based fast-cut mixing!
+// Dice edit & export (same as before, no file input for video)
 const diceEditBtn = document.getElementById('diceEditBtn');
 const diceEditStatus = document.getElementById('diceEditStatus');
 const masterOutputVideo = document.getElementById('masterOutputVideo');
@@ -85,7 +180,7 @@ diceEditBtn.onclick = async function() {
     return;
   }
   if (videos.length < 2) {
-    diceEditStatus.textContent = "Upload at least 2 videos for mixing!";
+    diceEditStatus.textContent = "Record at least 2 videos for mixing!";
     return;
   }
   diceEditStatus.textContent = "Mixing... this will take a few seconds.";
