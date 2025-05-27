@@ -27,10 +27,10 @@ function createTrackHTML(trackNum) {
       <div class="track-title">Video Track ${trackNum + 1}</div>
       <div class="track-controls">
         <button id="recordBtn-${trackNum}">Record Video</button>
-        <button id="stopBtn-${trackNum}" disabled>Stop</button>
+        <button id="stopBtn-${trackNum}" disabled>Stop Recording</button>
         <button id="playBtn-${trackNum}" disabled>Play</button>
-        <button id="stopPlayBtn-${trackNum}" disabled>Stop Video</button>
-        <span id="recIndicator-${trackNum}" class="rec-indicator" style="color:red;display:none;font-weight:bold;">● REC</span>
+        <button id="stopPlayBtn-${trackNum}" disabled>Stop</button>
+        <span id="recIndicator-${trackNum}" class="rec-indicator" style="display:none;">● REC</span>
       </div>
       <video id="video-${trackNum}" width="${TRACK_WIDTH}" height="${TRACK_HEIGHT}" controls style="margin-top:12px;"></video>
     </div>
@@ -67,6 +67,17 @@ for (let i = 0; i < NUM_TRACKS; i++) {
       video.controls = false;
       video.play();
 
+      // Start slave audio in sync with recording
+      if (audio.src) {
+        audio.currentTime = 0;
+        // To ensure audio can play (autoplay policy), resume context if needed
+        // and catch play() rejection (user gesture needed for first play)
+        audio.play().catch(() => {
+          // If autoplay blocked, inform user
+          audioStatus.textContent = "Click the audio controls once to enable music sync.";
+        });
+      }
+
       mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
       mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
       mediaRecorder.onstop = () => {
@@ -82,6 +93,12 @@ for (let i = 0; i < NUM_TRACKS; i++) {
         recIndicator.style.display = "none";
         playBtn.disabled = false;
         stopPlayBtn.disabled = false;
+
+        // Stop and reset slave audio
+        if (!audio.paused) {
+          audio.pause();
+          audio.currentTime = 0;
+        }
       };
       mediaRecorder.start();
     } catch (err) {
@@ -100,6 +117,12 @@ for (let i = 0; i < NUM_TRACKS; i++) {
     recordBtn.disabled = false;
     stopBtn.disabled = true;
     recIndicator.style.display = "none";
+
+    // Stop and reset slave audio
+    if (!audio.paused) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
   };
 
   // Play video with audio (sync)
