@@ -5,9 +5,6 @@ let audioContext;         // AudioContext for decoding
 let audioBuffer;          // Decoded audio data
 let isSongLoaded = false; // Flag for song upload status
 
-// You may need these if referenced elsewhere
-let videoStates = [];     // Array for your 10 video tracks, you can initialize this later if needed
-
 // DOM elements
 const songInput = document.getElementById('songInput');
 const waveform = document.getElementById('waveform');
@@ -53,13 +50,6 @@ songInput.addEventListener('change', async (e) => {
 
     drawWaveform(audioBuffer);
     isSongLoaded = true;
-
-    // Enable record buttons if your videoStates are set up
-    if (Array.isArray(videoStates) && videoStates.length > 0) {
-      videoStates.forEach((vs) => {
-        if(vs && vs.recordBtn) vs.recordBtn.disabled = false;
-      });
-    }
     alert("Song uploaded successfully!");
   } catch (err) {
     isSongLoaded = false;
@@ -108,7 +98,3 @@ function drawWaveform(buffer) {
 window.addEventListener('resize', () => {
   if (audioBuffer) drawWaveform(audioBuffer);
 });
-
-// --- Add any other features below ---
-// If you have video recording, playback, or switcher logic, it goes here.
-// This boilerplate ensures song upload and waveform visualization works reliably.
