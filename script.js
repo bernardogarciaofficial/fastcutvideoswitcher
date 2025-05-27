@@ -9,13 +9,16 @@ const stopBtn = document.getElementById('stopBtn');
 const recIndicator = document.getElementById('recIndicator');
 const video = document.getElementById('video');
 const playSyncedBtn = document.getElementById('playSyncedBtn');
+const stopSyncedBtn = document.getElementById('stopSyncedBtn');
 
 let mediaRecorder = null;
 let recordedChunks = [];
 
-// --- Enable/disable the Play (Sync Audio + Video) button ---
+// --- Enable/disable the Play (Sync Audio + Video) and Stop buttons ---
 function updatePlayButtonState() {
-  playSyncedBtn.disabled = !(audio.src && video.src);
+  const enabled = !!(audio.src && video.src);
+  playSyncedBtn.disabled = !enabled;
+  stopSyncedBtn.disabled = !enabled;
 }
 
 // --- SONG FILE SELECTION & PREVIEW ---
@@ -128,4 +131,16 @@ playSyncedBtn.onclick = () => {
   video.currentTime = 0;
   audio.play();
   video.play();
+};
+
+// --- STOP AUDIO & VIDEO IN SYNC ---
+stopSyncedBtn.onclick = () => {
+  if (audio.src) {
+    audio.pause();
+    audio.currentTime = 0;
+  }
+  if (video.src) {
+    video.pause();
+    video.currentTime = 0;
+  }
 };
