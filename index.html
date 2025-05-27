@@ -2,60 +2,40 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Webcam Video Recorder with Song Upload</title>
-  <style>
-    #recIndicator { color: red; font-weight: bold; visibility: hidden; }
-    #video, #audio { display: block; margin-top: 10px; }
-  </style>
+  <title>Song Upload Demo</title>
 </head>
 <body>
-  <h2>Webcam Video Recorder with Song Upload</h2>
-  <button id="recordBtn">Record</button>
-  <button id="stopBtn" disabled>Stop</button>
-  <span id="recIndicator">● REC</span>
-  <br>
-  <video id="video" width="320" height="240" controls></video>
-  <br>
   <input type="file" id="songInput" accept="audio/*">
   <button id="uploadSongBtn" disabled>Upload Song</button>
-  <audio id="audio" controls></audio>
   <div id="uploadStatus"></div>
+  <audio id="audio" controls style="display:none"></audio>
   <script>
-    let mediaRecorder;
-    let recordedChunks = [];
     let selectedSongFile = null;
-
-    const recordBtn = document.getElementById('recordBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    const recIndicator = document.getElementById('recIndicator');
-    const video = document.getElementById('video');
-    const audio = document.getElementById('audio');
     const songInput = document.getElementById('songInput');
     const uploadSongBtn = document.getElementById('uploadSongBtn');
     const uploadStatus = document.getElementById('uploadStatus');
+    const audio = document.getElementById('audio');
 
-    // Handle song (audio) file selection
     songInput.onchange = function(e) {
       const file = e.target.files[0];
       selectedSongFile = file;
       if (file) {
         audio.src = URL.createObjectURL(file);
-        audio.load();
         audio.style.display = 'block';
+        audio.load();
         uploadSongBtn.disabled = false;
       } else {
         uploadSongBtn.disabled = true;
       }
     };
 
-    // Upload song to server (replace URL with your endpoint)
     uploadSongBtn.onclick = async function() {
       if (!selectedSongFile) return;
       const formData = new FormData();
       formData.append('song', selectedSongFile);
       uploadStatus.textContent = "Uploading...";
       try {
-        // Change '/upload-song' to your upload endpoint
+        // CHANGE THIS URL to match your backend
         const response = await fetch('/upload-song', {
           method: 'POST',
           body: formData
@@ -67,54 +47,6 @@
         }
       } catch (err) {
         uploadStatus.textContent = "Error uploading song: " + err.message;
-      }
-    };
-
-    recordBtn.onclick = async () => {
-      recordedChunks = [];
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        video.srcObject = stream;
-        video.muted = true;
-        video.controls = false;
-        video.play();
-        recIndicator.style.visibility = "visible";
-        recordBtn.disabled = true;
-        stopBtn.disabled = false;
-        mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
-        mediaRecorder.ondataavailable = e => {
-          if (e.data.size > 0) recordedChunks.push(e.data);
-        };
-        mediaRecorder.onstop = () => {
-          if (video.srcObject) {
-            video.srcObject.getTracks().forEach(track => track.stop());
-            video.srcObject = null;
-          }
-          const blob = new Blob(recordedChunks, { type: "video/webm" });
-          video.src = URL.createObjectURL(blob);
-          video.controls = true;
-          video.muted = false;
-          video.play();
-          recordBtn.disabled = false;
-          stopBtn.disabled = true;
-          recIndicator.style.visibility = "hidden";
-        };
-        mediaRecorder.start();
-        if (audio.src) {
-          audio.currentTime = 0;
-          audio.play();
-        }
-      } catch (err) {
-        alert("Webcam access denied or error: " + err.message);
-        recordBtn.disabled = false;
-        stopBtn.disabled = true;
-        recIndicator.style.visibility = "hidden";
-      }
-    };
-
-    stopBtn.onclick = () => {
-      if (mediaRecorder && mediaRecorder.state !== "inactive") {
-        mediaRecorder.stop();
       }
     };
   </script>
