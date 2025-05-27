@@ -150,7 +150,26 @@ async function startRecording(trackNumber) {
       }
     };
     vs.mediaRecorder.onstop = () => {
-      vs.video.srcObject.getTracks().forEach(track => track.stop());
+  // Stop and clear webcam preview
+  if (vs.video.srcObject) {
+    vs.video.srcObject.getTracks().forEach(track => track.stop());
+    vs.video.srcObject = null;
+  }
+  // Create video blob and show it
+  const blob = new Blob(vs.recordedChunks, { type: "video/webm" });
+  vs.video.src = URL.createObjectURL(blob);
+  vs.video.controls = true;
+  vs.video.muted = false;
+  vs.recordBtn.disabled = false;
+  vs.stopBtn.disabled = true;
+  vs.playBtn.disabled = false;
+  stopRecFlash(vs);
+  vs.recIndicator.classList.add('hidden');
+  if (audio && !audio.paused) {
+    audio.pause();
+    audio.currentTime = 0;
+  }
+};
       const blob = new Blob(vs.recordedChunks, { type: "video/webm" });
       vs.video.src = URL.createObjectURL(blob);
       vs.video.controls = true;
