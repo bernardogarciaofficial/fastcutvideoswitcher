@@ -1,108 +1,77 @@
-body {
-  font-family: Arial, sans-serif;
-  background: #f8f8fc;
-  padding: 20px;
-  color: #213;
-}
-h2 { text-align: center; margin-bottom: 28px; }
+const previewTracks = document.getElementById('previewTracks');
+const videoInput = document.getElementById('videoInput');
+const programVideo = document.getElementById('programVideo');
+const sourceSelect = document.getElementById('sourceSelect');
+const cutBtn = document.getElementById('cutBtn');
+const fadeBtn = document.getElementById('fadeBtn');
 
-.audio-track-block, .master-output-section {
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.07);
-  padding: 28px 30px 32px 30px;
-  margin: 0 auto 36px auto;
-  width: 520px;
-  max-width: 98vw;
-  text-align: center;
-}
+let videos = [];
+let currentSource = null;
 
-#tracksContainer {
-  display: flex; flex-direction: column; gap: 36px; align-items: center;
-}
-.track-block {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
-  padding: 18px 18px 20px 18px;
-  width: 620px; max-width: 98vw; text-align: center;
-}
+// Load videos
+videoInput.onchange = () => {
+  previewTracks.innerHTML = '';
+  sourceSelect.innerHTML = '';
+  videos = [];
+  Array.from(videoInput.files).forEach((file, idx) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.src = url;
+    video.width = 180;
+    video.height = 100;
+    video.controls = true;
+    video.className = 'track-preview';
+    previewTracks.appendChild(video);
 
-.track-title { font-size: 1.1rem; margin-bottom: 14px; font-weight: bold; color: #415080; }
+    videos.push({ url, video });
+    const option = document.createElement('option');
+    option.value = idx;
+    option.text = `Track ${idx + 1}`;
+    sourceSelect.appendChild(option);
+  });
+};
 
-.track-block video { width: 100%; max-width: 560px; min-height: 240px; background: #111; margin: 0 auto 8px auto; }
+// Cut transition
+cutBtn.onclick = () => {
+  const idx = parseInt(sourceSelect.value);
+  if (videos[idx]) {
+    programVideo.src = videos[idx].url;
+    programVideo.currentTime = videos[idx].video.currentTime;
+    programVideo.play();
+    currentSource = idx;
+  }
+};
 
-.track-controls {
-  margin-bottom: 18px;
-}
-.track-controls button {
-  padding: 8px 18px;
-  margin-right: 8px;
-  font-size: 1.05rem;
-  border-radius: 7px;
-  border: none;
-  background: #3054aa;
-  color: #fff;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.18s;
-}
-.track-controls button:disabled {
-  background: #aaa;
-  cursor: not-allowed;
-}
+// Fade transition (simple crossfade)
+fadeBtn.onclick = () => {
+  const idx = parseInt(sourceSelect.value);
+  if (videos[idx]) {
+    let fadeOut = programVideo;
+    let fadeIn = document.createElement('video');
+    fadeIn.src = videos[idx].url;
+    fadeIn.currentTime = videos[idx].video.currentTime;
+    fadeIn.muted = true;
+    fadeIn.width = fadeOut.width;
+    fadeIn.height = fadeOut.height;
+    fadeIn.style.position = 'absolute';
+    fadeIn.style.top = '0';
+    fadeIn.style.left = '0';
+    fadeIn.style.opacity = '0';
+    fadeOut.parentNode.appendChild(fadeIn);
+    fadeIn.play();
 
-.rec-indicator {
-  color: red;
-  font-weight: bold;
-}
-
-.track-switcher {
-  display: flex; justify-content: center; gap: 14px; margin: 32px auto 0 auto; flex-wrap: wrap;
-}
-.track-switcher button {
-  padding: 9px 18px;
-  border-radius: 6px;
-  background: #3054aa;
-  color: #fff;
-  border: none;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 1.04rem;
-  transition: background 0.14s, box-shadow 0.14s;
-}
-.track-switcher button.active,
-.track-block.switcher-active {
-  background: #e53935 !important;
-  color: #fff !important;
-  box-shadow: 0 2px 10px rgba(229,57,53,0.17);
-}
-.track-block.switcher-active {
-  border: 2.3px solid #e53935;
-  box-shadow: 0 0 0 4px rgba(229,57,53,0.08);
-}
-.dice-edit-btn {
-  background: #ff9800;
-  color: #fff;
-  font-size: 1.13rem;
-  font-weight: 700;
-  padding: 14px 38px;
-  border: none;
-  border-radius: 9px;
-  cursor: pointer;
-  box-shadow: 0 2px 10px rgba(255,152,0,0.13);
-  transition: background 0.18s;
-}
-.dice-edit-btn:hover { background: #f57c00; }
-.dice-edit-status { margin-left: 18px; font-weight: 600; color: #e53935; font-size: 1.09rem; }
-.export-btn {
-  background: #e53935;
-  font-size: 1.13rem;
-  font-weight: 700;
-  padding: 12px 34px;
-  border-radius: 8px;
-  color: #fff;
-  border: none;
-  cursor: pointer;
-}
-.export-status { margin-left: 16px; font-weight: 600; color: #405280; }
+    let op = 0;
+    let fadeInterval = setInterval(() => {
+      op += 0.05;
+      fadeIn.style.opacity = '' + op;
+      if (op >= 1) {
+        clearInterval(fadeInterval);
+        programVideo.src = fadeIn.src;
+        programVideo.currentTime = fadeIn.currentTime;
+        programVideo.play();
+        fadeIn.remove();
+        currentSource = idx;
+      }
+    }, 40);
+  }
+};
