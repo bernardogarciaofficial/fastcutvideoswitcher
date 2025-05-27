@@ -5,7 +5,37 @@ body {
 }
 
 h2 {
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+#tracksContainer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 32px;
+}
+
+.track-block {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.08);
+  padding: 28px 30px 32px 30px;
+  margin-bottom: 16px;
+  width: 480px;
+  max-width: 95vw;
+  text-align: center;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.track-title {
+  font-size: 1.1rem;
   margin-bottom: 20px;
+  font-weight: bold;
+  color: #405280;
 }
 
 .controls {
@@ -13,17 +43,35 @@ h2 {
 }
 
 button {
-  padding: 6px 14px;
+  padding: 8px 18px;
   margin-right: 8px;
-  font-size: 1rem;
+  margin-top: 5px;
+  font-size: 1.05rem;
+  border-radius: 7px;
+  border: none;
+  background: #3054aa;
+  color: #fff;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.18s;
 }
 
-#recIndicator {
+button:disabled {
+  background: #aaa;
+  cursor: not-allowed;
+}
+
+#recIndicator,
+.rec-indicator {
   color: red;
   font-weight: bold;
   opacity: 0;
   transition: opacity 0.2s;
-  /* Always occupies space, but invisible */
+  font-size: 1.2rem;
+  margin-left: 12px;
+  vertical-align: middle;
+  letter-spacing: 2px;
+  user-select: none;
 }
 
 .rec-indicator.active {
@@ -38,33 +86,49 @@ button {
 }
 
 .countdown {
-  position: fixed;
-  top: 50%;
+  position: absolute;
+  top: 38%;
   left: 50%;
-  transform: translate(-50%, -60%);
-  font-size: 5rem;
+  transform: translate(-50%, -50%);
+  font-size: 4rem;
   font-weight: bold;
   color: #e53935;
-  background: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.95);
   border-radius: 1rem;
-  padding: 30px 60px;
-  z-index: 9999;
+  padding: 22px 50px;
+  z-index: 20;
   text-align: center;
-  box-shadow: 0 6px 32px rgba(0,0,0,0.1);
+  box-shadow: 0 6px 32px rgba(0,0,0,0.13);
   display: none;
 }
 
-#uploadStatus {
+.uploadStatus {
   margin-left: 10px;
   font-weight: bold;
 }
 
 audio, video {
   display: block;
-  margin-top: 10px;
+  margin-top: 12px;
+  margin-bottom: 10px;
   background: #222;
+  border-radius: 8px;
 }
 
-#playStopSyncedBtn {
-  margin-top: 10px;
+.track-block video {
+  width: 100%;
+  max-width: 430px;
+  min-height: 270px;
+  background: #111;
+  margin: 0 auto 12px auto;
+  box-shadow: 0 2px 14px rgba(0,0,0,0.11);
+}
+
+.track-block audio {
+  width: 100%;
+  max-width: 410px;
+}
+
+.track-controls-bottom {
+  margin-top: 6px;
 }
