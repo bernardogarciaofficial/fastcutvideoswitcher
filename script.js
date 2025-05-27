@@ -1,4 +1,3 @@
-// --- GLOBAL STATE VARIABLES ---
 let audio;
 let audioUrl;
 let audioContext;
@@ -8,75 +7,48 @@ let isSongLoaded = false;
 const songInput = document.getElementById('songInput');
 const waveform = document.getElementById('waveform');
 
-// --- Song Upload and Waveform Visualization ---
 songInput.addEventListener('change', async (e) => {
   const file = e.target.files[0];
-  if (!file) {
-    alert("No file selected.");
-    return;
-  }
+  if (!file) return;
   if (!file.type.startsWith("audio/")) {
-    alert("Unsupported file type. Please upload an audio file.");
+    alert("Please upload an audio file.");
     return;
   }
-  try {
-    if (audio) {
-      audio.pause();
-      URL.revokeObjectURL(audio.src);
-    }
-    audioUrl = URL.createObjectURL(file);
-    audio = new Audio(audioUrl);
-    audio.preload = "auto";
-
-    if (!audioContext) {
-      audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    if (audioContext.state === "suspended") {
-      await audioContext.resume();
-    }
-    const arrayBuffer = await file.arrayBuffer();
-
-    try {
-      audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-    } catch (decodeErr) {
-      alert("Could not decode audio file. Please try another audio file.");
-      console.error("decodeAudioData error:", decodeErr);
-      isSongLoaded = false;
-      return;
-    }
-
-    drawWaveform(audioBuffer);
-    isSongLoaded = true;
-    enableRecordButtons();
-    alert("Song uploaded successfully!");
-  } catch (err) {
-    isSongLoaded = false;
-    alert("Error loading audio file: " + (err.message || err));
-    console.error(err);
+  if (audio) {
+    audio.pause();
+    URL.revokeObjectURL(audio.src);
   }
+  audioUrl = URL.createObjectURL(file);
+  audio = new Audio(audioUrl);
+  audio.preload = "auto";
+  if (!audioContext)
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioContext.state === "suspended")
+    await audioContext.resume();
+  const arrayBuffer = await file.arrayBuffer();
+  try {
+    audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+  } catch (e) {
+    alert("Could not decode audio.");
+    isSongLoaded = false;
+    return;
+  }
+  drawWaveform(audioBuffer);
+  isSongLoaded = true;
+  enableRecordButtons();
 });
 
-// --- Draw waveform for uploaded audio ---
 function drawWaveform(buffer) {
   const canvas = waveform;
-  if (!canvas) return;
   const ctx = canvas.getContext('2d');
   const width = canvas.width = canvas.parentElement.offsetWidth || 800;
   const height = canvas.height = 80;
   ctx.clearRect(0, 0, width, height);
-
-  if (!buffer || !buffer.getChannelData) {
-    ctx.fillStyle = "#f33";
-    ctx.font = "24px sans-serif";
-    ctx.fillText("No waveform data.", 30, 50);
-    return;
-  }
-
+  if (!buffer || !buffer.getChannelData) return;
   const data = buffer.getChannelData(0);
   const step = Math.floor(data.length / width);
   ctx.beginPath();
   ctx.moveTo(0, height / 2);
-
   for (let i = 0; i < width; i++) {
     let min = 1.0, max = -1.0;
     for (let j = 0; j < step; j++) {
@@ -92,12 +64,10 @@ function drawWaveform(buffer) {
   ctx.stroke();
 }
 
-// --- Responsive redraw of waveform when resizing window ---
 window.addEventListener('resize', () => {
   if (audioBuffer) drawWaveform(audioBuffer);
 });
 
-// --- VIDEO STATE SETUP FOR 10 TRACKS ---
 const videoStates = [];
 for (let i = 0; i < 10; i++) {
   const recordBtn = document.getElementById('recordBtn' + i);
@@ -124,51 +94,50 @@ for (let i = 0; i < 10; i++) {
   stopBtn.disabled = true;
   playBtn.disabled = true;
 
-  // Event listeners for each button
   recordBtn.addEventListener('click', () => onRecordButtonClicked(i));
   stopBtn.addEventListener('click', () => onStopButtonClicked(i));
   playBtn.addEventListener('click', () => onPlayButtonClicked(i));
 }
 
-// --- Enable record buttons after song upload ---
 function enableRecordButtons() {
-  videoStates.forEach((vs, idx) => {
-    if (vs && vs.recordBtn) {
-      vs.recordBtn.disabled = false;
-      console.log(`Enabled Record button ${idx}`);
-    }
+  videoStates.forEach((vs) => {
+    if (vs && vs.recordBtn) vs.recordBtn.disabled = false;
   });
 }
 
-// --- Record button logic with countdown, flashing REC, and song sync ---
+// ---- COUNTDOWN and SYNC LOGIC ----
 async function onRecordButtonClicked(trackNumber) {
   const vs = videoStates[trackNumber];
-  if (!vs) return;
+  if (!isSongLoaded) {
+    alert("Upload a song before recording.");
+    return;
+  }
   vs.recordBtn.disabled = true;
   vs.stopBtn.disabled = true;
   vs.playBtn.disabled = true;
   vs.recIndicator.classList.add('hidden');
   vs.countdown.classList.remove('hidden');
-  vs.countdown.textContent = "3";
-
-  // Countdown: 3, 2, 1
+  vs.countdown.style.display = "block";
   let count = 3;
-  const countdownInterval = setInterval(() => {
+  vs.countdown.textContent = count;
+
+  const doCount = () => {
     count--;
     if (count > 0) {
       vs.countdown.textContent = count;
+      setTimeout(doCount, 700);
     } else {
-      clearInterval(countdownInterval);
+      vs.countdown.textContent = "";
       vs.countdown.classList.add('hidden');
+      vs.countdown.style.display = "none";
       startRecording(trackNumber);
     }
-  }, 700);
+  };
+  setTimeout(doCount, 700);
 }
 
-// --- Start recording after countdown ---
 async function startRecording(trackNumber) {
   const vs = videoStates[trackNumber];
-  // Request webcam
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
     vs.video.srcObject = stream;
@@ -181,9 +150,7 @@ async function startRecording(trackNumber) {
       }
     };
     vs.mediaRecorder.onstop = () => {
-      // Stop webcam preview
       vs.video.srcObject.getTracks().forEach(track => track.stop());
-      // Create video blob and show it
       const blob = new Blob(vs.recordedChunks, { type: "video/webm" });
       vs.video.src = URL.createObjectURL(blob);
       vs.video.controls = true;
@@ -193,7 +160,6 @@ async function startRecording(trackNumber) {
       vs.playBtn.disabled = false;
       stopRecFlash(vs);
       vs.recIndicator.classList.add('hidden');
-      // Stop the song if it's playing
       if (audio && !audio.paused) {
         audio.pause();
         audio.currentTime = 0;
@@ -210,16 +176,13 @@ async function startRecording(trackNumber) {
     vs.video.muted = true;
     startRecFlash(vs);
 
-    // Play music at the same time
+    // SYNC: Play music at the same time as video recording
     if (audio) {
       audio.currentTime = 0;
       audio.play();
     }
-
-    console.log(`Recording started on track ${trackNumber}`);
   } catch (err) {
     alert("Webcam access denied or error: " + err.message);
-    console.error(err);
     vs.recordBtn.disabled = false;
     vs.stopBtn.disabled = true;
     vs.playBtn.disabled = true;
@@ -228,7 +191,6 @@ async function startRecording(trackNumber) {
   }
 }
 
-// --- Stop button logic ---
 function onStopButtonClicked(trackNumber) {
   const vs = videoStates[trackNumber];
   if (vs && vs.isRecording && vs.mediaRecorder) {
@@ -239,20 +201,19 @@ function onStopButtonClicked(trackNumber) {
     vs.recordBtn.disabled = false;
     vs.stopBtn.disabled = true;
     vs.playBtn.disabled = false;
-    // Pause the song and reset
     if (audio && !audio.paused) {
       audio.pause();
       audio.currentTime = 0;
     }
-    console.log(`Recording stopped on track ${trackNumber}`);
   }
 }
 
-// --- Play button logic (video only, not re-syncing audio yet) ---
 function onPlayButtonClicked(trackNumber) {
   const vs = videoStates[trackNumber];
   if (vs && vs.video.src) {
     vs.video.play();
+    // Optional: play audio with video (not tightly synced)
+    // if (audio) { audio.currentTime = 0; audio.play(); }
   }
 }
 
