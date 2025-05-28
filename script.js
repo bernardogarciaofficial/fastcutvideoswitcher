@@ -4,6 +4,20 @@ const PREVIEW_WIDTH = 160, PREVIEW_HEIGHT = 100;
 
 // Accept all major audio formats
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
+const VIDEO_ACCEPTED = ".mp4,.webm,.mov,.ogg,.mkv,video/*";
+
+// --- Dummy members counter, could be replaced with live value from backend
+function animateMembersCounter() {
+  const el = document.getElementById('membersCountNumber');
+  let n = 15347, up = true;
+  setInterval(() => {
+    if (Math.random() > 0.5) n += up ? 1 : -1;
+    if (n < 15320) up = true;
+    if (n > 15360) up = false;
+    el.textContent = n.toLocaleString();
+  }, 1200);
+}
+animateMembersCounter();
 
 const songInput = document.getElementById('songInput');
 songInput.setAttribute('accept', AUDIO_ACCEPTED);
@@ -26,17 +40,29 @@ songInput.onchange = e => {
 
 // Switcher track UI setup
 const switcherTracks = document.getElementById("switcherTracks");
-switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => `
-  <div class="switcher-track" id="switcher-track-${i}">
-    <div class="track-title">Track ${i + 1}</div>
-    <video id="video-${i}" width="${PREVIEW_WIDTH}" height="${PREVIEW_HEIGHT}" controls muted></video>
-    <div>
-      <button id="recordBtn-${i}" class="select-btn">Record</button>
-      <button id="stopBtn-${i}" class="select-btn" disabled>Stop</button>
-      <span id="recIndicator-${i}" class="rec-indicator" style="display:none;">● REC</span>
+const TRACKS_WITH_UPLOAD = [1, 3, 6, 8]; // 0-indexed: 2,4,7,9
+switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => {
+  let uploadBtn = "";
+  if (TRACKS_WITH_UPLOAD.includes(i)) {
+    uploadBtn = `
+      <label class="upload-video-label" for="uploadVideoInput-${i}">Upload Video File</label>
+      <input type="file" id="uploadVideoInput-${i}" class="upload-video-input" accept="${VIDEO_ACCEPTED}" style="display:none;">
+      <button class="upload-video-btn" id="uploadVideoBtn-${i}">🎬 Upload Video</button>
+    `;
+  }
+  return `
+    <div class="switcher-track" id="switcher-track-${i}">
+      <div class="track-title">Track ${i + 1}</div>
+      <video id="video-${i}" width="${PREVIEW_WIDTH}" height="${PREVIEW_HEIGHT}" controls muted></video>
+      <div>
+        <button id="recordBtn-${i}" class="select-btn">Record</button>
+        <button id="stopBtn-${i}" class="select-btn" disabled>Stop</button>
+        <span id="recIndicator-${i}" class="rec-indicator" style="display:none;">● REC</span>
+      </div>
+      ${uploadBtn}
     </div>
-  </div>
-`).join("");
+  `;
+}).join("");
 
 // Track recording/playback logic
 const videoTracks = [];
@@ -106,6 +132,25 @@ for (let i = 0; i < NUM_TRACKS; i++) {
       audio.currentTime = 0;
     }
   };
+
+  // --- Video File Upload for theme tracks
+  if (TRACKS_WITH_UPLOAD.includes(i)) {
+    const uploadBtn = document.getElementById(`uploadVideoBtn-${i}`);
+    const uploadInput = document.getElementById(`uploadVideoInput-${i}`);
+    uploadBtn.onclick = () => uploadInput.click();
+    uploadInput.onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      video.src = url;
+      video.controls = true;
+      video.muted = false;
+      video.load();
+      // Optionally display filename, etc.
+      uploadBtn.textContent = "🎬 Uploaded!";
+      setTimeout(() => uploadBtn.textContent = "🎬 Upload Video", 3000);
+    };
+  }
 }
 
 // FastCut Switcher Row (10 buttons for live switching)
