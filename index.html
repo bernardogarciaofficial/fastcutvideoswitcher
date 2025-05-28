@@ -2,41 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>FastCut Music Video Switcher</title>
+  <title>Video Editor UI</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h2>FastCut Music Video Switcher</h2>
-
-  <div class="audio-track-block">
-    <label for="songInput"><b>Main Music Track:</b></label>
-    <input type="file" id="songInput" accept="audio/*">
-    <span id="audioStatus"></span>
-    <audio id="audio" controls style="display:none"></audio>
-  </div>
-
-  <div id="switcherTracks" class="switcher-track-grid"></div>
-
-  <!-- FastCut Switcher Row -->
-  <div id="fastcutSwitcher" class="fastcut-switcher"></div>
-
-  <!-- Main Record/Stop and Output Section -->
-  <div class="master-output-section">
-    <div class="switcher-controls">
-      <button id="mainRecordBtn" class="main-record-btn">⏺️ Main Record</button>
-      <button id="mainStopBtn" class="main-stop-btn" disabled>⏹️ Stop</button>
-      <span id="recordStatus" class="record-status"></span>
+  <div class="main-output-screen">
+    <video id="mainPreview" class="preview-video" controls autoplay></video>
+    <div class="track-buttons">
+      <button onclick="switchTrack(1)">Track 1</button>
+      <button onclick="switchTrack(2)">Track 2</button>
+      <button onclick="switchTrack(3)">Track 3</button>
+      <button onclick="switchTrack(4)">Track 4</button>
+      <button onclick="switchTrack(5)">Track 5</button>
     </div>
-    <h3>Master Output Video</h3>
-    <video id="masterOutputVideo" controls width="600" height="340"></video>
-    <div style="margin-top:16px;">
-      <button id="exportBtn" class="export-btn" disabled>Export Music Video</button>
-      <span id="exportStatus" class="export-status"></span>
-    </div>
+    <div id="timeline" class="timeline-preview"></div>
   </div>
-
-  <canvas id="mixCanvas" width="600" height="340" style="display:none"></canvas>
-
   <script src="script.js"></script>
 </body>
 </html>
