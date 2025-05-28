@@ -146,7 +146,6 @@ for (let i = 0; i < NUM_TRACKS; i++) {
       video.controls = true;
       video.muted = false;
       video.load();
-      // Optionally display filename, etc.
       uploadBtn.textContent = "🎬 Uploaded!";
       setTimeout(() => uploadBtn.textContent = "🎬 Upload Video", 3000);
     };
@@ -156,7 +155,7 @@ for (let i = 0; i < NUM_TRACKS; i++) {
 // FastCut Switcher Row (10 buttons for live switching)
 const fastcutSwitcher = document.getElementById('fastcutSwitcher');
 fastcutSwitcher.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) =>
-  `<button class="fastcut-btn" id="fastcutBtn-${i}">Track ${i+1}</button>`
+  `<button class="fastcut-btn" id="fastcutBtn-${i}">T${i+1}</button>`
 ).join('');
 
 let activeTrack = 0;
