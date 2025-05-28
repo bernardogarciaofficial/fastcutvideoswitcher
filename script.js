@@ -1,10 +1,12 @@
 const NUM_TRACKS = 10;
-const TRACK_WIDTH = 320, TRACK_HEIGHT = 180;
-const PREVIEW_WIDTH = 96, PREVIEW_HEIGHT = 60;
+const TRACK_WIDTH = 600, TRACK_HEIGHT = 340;
+const PREVIEW_WIDTH = 160, PREVIEW_HEIGHT = 100;
 
+// Accept all major audio formats
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
 const VIDEO_ACCEPTED = ".mp4,.webm,.mov,.ogg,.mkv,video/*";
 
+// --- Dummy members counter, could be replaced with live value from backend
 function animateMembersCounter() {
   const el = document.getElementById('membersCountNumber');
   let n = 15347, up = true;
@@ -36,8 +38,9 @@ songInput.onchange = e => {
   }
 };
 
+// Switcher track UI setup
 const switcherTracks = document.getElementById("switcherTracks");
-const TRACKS_WITH_UPLOAD = [1, 3, 6, 8];
+const TRACKS_WITH_UPLOAD = [1, 3, 6, 8]; // 0-indexed: 2,4,7,9
 switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => {
   let uploadBtn = "";
   if (TRACKS_WITH_UPLOAD.includes(i)) {
@@ -61,16 +64,7 @@ switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => {
   `;
 }).join("");
 
-// --- Ensure all video elements loop, preventing early end/black frame ---
-for (let i = 0; i < NUM_TRACKS; i++) {
-  const video = document.getElementById(`video-${i}`);
-  if (video) {
-    video.loop = true;
-    video.width = PREVIEW_WIDTH;
-    video.height = PREVIEW_HEIGHT;
-  }
-}
-
+// Track recording/playback logic
 const videoTracks = [];
 for (let i = 0; i < NUM_TRACKS; i++) {
   let mediaRecorder = null;
@@ -90,7 +84,7 @@ for (let i = 0; i < NUM_TRACKS; i++) {
     recIndicator.style.display = "inline";
     recordedChunks = [];
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: { width: TRACK_WIDTH, height: TRACK_HEIGHT, frameRate: 15 }, audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       video.srcObject = stream;
       video.muted = true;
       video.controls = false;
@@ -139,6 +133,7 @@ for (let i = 0; i < NUM_TRACKS; i++) {
     }
   };
 
+  // --- Video File Upload for theme tracks
   if (TRACKS_WITH_UPLOAD.includes(i)) {
     const uploadBtn = document.getElementById(`uploadVideoBtn-${i}`);
     const uploadInput = document.getElementById(`uploadVideoInput-${i}`);
@@ -157,6 +152,7 @@ for (let i = 0; i < NUM_TRACKS; i++) {
   }
 }
 
+// FastCut Switcher Row (10 buttons for live switching)
 const fastcutSwitcher = document.getElementById('fastcutSwitcher');
 fastcutSwitcher.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) =>
   `<button class="fastcut-btn" id="fastcutBtn-${i}">T${i+1}</button>`
@@ -180,6 +176,7 @@ function setActiveTrack(idx) {
 }
 setActiveTrack(0);
 
+// Main record/stop/export logic
 const mainRecordBtn = document.getElementById('mainRecordBtn');
 const mainStopBtn = document.getElementById('mainStopBtn');
 const recordStatus = document.getElementById('recordStatus');
@@ -187,23 +184,17 @@ const masterOutputVideo = document.getElementById('masterOutputVideo');
 const exportBtn = document.getElementById('exportBtn');
 const exportStatus = document.getElementById('exportStatus');
 const mixCanvas = document.getElementById('mixCanvas');
-mixCanvas.width = TRACK_WIDTH;
-mixCanvas.height = TRACK_HEIGHT;
 
 let mixing = false, mediaRecorder = null, masterChunks = [];
 let drawRequestId = null;
 let livePlaybackUrl = null;
-let audioCtx = null;
-let source = null;
-let audioSessionStartTime = null;
-let decodedAudioBuffer = null;
-let syncTimer = null;
 
 mainRecordBtn.onclick = async function() {
   recordStatus.textContent = "";
   exportStatus.textContent = "";
   exportBtn.disabled = true;
 
+  // Prepare all video tracks: must be loaded and ready
   const readyVideos = [];
   for (let i = 0; i < NUM_TRACKS; i++) {
     const v = document.getElementById(`video-${i}`);
@@ -218,53 +209,70 @@ mainRecordBtn.onclick = async function() {
     return;
   }
 
-  // Ensure all used videos are loaded and ready
-  for (let i = 0; i < NUM_TRACKS; i++) {
-    const v = document.getElementById(`video-${i}`);
-    if (v && v.src && v.readyState < 2) {
-      recordStatus.textContent = `Track ${i+1} video not ready!`;
-      return;
-    }
-  }
+  // Get audio duration
+  const audioBlobURL = URL.createObjectURL(masterAudioFile);
+  const tempAudio = new Audio(audioBlobURL);
+  await new Promise(r => { tempAudio.onloadedmetadata = r; });
+  const duration = tempAudio.duration;
+  URL.revokeObjectURL(audioBlobURL);
 
-  // Decode audio using AudioContext for master clock
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  const audioFileBuffer = await masterAudioFile.arrayBuffer();
-  decodedAudioBuffer = await audioCtx.decodeAudioData(audioFileBuffer);
-
-  // Get duration from decoded buffer
-  const duration = decodedAudioBuffer.duration;
-
-  // Reset all videos and pause
+  // Sync all videos and audio to 0 and pause
   for (let i = 0; i < NUM_TRACKS; i++) {
     const v = document.getElementById(`video-${i}`);
     if (v && v.src) {
-      v.pause();
-      v.currentTime = 0;
-      v.loop = true;
+      v.currentTime = 0; v.pause();
     }
   }
+  audio.currentTime = 0; audio.pause();
+
+  // Wait for all videos to seek to 0 and be ready to play
+  await Promise.all(
+    Array.from({length: NUM_TRACKS}, (_, i) => {
+      const v = document.getElementById(`video-${i}`);
+      if (v && v.src) {
+        return new Promise(resolve => {
+          const seekHandler = () => {
+            v.removeEventListener('seeked', seekHandler);
+            resolve();
+          };
+          v.addEventListener('seeked', seekHandler);
+          v.currentTime = 0;
+        });
+      } else {
+        return Promise.resolve();
+      }
+    })
+  );
 
   // Prepare canvas and MediaRecorder
   const ctx = mixCanvas.getContext('2d');
   ctx.fillStyle = "#111";
   ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
 
-  const stream = mixCanvas.captureStream(15); // Lower frame rate
+  const stream = mixCanvas.captureStream(30);
   masterChunks = [];
   mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
   mediaRecorder.ondataavailable = e => { if (e.data.size > 0) masterChunks.push(e.data); };
 
-  // Use AudioContext for output audio
-  const dest = audioCtx.createMediaStreamDestination();
-  source = audioCtx.createBufferSource();
-  source.buffer = decodedAudioBuffer;
-  source.connect(dest);
-  // Add audio track to the video stream
-  if (dest.stream.getAudioTracks().length > 0) {
-    stream.addTrack(dest.stream.getAudioTracks()[0]);
+  // Audio for recording (mixAudioTrack)
+  let audioTrack;
+  try {
+    const audioCtx = new AudioContext();
+    const source = audioCtx.createBufferSource();
+    const audioFileBuffer = await masterAudioFile.arrayBuffer();
+    const decoded = await audioCtx.decodeAudioData(audioFileBuffer);
+    source.buffer = decoded;
+    const dest = audioCtx.createMediaStreamDestination();
+    source.connect(dest);
+    audioTrack = dest.stream.getAudioTracks()[0];
+    stream.addTrack(audioTrack);
+    source.start();
+  } catch (e) {
+    recordStatus.textContent = "Cannot mix audio - browser does not support advanced audio mixing.";
+    return;
   }
 
+  // Show live canvas in main output video
   if(livePlaybackUrl) {
     URL.revokeObjectURL(livePlaybackUrl);
     livePlaybackUrl = null;
@@ -272,56 +280,41 @@ mainRecordBtn.onclick = async function() {
   masterOutputVideo.srcObject = stream;
   masterOutputVideo.play();
 
+  // Start everything in sync
   mixing = true;
   mainRecordBtn.disabled = true;
   mainStopBtn.disabled = false;
   recordStatus.textContent = "Recording... Use the FastCut buttons to live-switch!";
   exportBtn.disabled = true;
 
-  // Sync all videos to 0, muted, and play (but we'll resync them periodically)
+  // Play all videos, but only display the active one on canvas
   for (let i = 0; i < NUM_TRACKS; i++) {
     const v = document.getElementById(`video-${i}`);
     if (v && v.src) {
       v.currentTime = 0;
       v.muted = true;
       v.play();
-      v.loop = true;
     }
   }
-
-  // Start audio and frame-perfect sync
-  source.start();
-  audioSessionStartTime = audioCtx.currentTime;
+  audio.currentTime = 0;
+  audio.play();
 
   mediaRecorder.start();
 
-  // Sync videos every 250ms instead of every frame
-  function syncVideos() {
-    if (!mixing) return;
-    const elapsed = audioCtx.currentTime - audioSessionStartTime;
-    for (let i = 0; i < NUM_TRACKS; i++) {
-      const v = document.getElementById(`video-${i}`);
-      if (v && v.src && Math.abs(v.currentTime - elapsed) > 0.08 && !v.seeking && !v.ended) {
-        try {
-          v.currentTime = Math.min(elapsed, v.duration || 9999);
-        } catch (e) {}
-      }
-    }
-    syncTimer = setTimeout(syncVideos, 250);
-  }
-  syncVideos();
-
+  let t0 = performance.now();
   function draw() {
     if (!mixing) return;
-    // Only draw if the video is ready and playing
+    // Draw active track frame to canvas
     const v = document.getElementById(`video-${activeTrack}`);
-    if (v && !v.paused && !v.ended && v.readyState >= 2) {
+    if (v && !v.paused && !v.ended) {
       ctx.fillStyle = "#111";
       ctx.fillRect(0, 0, TRACK_WIDTH, TRACK_HEIGHT);
       ctx.drawImage(v, 0, 0, TRACK_WIDTH, TRACK_HEIGHT);
+    } else {
+      ctx.fillStyle = "#111";
+      ctx.fillRect(0, 0, TRACK_WIDTH, TRACK_HEIGHT);
     }
-    const elapsed = audioCtx.currentTime - audioSessionStartTime;
-    if (elapsed < duration && mixing) {
+    if ((performance.now() - t0)/1000 < duration && mixing) {
       drawRequestId = requestAnimationFrame(draw);
     } else {
       stopMasterRecording();
@@ -345,10 +338,7 @@ function stopMasterRecording() {
     const v = document.getElementById(`video-${i}`);
     if (v && v.src) v.pause();
   }
-  // Stop audio
-  try {
-    if (source) source.stop();
-  } catch (e) {}
+  audio.pause();
   if (mediaRecorder && mediaRecorder.state !== "inactive") {
     mediaRecorder.stop();
     mediaRecorder.onstop = () => {
@@ -369,14 +359,6 @@ function stopMasterRecording() {
   if (drawRequestId !== null) {
     cancelAnimationFrame(drawRequestId);
     drawRequestId = null;
-  }
-  if (audioCtx) {
-    audioCtx.close();
-    audioCtx = null;
-  }
-  if (syncTimer) {
-    clearTimeout(syncTimer);
-    syncTimer = null;
   }
 }
 
