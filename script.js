@@ -115,11 +115,8 @@ const fastcutBtns = [];
 for (let i = 0; i < NUM_TRACKS; i++) {
   const btn = document.getElementById(`fastcutBtn-${i}`);
   fastcutBtns.push(btn);
-  btn.onclick = () => {
-    setActiveTrack(i);
-  };
+  btn.onclick = () => setActiveTrack(i);
 }
-
 function setActiveTrack(idx) {
   activeTrack = idx;
   document.querySelectorAll('.switcher-track').forEach((el,j) =>
@@ -142,13 +139,14 @@ const mixCanvas = document.getElementById('mixCanvas');
 
 let mixing = false, mediaRecorder = null, masterChunks = [];
 let drawRequestId = null;
+let livePlaybackUrl = null;
 
 mainRecordBtn.onclick = async function() {
   recordStatus.textContent = "";
   exportStatus.textContent = "";
   exportBtn.disabled = true;
 
-  // Prepare all video tracks: must be loaded
+  // Prepare all video tracks: must be loaded and ready
   const readyVideos = [];
   for (let i = 0; i < NUM_TRACKS; i++) {
     const v = document.getElementById(`video-${i}`);
@@ -179,6 +177,25 @@ mainRecordBtn.onclick = async function() {
   }
   audio.currentTime = 0; audio.pause();
 
+  // Wait for all videos to seek to 0 and be ready to play
+  await Promise.all(
+    Array.from({length: NUM_TRACKS}, (_, i) => {
+      const v = document.getElementById(`video-${i}`);
+      if (v && v.src) {
+        return new Promise(resolve => {
+          const seekHandler = () => {
+            v.removeEventListener('seeked', seekHandler);
+            resolve();
+          };
+          v.addEventListener('seeked', seekHandler);
+          v.currentTime = 0;
+        });
+      } else {
+        return Promise.resolve();
+      }
+    })
+  );
+
   // Prepare canvas and MediaRecorder
   const ctx = mixCanvas.getContext('2d');
   ctx.fillStyle = "#111";
@@ -207,7 +224,15 @@ mainRecordBtn.onclick = async function() {
     return;
   }
 
-  // Start everything
+  // Show live canvas in main output video
+  if(livePlaybackUrl) {
+    URL.revokeObjectURL(livePlaybackUrl);
+    livePlaybackUrl = null;
+  }
+  masterOutputVideo.srcObject = stream;
+  masterOutputVideo.play();
+
+  // Start everything in sync
   mixing = true;
   mainRecordBtn.disabled = true;
   mainStopBtn.disabled = false;
@@ -241,7 +266,6 @@ mainRecordBtn.onclick = async function() {
       ctx.fillStyle = "#111";
       ctx.fillRect(0, 0, TRACK_WIDTH, TRACK_HEIGHT);
     }
-    // Always use latest activeTrack value (no closure bug)
     if ((performance.now() - t0)/1000 < duration && mixing) {
       drawRequestId = requestAnimationFrame(draw);
     } else {
@@ -270,14 +294,20 @@ function stopMasterRecording() {
   if (mediaRecorder && mediaRecorder.state !== "inactive") {
     mediaRecorder.stop();
     mediaRecorder.onstop = () => {
+      masterOutputVideo.srcObject = null;
+      if(livePlaybackUrl) {
+        URL.revokeObjectURL(livePlaybackUrl);
+        livePlaybackUrl = null;
+      }
       const blob = new Blob(masterChunks, { type: "video/webm" });
-      masterOutputVideo.src = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob);
+      masterOutputVideo.src = url;
       masterOutputVideo.load();
+      livePlaybackUrl = url;
       recordStatus.textContent = "Done! Preview below.";
       exportBtn.disabled = false;
     };
   }
-  // Stop drawing loop if running
   if (drawRequestId !== null) {
     cancelAnimationFrame(drawRequestId);
     drawRequestId = null;
@@ -286,12 +316,12 @@ function stopMasterRecording() {
 
 // Export logic
 exportBtn.onclick = () => {
-  if (!masterOutputVideo.src) {
+  if (!masterOutputVideo.src && !livePlaybackUrl) {
     exportStatus.textContent = "No master video to export!";
     return;
   }
   const a = document.createElement('a');
-  a.href = masterOutputVideo.src;
+  a.href = masterOutputVideo.src || livePlaybackUrl;
   a.download = 'fastcut_music_video.webm';
   document.body.appendChild(a);
   a.click();
