@@ -115,8 +115,11 @@ const fastcutBtns = [];
 for (let i = 0; i < NUM_TRACKS; i++) {
   const btn = document.getElementById(`fastcutBtn-${i}`);
   fastcutBtns.push(btn);
-  btn.onclick = () => setActiveTrack(i);
+  btn.onclick = () => {
+    setActiveTrack(i);
+  };
 }
+
 function setActiveTrack(idx) {
   activeTrack = idx;
   document.querySelectorAll('.switcher-track').forEach((el,j) =>
@@ -138,6 +141,7 @@ const exportStatus = document.getElementById('exportStatus');
 const mixCanvas = document.getElementById('mixCanvas');
 
 let mixing = false, mediaRecorder = null, masterChunks = [];
+let drawRequestId = null;
 
 mainRecordBtn.onclick = async function() {
   recordStatus.textContent = "";
@@ -230,7 +234,6 @@ mainRecordBtn.onclick = async function() {
     // Draw active track frame to canvas
     const v = document.getElementById(`video-${activeTrack}`);
     if (v && !v.paused && !v.ended) {
-      // Draw video, letterbox if aspect doesn't match
       ctx.fillStyle = "#111";
       ctx.fillRect(0, 0, TRACK_WIDTH, TRACK_HEIGHT);
       ctx.drawImage(v, 0, 0, TRACK_WIDTH, TRACK_HEIGHT);
@@ -238,8 +241,9 @@ mainRecordBtn.onclick = async function() {
       ctx.fillStyle = "#111";
       ctx.fillRect(0, 0, TRACK_WIDTH, TRACK_HEIGHT);
     }
+    // Always use latest activeTrack value (no closure bug)
     if ((performance.now() - t0)/1000 < duration && mixing) {
-      requestAnimationFrame(draw);
+      drawRequestId = requestAnimationFrame(draw);
     } else {
       stopMasterRecording();
     }
@@ -272,6 +276,11 @@ function stopMasterRecording() {
       recordStatus.textContent = "Done! Preview below.";
       exportBtn.disabled = false;
     };
+  }
+  // Stop drawing loop if running
+  if (drawRequestId !== null) {
+    cancelAnimationFrame(drawRequestId);
+    drawRequestId = null;
   }
 }
 
