@@ -1,12 +1,18 @@
-const NUM_TRACKS = 4; // Reduced for performance and clarity
+const NUM_TRACKS = 4; // Video tracks
 const TRACK_WIDTH = 600, TRACK_HEIGHT = 340;
 const PREVIEW_WIDTH = 220, PREVIEW_HEIGHT = 140;
 
-// Accept all major audio formats
+// Accept popular audio formats
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
+// Accept popular video formats for upload (recorded and uploaded)
 const VIDEO_ACCEPTED = ".mp4,.webm,.mov,.ogg,.mkv,video/*";
+// Export options for finished video (webm, mp4 for browsers that support it)
+const EXPORT_FORMATS = [
+  { mime: "video/webm", ext: "webm" },
+  { mime: "video/mp4", ext: "mp4" }
+];
 
-// --- Dummy members counter, could be replaced with live value from backend
+// Members counter
 function animateMembersCounter() {
   const el = document.getElementById('membersCountNumber');
   let n = 15347, up = true;
@@ -46,7 +52,7 @@ const TRACK_NAMES = [
   "Creative Angle"
 ];
 
-// Switcher track UI setup (tracks 2 and 4 allow upload)
+// Switcher track UI (ALL in a row)
 const switcherTracks = document.getElementById("switcherTracks");
 const TRACKS_WITH_UPLOAD = [1, 3]; // 0-indexed: tracks 2, 4
 switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => {
@@ -259,7 +265,10 @@ mainRecordBtn.onclick = async function() {
 
   const stream = mixCanvas.captureStream(30);
   masterChunks = [];
-  mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+  // Default to webm for all browsers, try mp4 if supported (rare)
+  let chosenMime = "video/webm";
+  if (MediaRecorder.isTypeSupported("video/mp4")) chosenMime = "video/mp4";
+  mediaRecorder = new MediaRecorder(stream, { mimeType: chosenMime });
   mediaRecorder.ondataavailable = e => { if (e.data.size > 0) masterChunks.push(e.data); };
 
   // Audio for recording (mixAudioTrack)
@@ -355,7 +364,7 @@ function stopMasterRecording() {
         URL.revokeObjectURL(livePlaybackUrl);
         livePlaybackUrl = null;
       }
-      const blob = new Blob(masterChunks, { type: "video/webm" });
+      const blob = new Blob(masterChunks, { type: mediaRecorder.mimeType });
       const url = URL.createObjectURL(blob);
       masterOutputVideo.src = url;
       masterOutputVideo.load();
@@ -370,15 +379,19 @@ function stopMasterRecording() {
   }
 }
 
-// Export logic
+// Export logic with format choice based on what was recorded
 exportBtn.onclick = () => {
   if (!masterOutputVideo.src && !livePlaybackUrl) {
     exportStatus.textContent = "No master video to export!";
     return;
   }
+  // Use recorded format, but suggest .webm and .mp4 as top options
+  const blobUrl = masterOutputVideo.src || livePlaybackUrl;
+  let fileExt = "webm";
+  if (masterOutputVideo.src && masterOutputVideo.src.endsWith(".mp4")) fileExt = "mp4";
   const a = document.createElement('a');
-  a.href = masterOutputVideo.src || livePlaybackUrl;
-  a.download = 'fastcut_music_video.webm';
+  a.href = blobUrl;
+  a.download = `fastcut_music_video.${fileExt}`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
