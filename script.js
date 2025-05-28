@@ -61,6 +61,12 @@ switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => {
   `;
 }).join("");
 
+// --- Ensure all video elements loop, preventing early end/black frame ---
+for (let i = 0; i < NUM_TRACKS; i++) {
+  const video = document.getElementById(`video-${i}`);
+  if (video) video.loop = true;
+}
+
 const videoTracks = [];
 for (let i = 0; i < NUM_TRACKS; i++) {
   let mediaRecorder = null;
@@ -186,6 +192,9 @@ let source = null;
 let audioSessionStartTime = null;
 let decodedAudioBuffer = null;
 
+// For frame caching (to prevent black flashes)
+let lastFrameImage = null;
+
 mainRecordBtn.onclick = async function() {
   recordStatus.textContent = "";
   exportStatus.textContent = "";
@@ -205,6 +214,15 @@ mainRecordBtn.onclick = async function() {
     return;
   }
 
+  // Ensure all used videos are loaded and ready
+  for (let i = 0; i < NUM_TRACKS; i++) {
+    const v = document.getElementById(`video-${i}`);
+    if (v && v.src && v.readyState < 2) {
+      recordStatus.textContent = `Track ${i+1} video not ready!`;
+      return;
+    }
+  }
+
   // Decode audio using AudioContext for master clock
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   const audioFileBuffer = await masterAudioFile.arrayBuffer();
@@ -219,6 +237,7 @@ mainRecordBtn.onclick = async function() {
     if (v && v.src) {
       v.pause();
       v.currentTime = 0;
+      v.loop = true; // Ensure looping even if the user uploaded/recorded
     }
   }
 
@@ -262,6 +281,7 @@ mainRecordBtn.onclick = async function() {
       v.currentTime = 0;
       v.muted = true;
       v.play();
+      v.loop = true;
     }
   }
 
@@ -290,6 +310,11 @@ mainRecordBtn.onclick = async function() {
       ctx.fillStyle = "#111";
       ctx.fillRect(0, 0, TRACK_WIDTH, TRACK_HEIGHT);
       ctx.drawImage(v, 0, 0, TRACK_WIDTH, TRACK_HEIGHT);
+      // Save last good frame
+      lastFrameImage = ctx.getImageData(0, 0, TRACK_WIDTH, TRACK_HEIGHT);
+    } else if (lastFrameImage) {
+      // Draw last good frame to prevent black flash
+      ctx.putImageData(lastFrameImage, 0, 0);
     } else {
       ctx.fillStyle = "#111";
       ctx.fillRect(0, 0, TRACK_WIDTH, TRACK_HEIGHT);
@@ -347,6 +372,7 @@ function stopMasterRecording() {
     audioCtx.close();
     audioCtx = null;
   }
+  lastFrameImage = null; // Reset last frame for future recordings
 }
 
 // Export logic
