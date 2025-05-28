@@ -1,378 +1,381 @@
-const NUM_TRACKS = 10;
-const TRACK_WIDTH = 600, TRACK_HEIGHT = 340;
-const PREVIEW_WIDTH = 160, PREVIEW_HEIGHT = 100;
-
-// Accept all major audio formats
-const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
-const VIDEO_ACCEPTED = ".mp4,.webm,.mov,.ogg,.mkv,video/*";
-
-// --- Dummy members counter, could be replaced with live value from backend
-function animateMembersCounter() {
-  const el = document.getElementById('membersCountNumber');
-  let n = 15347, up = true;
-  setInterval(() => {
-    if (Math.random() > 0.5) n += up ? 1 : -1;
-    if (n < 15320) up = true;
-    if (n > 15360) up = false;
-    el.textContent = n.toLocaleString();
-  }, 1200);
+body {
+  font-family: 'Montserrat', Arial, sans-serif;
+  background: #1a1736;
+  color: #f4f7fb;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0 0 30px 0;
+  position: relative;
+  overflow-x: hidden;
 }
-animateMembersCounter();
+.theme-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background: linear-gradient(120deg, #19154d 5%, #591c3c 45%, #4b1d6b 70%, #df3841 100%);
+  filter: blur(0.5px);
+  animation: bg-move 16s infinite linear alternate;
+}
+@keyframes bg-move {
+  0% { background-position: 0% 40%; }
+  100% { background-position: 100% 70%; }
+}
+.set-lights {
+  pointer-events: none;
+}
+.spotlight {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.17;
+  pointer-events: none;
+  filter: blur(28px);
+  z-index: -1;
+}
+.spotlight-left {
+  width: 420px; height: 420px;
+  top: 60px; left: -120px;
+  background: radial-gradient(circle, #ffe57f 0%, #fffbe0 60%, transparent 100%);
+  animation: lmove 6s infinite alternate;
+}
+.spotlight-right {
+  width: 370px; height: 370px;
+  top: 160px; right: -100px;
+  background: radial-gradient(circle, #ffb07f 0%, #ffe0e0 60%, transparent 100%);
+  animation: rmove 6s infinite alternate;
+}
+.spotlight-top {
+  width: 600px; height: 220px;
+  top: -90px; left: 30%;
+  background: radial-gradient(circle, #fff 0%, #ffe57f 65%, transparent 100%);
+  opacity: 0.13;
+  animation: tmove 7.7s infinite alternate;
+}
+@keyframes lmove { 0%{ top:60px;} 100%{top:90px;} }
+@keyframes rmove { 0%{ top:160px;} 100%{top:210px;} }
+@keyframes tmove { 0%{ left:30%;} 100%{left:40%;} }
 
-const songInput = document.getElementById('songInput');
-songInput.setAttribute('accept', AUDIO_ACCEPTED);
-const audio = document.getElementById('audio');
-const audioStatus = document.getElementById('audioStatus');
-let masterAudioFile = null;
-songInput.onchange = e => {
-  const file = e.target.files[0];
-  masterAudioFile = file;
-  if (file) {
-    audio.src = URL.createObjectURL(file);
-    audio.style.display = 'block';
-    audio.load();
-    audioStatus.textContent = `Audio loaded: ${file.name}`;
-  } else {
-    audio.style.display = 'none';
-    audioStatus.textContent = "";
-  }
-};
-
-// Switcher track UI setup
-const switcherTracks = document.getElementById("switcherTracks");
-const TRACKS_WITH_UPLOAD = [1, 3, 6, 8]; // 0-indexed: 2,4,7,9
-switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => {
-  let uploadBtn = "";
-  if (TRACKS_WITH_UPLOAD.includes(i)) {
-    uploadBtn = `
-      <label class="upload-video-label" for="uploadVideoInput-${i}">Upload Video File</label>
-      <input type="file" id="uploadVideoInput-${i}" class="upload-video-input" accept="${VIDEO_ACCEPTED}" style="display:none;">
-      <button class="upload-video-btn" id="uploadVideoBtn-${i}">🎬 Upload Video</button>
-    `;
-  }
-  return `
-    <div class="switcher-track" id="switcher-track-${i}">
-      <div class="track-title">Track ${i + 1}</div>
-      <video id="video-${i}" width="${PREVIEW_WIDTH}" height="${PREVIEW_HEIGHT}" controls muted></video>
-      <div>
-        <button id="recordBtn-${i}" class="select-btn">Record</button>
-        <button id="stopBtn-${i}" class="select-btn" disabled>Stop</button>
-        <span id="recIndicator-${i}" class="rec-indicator" style="display:none;">● REC</span>
-      </div>
-      ${uploadBtn}
-    </div>
-  `;
-}).join("");
-
-// Track recording/playback logic
-const videoTracks = [];
-for (let i = 0; i < NUM_TRACKS; i++) {
-  let mediaRecorder = null;
-  let recordedChunks = [];
-  let stream = null;
-
-  const recordBtn = document.getElementById(`recordBtn-${i}`);
-  const stopBtn = document.getElementById(`stopBtn-${i}`);
-  const video = document.getElementById(`video-${i}`);
-  const recIndicator = document.getElementById(`recIndicator-${i}`);
-
-  videoTracks.push({ video, recordedChunks });
-
-  recordBtn.onclick = async () => {
-    recordBtn.disabled = true;
-    stopBtn.disabled = false;
-    recIndicator.style.display = "inline";
-    recordedChunks = [];
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      video.srcObject = stream;
-      video.muted = true;
-      video.controls = false;
-      video.play();
-
-      if (audio.src) {
-        audio.currentTime = 0;
-        audio.play().catch(() => {
-          audioStatus.textContent = "Click the audio controls once to enable music sync.";
-        });
-      }
-
-      mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
-      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
-      mediaRecorder.onstop = () => {
-        if (video.srcObject) {
-          video.srcObject.getTracks().forEach(track => track.stop());
-          video.srcObject = null;
-        }
-        const blob = new Blob(recordedChunks, { type: "video/webm" });
-        video.src = URL.createObjectURL(blob);
-        video.controls = true;
-        video.muted = false;
-        video.load();
-        recIndicator.style.display = "none";
-      };
-      mediaRecorder.start();
-    } catch (err) {
-      alert("Webcam access denied or error: " + err.message);
-      recordBtn.disabled = false;
-      stopBtn.disabled = true;
-      recIndicator.style.display = "none";
-    }
-  };
-
-  stopBtn.onclick = () => {
-    if (mediaRecorder && mediaRecorder.state !== "inactive") {
-      mediaRecorder.stop();
-    }
-    recordBtn.disabled = false;
-    stopBtn.disabled = true;
-    recIndicator.style.display = "none";
-    if (!audio.paused) {
-      audio.pause();
-      audio.currentTime = 0;
-    }
-  };
-
-  // --- Video File Upload for theme tracks
-  if (TRACKS_WITH_UPLOAD.includes(i)) {
-    const uploadBtn = document.getElementById(`uploadVideoBtn-${i}`);
-    const uploadInput = document.getElementById(`uploadVideoInput-${i}`);
-    uploadBtn.onclick = () => uploadInput.click();
-    uploadInput.onchange = e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const url = URL.createObjectURL(file);
-      video.src = url;
-      video.controls = true;
-      video.muted = false;
-      video.load();
-      uploadBtn.textContent = "🎬 Uploaded!";
-      setTimeout(() => uploadBtn.textContent = "🎬 Upload Video", 3000);
-    };
-  }
+.hollywood-header {
+  text-align: center;
+  margin-top: 18px;
+  margin-bottom: 32px;
+  font-family: 'Orbitron', 'Montserrat', Arial, sans-serif;
+  letter-spacing: 2.5px;
+  font-size: 1.2rem;
+  color: #ffe57f;
+  text-shadow: 0 2px 12px #000, 0 1px 0 #fff8;
+  position: relative;
+  z-index: 2;
+}
+.hollywood-header h2 {
+  display: inline-block;
+  margin: 0 16px 0 16px;
+  font-size: 2.15rem;
+  font-family: 'Orbitron', 'Montserrat', Arial, sans-serif;
+  letter-spacing: 3.5px;
+  color: #ffe57f;
+  text-shadow: 0 8px 36px #000, 0 2px 0 #fff8;
+  font-weight: 700;
+}
+.camera-icon, .clapperboard-icon {
+  font-size: 2.1em;
+  filter: drop-shadow(0 2px 12px #0008);
+  vertical-align: middle;
+}
+.lights-action {
+  font-family: 'Orbitron', 'Montserrat', Arial, sans-serif;
+  font-size: 1.14em;
+  margin-top: 8px;
+  color: #fffbe0;
+  text-shadow: 0 2px 7px #ffe57f,0 1px 0 #0008;
+  letter-spacing: 2.5px;
+  font-weight: 700;
+  animation: flicker 2.2s infinite alternate;
+}
+.lights-action .dot { color: #e53935; font-weight:bold; animation: action-dot 1.4s infinite alternate; }
+@keyframes flicker {
+  0% { opacity: 1;}
+  10% { opacity: 0.75;}
+  20% { opacity: 1;}
+  80% { opacity: 1;}
+  100% { opacity: 0.9;}
+}
+@keyframes action-dot {
+  0% { opacity: 1;}
+  60% { opacity: 1;}
+  100% { opacity: 0.3;}
+}
+.members-counter {
+  position: absolute;
+  top: 15px;
+  right: 32px;
+  background: linear-gradient(90deg, #262b5e 80%, #e53935 120%);
+  color: #ffe57f;
+  padding: 9px 20px 9px 15px;
+  border-radius: 20px 0 20px 20px;
+  font-size: 1.08em;
+  font-family: 'Orbitron', 'Montserrat', Arial, sans-serif;
+  box-shadow: 0 2px 12px #0008;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 2px solid #ffe57faa;
+  z-index: 5;
+  font-weight: 700;
+  letter-spacing:1.1px;
+}
+.counter-icon {
+  font-size: 1.25em;
+  filter: drop-shadow(0 1px 4px #ffe57f99);
 }
 
-// FastCut Switcher Row (10 buttons for live switching)
-const fastcutSwitcher = document.getElementById('fastcutSwitcher');
-fastcutSwitcher.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) =>
-  `<button class="fastcut-btn" id="fastcutBtn-${i}">T${i+1}</button>`
-).join('');
-
-let activeTrack = 0;
-const fastcutBtns = [];
-for (let i = 0; i < NUM_TRACKS; i++) {
-  const btn = document.getElementById(`fastcutBtn-${i}`);
-  fastcutBtns.push(btn);
-  btn.onclick = () => setActiveTrack(i);
+.audio-track-block, .master-output-section {
+  background: linear-gradient(120deg, #2c2960 70%, #591c3c 100%);
+  border-radius: 18px;
+  box-shadow: 0 6px 32px rgba(30,10,60,0.19), 0 1.5px 0.5px #ffe57f33;
+  padding: 28px 30px 32px 30px;
+  margin: 0 auto 36px auto;
+  width: 540px;
+  max-width: 98vw;
+  text-align: center;
+  border: 2px solid #ffe57f55;
 }
-function setActiveTrack(idx) {
-  activeTrack = idx;
-  document.querySelectorAll('.switcher-track').forEach((el,j) =>
-    el.classList.toggle('active', j === idx)
-  );
-  fastcutBtns.forEach((btn,j) =>
-    btn.classList.toggle('active', j === idx)
-  );
+.master-output-section {
+  width: 670px;
+  max-width: 99vw;
+  margin-top: 38px;
+  margin-bottom: 40px;
+  background: linear-gradient(120deg, #221b39 60%, #412d4c 100%);
+  border: 2px solid #e5393555;
+  box-shadow: 0 10px 38px #0007, 0 1.5px 0.5px #ffe57f33;
 }
-setActiveTrack(0);
+.music-icon { font-size:1.1em; color:#ffe57f;}
+.output-title { color: #ffe57f; letter-spacing:1.5px; text-shadow:0 2px 6px #000; }
+.filmstrip { font-size:1.1em; }
 
-// Main record/stop/export logic
-const mainRecordBtn = document.getElementById('mainRecordBtn');
-const mainStopBtn = document.getElementById('mainStopBtn');
-const recordStatus = document.getElementById('recordStatus');
-const masterOutputVideo = document.getElementById('masterOutputVideo');
-const exportBtn = document.getElementById('exportBtn');
-const exportStatus = document.getElementById('exportStatus');
-const mixCanvas = document.getElementById('mixCanvas');
+.switcher-track-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(170px,1fr));
+  gap: 18px;
+  max-width: 1100px;
+  margin: 0 auto 18px auto;
+}
+.switcher-track {
+  background: linear-gradient(115deg,#312c6b 60%,#722a6b 100%);
+  border-radius: 14px;
+  box-shadow: 0 4px 22px rgba(0,0,0,0.13),0 2.5px 0.75px #ffe57f22;
+  padding: 12px 10px 18px 10px;
+  text-align: center;
+  position: relative;
+  border: 2.5px solid transparent;
+  transition: border 0.14s, box-shadow 0.2s;
+}
+.switcher-track.active {
+  border: 2.5px solid #e53935;
+  box-shadow: 0 0 0 7px rgba(229,57,53,0.13),0 2px 16px #e5393544;
+}
+.switcher-track video {
+  width: 100%;
+  min-height: 90px;
+  max-height: 120px;
+  border-radius: 8px;
+  background: #111;
+  box-shadow: 0 3px 18px #12121255;
+  border: 1.5px solid #ffe57f55;
+}
+.switcher-track .track-title {
+  font-size: 1.06rem;
+  margin: 7px 0 9px 0;
+  font-weight: bold;
+  color: #ffe57f;
+  text-shadow:0 1.5px 0 #000a;
+  letter-spacing:1.2px;
+}
+.switcher-track .select-btn {
+  padding: 8px 20px;
+  border-radius: 7px;
+  background: linear-gradient(90deg, #ffe57f 70%, #e53935 100%);
+  color: #231c19;
+  border: 1.5px solid #ffe57f99;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 1.06rem;
+  margin-top: 6px;
+  margin-right: 4px;
+  margin-left: 4px;
+  transition: background 0.13s, box-shadow 0.13s, color 0.13s;
+  box-shadow: 0 2px 10px #ffe57f33;
+  letter-spacing:0.7px;
+  outline: none;
+}
+.switcher-track .select-btn:active,
+.switcher-track .select-btn.active {
+  background: linear-gradient(90deg, #e53935 60%, #ffe57f 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 18px #e5393544;
+}
+.switcher-track .rec-indicator {
+  color: #ffe57f;
+  text-shadow:0 2px 8px #e53935,0 0px 2px #ffe57f;
+  font-weight: bold;
+  position: absolute;
+  top: 10px; right: 15px;
+  font-size: 1.12em;
+}
+.switcher-track .upload-video-btn {
+  display: inline-block;
+  margin: 8px 0 0 0;
+  background: linear-gradient(90deg,#e53935 60%,#ffe57f 100%);
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-weight: 700;
+  padding: 7px 15px;
+  font-size: 1.02em;
+  cursor: pointer;
+  box-shadow: 0 2px 10px #e5393540;
+  transition: background 0.13s, color 0.13s;
+  outline: none;
+}
+.switcher-track .upload-video-btn:hover {
+  background: linear-gradient(90deg,#ffe57f 30%,#e53935 100%);
+  color: #1a1736;
+}
+.switcher-track .upload-video-label {
+  font-size: 0.98em;
+  margin-top: 2px;
+  color: #ffe57f;
+  display: block;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+}
 
-let mixing = false, mediaRecorder = null, masterChunks = [];
-let drawRequestId = null;
-let livePlaybackUrl = null;
-
-mainRecordBtn.onclick = async function() {
-  recordStatus.textContent = "";
-  exportStatus.textContent = "";
-  exportBtn.disabled = true;
-
-  // Prepare all video tracks: must be loaded and ready
-  const readyVideos = [];
-  for (let i = 0; i < NUM_TRACKS; i++) {
-    const v = document.getElementById(`video-${i}`);
-    if (v && v.src && v.readyState >= 2) readyVideos.push(v);
+/* Compact FastCut style for main video output row */
+.fastcut-switcher.compact {
+  margin: 0 auto 6px auto;
+  max-width: 630px;
+  gap: 6px;
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: center;
+}
+.fastcut-switcher.compact .fastcut-btn {
+  min-width: 38px;
+  max-width: 56px;
+  height: 34px;
+  padding: 0 4px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  border-radius: 6px;
+  background: linear-gradient(91deg, #ffe57f 60%, #e53935 100%);
+  color: #221c19;
+  margin: 0 2px;
+  box-shadow: 0 2px 7px #ffe57f22;
+  letter-spacing: 0.5px;
+  transition: background 0.13s, color 0.12s, box-shadow 0.13s;
+}
+.fastcut-switcher.compact .fastcut-btn.active {
+  background: linear-gradient(91deg, #e53935 60%, #ffe57f 100%) !important;
+  color: #fff !important;
+  border: 2px solid #e53935;
+  box-shadow: 0 2px 11px #e5393555;
+  transform: scale(1.05);
+}
+.fastcut-switcher.compact .fastcut-btn:hover {
+  background: linear-gradient(91deg, #ffe57f 35%, #e53935 100%);
+  color: #fff;
+}
+@media (max-width: 700px) {
+  .hollywood-header h2, .master-output-section, .audio-track-block {
+    font-size: 1em;
+    width: 99vw;
+    padding-left: 0;
+    padding-right: 0;
   }
-  if (!masterAudioFile) {
-    recordStatus.textContent = "Load your audio track first!";
-    return;
+  .members-counter { right: 0; left: 0; margin: 0 auto; top: 7px;}
+  .fastcut-switcher.compact {
+    max-width: 99vw;
+    gap: 4px;
+    flex-wrap: wrap;
   }
-  if (readyVideos.length < 2) {
-    recordStatus.textContent = "Record at least 2 videos!";
-    return;
-  }
-
-  // Get audio duration
-  const audioBlobURL = URL.createObjectURL(masterAudioFile);
-  const tempAudio = new Audio(audioBlobURL);
-  await new Promise(r => { tempAudio.onloadedmetadata = r; });
-  const duration = tempAudio.duration;
-  URL.revokeObjectURL(audioBlobURL);
-
-  // Sync all videos and audio to 0 and pause
-  for (let i = 0; i < NUM_TRACKS; i++) {
-    const v = document.getElementById(`video-${i}`);
-    if (v && v.src) {
-      v.currentTime = 0; v.pause();
-    }
-  }
-  audio.currentTime = 0; audio.pause();
-
-  // Wait for all videos to seek to 0 and be ready to play
-  await Promise.all(
-    Array.from({length: NUM_TRACKS}, (_, i) => {
-      const v = document.getElementById(`video-${i}`);
-      if (v && v.src) {
-        return new Promise(resolve => {
-          const seekHandler = () => {
-            v.removeEventListener('seeked', seekHandler);
-            resolve();
-          };
-          v.addEventListener('seeked', seekHandler);
-          v.currentTime = 0;
-        });
-      } else {
-        return Promise.resolve();
-      }
-    })
-  );
-
-  // Prepare canvas and MediaRecorder
-  const ctx = mixCanvas.getContext('2d');
-  ctx.fillStyle = "#111";
-  ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
-
-  const stream = mixCanvas.captureStream(30);
-  masterChunks = [];
-  mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
-  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) masterChunks.push(e.data); };
-
-  // Audio for recording (mixAudioTrack)
-  let audioTrack;
-  try {
-    const audioCtx = new AudioContext();
-    const source = audioCtx.createBufferSource();
-    const audioFileBuffer = await masterAudioFile.arrayBuffer();
-    const decoded = await audioCtx.decodeAudioData(audioFileBuffer);
-    source.buffer = decoded;
-    const dest = audioCtx.createMediaStreamDestination();
-    source.connect(dest);
-    audioTrack = dest.stream.getAudioTracks()[0];
-    stream.addTrack(audioTrack);
-    source.start();
-  } catch (e) {
-    recordStatus.textContent = "Cannot mix audio - browser does not support advanced audio mixing.";
-    return;
-  }
-
-  // Show live canvas in main output video
-  if(livePlaybackUrl) {
-    URL.revokeObjectURL(livePlaybackUrl);
-    livePlaybackUrl = null;
-  }
-  masterOutputVideo.srcObject = stream;
-  masterOutputVideo.play();
-
-  // Start everything in sync
-  mixing = true;
-  mainRecordBtn.disabled = true;
-  mainStopBtn.disabled = false;
-  recordStatus.textContent = "Recording... Use the FastCut buttons to live-switch!";
-  exportBtn.disabled = true;
-
-  // Play all videos, but only display the active one on canvas
-  for (let i = 0; i < NUM_TRACKS; i++) {
-    const v = document.getElementById(`video-${i}`);
-    if (v && v.src) {
-      v.currentTime = 0;
-      v.muted = true;
-      v.play();
-    }
-  }
-  audio.currentTime = 0;
-  audio.play();
-
-  mediaRecorder.start();
-
-  let t0 = performance.now();
-  function draw() {
-    if (!mixing) return;
-    // Draw active track frame to canvas
-    const v = document.getElementById(`video-${activeTrack}`);
-    if (v && !v.paused && !v.ended) {
-      ctx.fillStyle = "#111";
-      ctx.fillRect(0, 0, TRACK_WIDTH, TRACK_HEIGHT);
-      ctx.drawImage(v, 0, 0, TRACK_WIDTH, TRACK_HEIGHT);
-    } else {
-      ctx.fillStyle = "#111";
-      ctx.fillRect(0, 0, TRACK_WIDTH, TRACK_HEIGHT);
-    }
-    if ((performance.now() - t0)/1000 < duration && mixing) {
-      drawRequestId = requestAnimationFrame(draw);
-    } else {
-      stopMasterRecording();
-    }
-  }
-  draw();
-};
-
-mainStopBtn.onclick = () => {
-  stopMasterRecording();
-};
-
-function stopMasterRecording() {
-  if (!mixing) return;
-  mixing = false;
-  mainRecordBtn.disabled = false;
-  mainStopBtn.disabled = true;
-  recordStatus.textContent = "";
-
-  for (let i = 0; i < NUM_TRACKS; i++) {
-    const v = document.getElementById(`video-${i}`);
-    if (v && v.src) v.pause();
-  }
-  audio.pause();
-  if (mediaRecorder && mediaRecorder.state !== "inactive") {
-    mediaRecorder.stop();
-    mediaRecorder.onstop = () => {
-      masterOutputVideo.srcObject = null;
-      if(livePlaybackUrl) {
-        URL.revokeObjectURL(livePlaybackUrl);
-        livePlaybackUrl = null;
-      }
-      const blob = new Blob(masterChunks, { type: "video/webm" });
-      const url = URL.createObjectURL(blob);
-      masterOutputVideo.src = url;
-      masterOutputVideo.load();
-      livePlaybackUrl = url;
-      recordStatus.textContent = "Done! Preview below.";
-      exportBtn.disabled = false;
-    };
-  }
-  if (drawRequestId !== null) {
-    cancelAnimationFrame(drawRequestId);
-    drawRequestId = null;
+  .fastcut-switcher.compact .fastcut-btn {
+    min-width: 32px;
+    height: 32px;
+    font-size: 0.88rem;
+    padding: 0 2px;
+    margin: 1px;
   }
 }
 
-// Export logic
-exportBtn.onclick = () => {
-  if (!masterOutputVideo.src && !livePlaybackUrl) {
-    exportStatus.textContent = "No master video to export!";
-    return;
-  }
-  const a = document.createElement('a');
-  a.href = masterOutputVideo.src || livePlaybackUrl;
-  a.download = 'fastcut_music_video.webm';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  exportStatus.textContent = "Download started!";
-};
+.switcher-controls {
+  display: flex;
+  justify-content: center;
+  gap: 22px;
+  margin-bottom: 28px;
+  align-items: center;
+}
+.main-record-btn, .main-stop-btn {
+  font-size: 1.23rem;
+  font-weight: 700;
+  padding: 14px 36px;
+  border-radius: 9px;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(91deg,#ffe57f 70%,#21b573 100%);
+  color: #191c22;
+  box-shadow: 0 2px 10px #ffe57f33;
+  transition: background 0.18s, color 0.13s;
+  letter-spacing:1.2px;
+}
+.main-record-btn:hover { background: linear-gradient(91deg,#ffe57f 30%,#179a5a 100%); color:#fff;}
+.main-stop-btn {
+  background: linear-gradient(91deg,#e53935 60%,#ffe57f 100%);
+  color: #fff;
+}
+.main-stop-btn:disabled,
+.main-record-btn:disabled {
+  background: #aaa;
+  color: #fff;
+  cursor: not-allowed;
+}
+.record-status {
+  margin-left: 18px;
+  font-weight: 700;
+  color: #ffe57f;
+  font-size: 1.13rem;
+  text-shadow:0 2px 6px #e53935,0 1px 0 #ffe57f;
+}
+
+.export-btn {
+  background: linear-gradient(91deg,#e53935 60%,#ffe57f 100%);
+  font-size: 1.13rem;
+  font-weight: 700;
+  padding: 13px 38px;
+  border-radius: 10px;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  letter-spacing:1.2px;
+  box-shadow: 0 2px 18px #e5393555;
+  transition: background 0.13s, color 0.13s;
+}
+.export-btn:disabled {
+  background: #aaa;
+  color: #fff;
+  cursor: not-allowed;
+}
+.export-status { margin-left: 18px; font-weight: 700; color: #ffe57f; text-shadow:0 1px 0 #e53935; }
+
+.hollywood-footer {
+  text-align: center;
+  color: #ffe57f;
+  font-size: 1.1em;
+  margin: 64px auto 0 auto;
+  letter-spacing: 2px;
+  text-shadow: 0 2px 9px #000;
+  font-family: 'Orbitron', 'Montserrat', Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
