@@ -367,6 +367,23 @@ body {
 }
 .export-status { margin-left: 18px; font-weight: 700; color: #ffe57f; text-shadow:0 1px 0 #e53935; }
 
+/* Export Format Dropdown */
+.export-format {
+  margin-right: 18px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 1.02em;
+  background: #221b39;
+  color: #ffe57f;
+  border: 2px solid #ffe57f55;
+  font-family: 'Montserrat', Arial, sans-serif;
+  outline: none;
+  transition: border 0.13s;
+}
+.export-format:focus {
+  border: 2px solid #e53935;
+}
+
 .hollywood-footer {
   text-align: center;
   color: #ffe57f;
