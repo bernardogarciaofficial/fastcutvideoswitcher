@@ -2,7 +2,11 @@ const NUM_TRACKS = 10;
 const TRACK_WIDTH = 600, TRACK_HEIGHT = 340;
 const PREVIEW_WIDTH = 160, PREVIEW_HEIGHT = 100;
 
+// Accept all major audio formats
+const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
+
 const songInput = document.getElementById('songInput');
+songInput.setAttribute('accept', AUDIO_ACCEPTED);
 const audio = document.getElementById('audio');
 const audioStatus = document.getElementById('audioStatus');
 let masterAudioFile = null;
@@ -13,7 +17,7 @@ songInput.onchange = e => {
     audio.src = URL.createObjectURL(file);
     audio.style.display = 'block';
     audio.load();
-    audioStatus.textContent = "Audio loaded!";
+    audioStatus.textContent = `Audio loaded: ${file.name}`;
   } else {
     audio.style.display = 'none';
     audioStatus.textContent = "";
