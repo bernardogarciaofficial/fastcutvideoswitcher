@@ -1,6 +1,6 @@
-const NUM_TRACKS = 10;
+const NUM_TRACKS = 4; // Reduced for performance and clarity
 const TRACK_WIDTH = 600, TRACK_HEIGHT = 340;
-const PREVIEW_WIDTH = 160, PREVIEW_HEIGHT = 100;
+const PREVIEW_WIDTH = 220, PREVIEW_HEIGHT = 140;
 
 // Accept all major audio formats
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
@@ -38,9 +38,17 @@ songInput.onchange = e => {
   }
 };
 
-// Switcher track UI setup
+// Track names for clarity
+const TRACK_NAMES = [
+  "Main Camera",
+  "Closeup / Vocals",
+  "Instrument / B-Roll",
+  "Creative Angle"
+];
+
+// Switcher track UI setup (tracks 2 and 4 allow upload)
 const switcherTracks = document.getElementById("switcherTracks");
-const TRACKS_WITH_UPLOAD = [1, 3, 6, 8]; // 0-indexed: 2,4,7,9
+const TRACKS_WITH_UPLOAD = [1, 3]; // 0-indexed: tracks 2, 4
 switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => {
   let uploadBtn = "";
   if (TRACKS_WITH_UPLOAD.includes(i)) {
@@ -52,7 +60,7 @@ switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => {
   }
   return `
     <div class="switcher-track" id="switcher-track-${i}">
-      <div class="track-title">Track ${i + 1}</div>
+      <div class="track-title">${TRACK_NAMES[i]}</div>
       <video id="video-${i}" width="${PREVIEW_WIDTH}" height="${PREVIEW_HEIGHT}" controls muted></video>
       <div>
         <button id="recordBtn-${i}" class="select-btn">Record</button>
@@ -146,17 +154,16 @@ for (let i = 0; i < NUM_TRACKS; i++) {
       video.controls = true;
       video.muted = false;
       video.load();
-      // Optionally display filename, etc.
       uploadBtn.textContent = "🎬 Uploaded!";
       setTimeout(() => uploadBtn.textContent = "🎬 Upload Video", 3000);
     };
   }
 }
 
-// FastCut Switcher Row (10 buttons for live switching)
+// FastCut Switcher Row (4 buttons for live switching)
 const fastcutSwitcher = document.getElementById('fastcutSwitcher');
 fastcutSwitcher.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) =>
-  `<button class="fastcut-btn" id="fastcutBtn-${i}">Track ${i+1}</button>`
+  `<button class="fastcut-btn" id="fastcutBtn-${i}">${TRACK_NAMES[i]}</button>`
 ).join('');
 
 let activeTrack = 0;
@@ -184,6 +191,7 @@ const recordStatus = document.getElementById('recordStatus');
 const masterOutputVideo = document.getElementById('masterOutputVideo');
 const exportBtn = document.getElementById('exportBtn');
 const exportStatus = document.getElementById('exportStatus');
+const nleTip = document.getElementById('nleTip');
 const mixCanvas = document.getElementById('mixCanvas');
 
 let mixing = false, mediaRecorder = null, masterChunks = [];
@@ -194,6 +202,7 @@ mainRecordBtn.onclick = async function() {
   recordStatus.textContent = "";
   exportStatus.textContent = "";
   exportBtn.disabled = true;
+  nleTip.style.display = "none";
 
   // Prepare all video tracks: must be loaded and ready
   const readyVideos = [];
@@ -355,6 +364,7 @@ function stopMasterRecording() {
       livePlaybackUrl = url;
       recordStatus.textContent = "Done! Preview below.";
       exportBtn.disabled = false;
+      nleTip.style.display = "block";
     };
   }
   if (drawRequestId !== null) {
@@ -376,4 +386,5 @@ exportBtn.onclick = () => {
   a.click();
   document.body.removeChild(a);
   exportStatus.textContent = "Download started!";
+  nleTip.style.display = "block";
 };
