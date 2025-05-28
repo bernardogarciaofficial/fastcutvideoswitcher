@@ -1,3 +1,5 @@
+// FastCut Music Video Switcher - main logic with multi-format export
+
 const NUM_TRACKS = 10;
 const TRACK_WIDTH = 600, TRACK_HEIGHT = 340;
 const PREVIEW_WIDTH = 160, PREVIEW_HEIGHT = 100;
@@ -184,10 +186,26 @@ const masterOutputVideo = document.getElementById('masterOutputVideo');
 const exportBtn = document.getElementById('exportBtn');
 const exportStatus = document.getElementById('exportStatus');
 const mixCanvas = document.getElementById('mixCanvas');
+const exportFormat = document.getElementById('exportFormat');
 
 let mixing = false, mediaRecorder = null, masterChunks = [];
 let drawRequestId = null;
 let livePlaybackUrl = null;
+
+// ffmpeg.wasm integration
+let ffmpegReady = false;
+let ffmpeg; // Will hold ffmpeg.wasm instance
+
+async function loadFFmpeg() {
+  if (ffmpegReady) return ffmpeg;
+  const { createFFmpeg, fetchFile } = FFmpeg;
+  ffmpeg = createFFmpeg({ log: true });
+  exportStatus.textContent = "Loading video converter...";
+  await ffmpeg.load();
+  ffmpegReady = true;
+  exportStatus.textContent = "";
+  return ffmpeg;
+}
 
 mainRecordBtn.onclick = async function() {
   recordStatus.textContent = "";
@@ -362,17 +380,60 @@ function stopMasterRecording() {
   }
 }
 
-// Export logic
-exportBtn.onclick = () => {
+// Export logic (with format selection and ffmpeg.wasm conversion)
+exportBtn.onclick = async () => {
   if (!masterOutputVideo.src && !livePlaybackUrl) {
     exportStatus.textContent = "No master video to export!";
     return;
   }
-  const a = document.createElement('a');
-  a.href = masterOutputVideo.src || livePlaybackUrl;
-  a.download = 'fastcut_music_video.webm';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  exportStatus.textContent = "Download started!";
+  const format = exportFormat.value;
+  const webmUrl = masterOutputVideo.src || livePlaybackUrl;
+
+  if (format === "webm") {
+    // Native export, no conversion needed
+    const a = document.createElement('a');
+    a.href = webmUrl;
+    a.download = 'fastcut_music_video.webm';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    exportStatus.textContent = "Download started!";
+    return;
+  }
+
+  // Convert using ffmpeg.wasm
+  exportStatus.textContent = "Converting video, please wait...";
+  exportBtn.disabled = true;
+  try {
+    await loadFFmpeg();
+    const response = await fetch(webmUrl);
+    const buffer = await response.arrayBuffer();
+    ffmpeg.FS('writeFile', 'input.webm', new Uint8Array(buffer));
+    let outName = 'output.mp4';
+    if (format === "mov") outName = 'output.mov';
+
+    // Set args for ffmpeg conversion
+    let args = ['-i', 'input.webm', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-c:a', 'aac', '-b:a', '192k', outName];
+    if (format === "mov") args = ['-i', 'input.webm', '-c:v', 'mpeg4', '-qscale:v', '3', '-c:a', 'aac', outName];
+
+    await ffmpeg.run(...args);
+
+    const data = ffmpeg.FS('readFile', outName);
+    const blob = new Blob([data.buffer], { type: format === "mp4" ? "video/mp4" : "video/quicktime" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `fastcut_music_video.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    exportStatus.textContent = `Download started as .${format}!`;
+    URL.revokeObjectURL(url);
+    ffmpeg.FS('unlink', 'input.webm');
+    ffmpeg.FS('unlink', outName);
+  } catch (err) {
+    exportStatus.textContent = "Export/conversion failed: " + err.message;
+  } finally {
+    exportBtn.disabled = false;
+  }
 };
