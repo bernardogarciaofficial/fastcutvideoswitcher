@@ -2,15 +2,27 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>FastCut Music Video Switcher</title>
+  <title>🎬 FastCut Music Video Switcher</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Orbitron:700|Montserrat:400,700&display=swap">
 </head>
 <body>
-  <h2>FastCut Music Video Switcher</h2>
+  <div class="theme-bg"></div>
+  <div class="set-lights">
+    <div class="spotlight spotlight-left"></div>
+    <div class="spotlight spotlight-right"></div>
+    <div class="spotlight spotlight-top"></div>
+  </div>
+  <header class="hollywood-header">
+    <span class="camera-icon">🎥</span>
+    <h2>FastCut Music Video Switcher</h2>
+    <span class="clapperboard-icon">🎬</span>
+    <div class="lights-action">LIGHTS <span class="dot">•</span> CAMERA <span class="dot">•</span> ACTION!</div>
+  </header>
 
   <div class="audio-track-block">
-    <label for="songInput"><b>Main Music Track:</b></label>
-    <input type="file" id="songInput" accept="audio/*">
+    <label for="songInput"><b><span class="music-icon">🎵</span> Main Music Track:</b></label>
+    <input type="file" id="songInput" accept=".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*">
     <span id="audioStatus"></span>
     <audio id="audio" controls style="display:none"></audio>
   </div>
@@ -27,7 +39,7 @@
       <button id="mainStopBtn" class="main-stop-btn" disabled>⏹️ Stop</button>
       <span id="recordStatus" class="record-status"></span>
     </div>
-    <h3>Master Output Video</h3>
+    <h3 class="output-title">Master Output Video <span class="filmstrip">🎞️</span></h3>
     <video id="masterOutputVideo" controls width="600" height="340"></video>
     <div style="margin-top:16px;">
       <button id="exportBtn" class="export-btn" disabled>Export Music Video</button>
@@ -37,6 +49,10 @@
 
   <canvas id="mixCanvas" width="600" height="340" style="display:none"></canvas>
 
+  <footer class="hollywood-footer">
+    <span class="clapperboard-icon">🎬</span>
+    <span>FastCut by <b>bernardogarciaofficial</b> | <span class="camera-icon">🎥</span></span>
+  </footer>
   <script src="script.js"></script>
 </body>
 </html>
