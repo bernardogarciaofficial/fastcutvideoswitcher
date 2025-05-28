@@ -346,22 +346,25 @@ body {
 }
 .export-status { margin-left: 18px; font-weight: 700; color: #ffe57f; text-shadow:0 1px 0 #e53935; }
 
-.nle-tip {
-  margin-top: 20px;
+.sync-instructions {
+  margin-top: 28px;
   background: #ffe57f22;
   border-radius: 9px;
-  padding: 14px 20px;
+  padding: 18px 20px 12px 20px;
   color: #ffe57f;
   font-size: 1.09em;
   letter-spacing: 1px;
   text-align: left;
   box-shadow: 0 2px 18px #ffe57f44;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
 }
-.nle-tip ol {
+.sync-instructions ol {
   margin: 10px 0 8px 25px;
   padding: 0;
 }
-.nle-tip-note {
+.sync-note {
   display: block;
   margin-top: 6px;
   font-size: 0.97em;
