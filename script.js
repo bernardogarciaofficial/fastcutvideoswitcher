@@ -31,7 +31,6 @@ switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => `
       <button id="stopBtn-${i}" class="select-btn" disabled>Stop</button>
       <span id="recIndicator-${i}" class="rec-indicator" style="display:none;">● REC</span>
     </div>
-    <button id="selectBtn-${i}" class="select-btn" style="width:100%;margin-top:9px;">Select</button>
   </div>
 `).join("");
 
@@ -105,26 +104,31 @@ for (let i = 0; i < NUM_TRACKS; i++) {
   };
 }
 
-// Live switcher logic
+// FastCut Switcher Row (10 buttons for live switching)
+const fastcutSwitcher = document.getElementById('fastcutSwitcher');
+fastcutSwitcher.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) =>
+  `<button class="fastcut-btn" id="fastcutBtn-${i}">Track ${i+1}</button>`
+).join('');
+
 let activeTrack = 0;
-const selectBtns = [];
+const fastcutBtns = [];
 for (let i = 0; i < NUM_TRACKS; i++) {
-  const selectBtn = document.getElementById(`selectBtn-${i}`);
-  selectBtns.push(selectBtn);
-  selectBtn.onclick = () => setActiveTrack(i);
+  const btn = document.getElementById(`fastcutBtn-${i}`);
+  fastcutBtns.push(btn);
+  btn.onclick = () => setActiveTrack(i);
 }
 function setActiveTrack(idx) {
   activeTrack = idx;
   document.querySelectorAll('.switcher-track').forEach((el,j) =>
     el.classList.toggle('active', j === idx)
   );
-  selectBtns.forEach((btn,j) =>
+  fastcutBtns.forEach((btn,j) =>
     btn.classList.toggle('active', j === idx)
   );
 }
 setActiveTrack(0);
 
-// Master record/stop/export logic
+// Main record/stop/export logic
 const mainRecordBtn = document.getElementById('mainRecordBtn');
 const mainStopBtn = document.getElementById('mainStopBtn');
 const recordStatus = document.getElementById('recordStatus');
@@ -203,7 +207,7 @@ mainRecordBtn.onclick = async function() {
   mixing = true;
   mainRecordBtn.disabled = true;
   mainStopBtn.disabled = false;
-  recordStatus.textContent = "Recording... Use the Select buttons to live-switch.";
+  recordStatus.textContent = "Recording... Use the FastCut buttons to live-switch!";
   exportBtn.disabled = true;
 
   // Play all videos, but only display the active one on canvas
@@ -226,8 +230,12 @@ mainRecordBtn.onclick = async function() {
     // Draw active track frame to canvas
     const v = document.getElementById(`video-${activeTrack}`);
     if (v && !v.paused && !v.ended) {
+      // Draw video, letterbox if aspect doesn't match
+      ctx.fillStyle = "#111";
+      ctx.fillRect(0, 0, TRACK_WIDTH, TRACK_HEIGHT);
       ctx.drawImage(v, 0, 0, TRACK_WIDTH, TRACK_HEIGHT);
     } else {
+      ctx.fillStyle = "#111";
       ctx.fillRect(0, 0, TRACK_WIDTH, TRACK_HEIGHT);
     }
     if ((performance.now() - t0)/1000 < duration && mixing) {
