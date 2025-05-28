@@ -191,7 +191,6 @@ const recordStatus = document.getElementById('recordStatus');
 const masterOutputVideo = document.getElementById('masterOutputVideo');
 const exportBtn = document.getElementById('exportBtn');
 const exportStatus = document.getElementById('exportStatus');
-const nleTip = document.getElementById('nleTip');
 const mixCanvas = document.getElementById('mixCanvas');
 
 let mixing = false, mediaRecorder = null, masterChunks = [];
@@ -202,7 +201,6 @@ mainRecordBtn.onclick = async function() {
   recordStatus.textContent = "";
   exportStatus.textContent = "";
   exportBtn.disabled = true;
-  nleTip.style.display = "none";
 
   // Prepare all video tracks: must be loaded and ready
   const readyVideos = [];
@@ -364,7 +362,6 @@ function stopMasterRecording() {
       livePlaybackUrl = url;
       recordStatus.textContent = "Done! Preview below.";
       exportBtn.disabled = false;
-      nleTip.style.display = "block";
     };
   }
   if (drawRequestId !== null) {
@@ -386,5 +383,4 @@ exportBtn.onclick = () => {
   a.click();
   document.body.removeChild(a);
   exportStatus.textContent = "Download started!";
-  nleTip.style.display = "block";
 };
