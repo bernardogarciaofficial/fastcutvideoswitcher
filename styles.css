@@ -20,8 +20,6 @@ body {
   0% { background-position: 0% 40%; }
   100% { background-position: 100% 70%; }
 }
-
-/* Spotlights */
 .set-lights {
   pointer-events: none;
 }
@@ -252,64 +250,61 @@ body {
   letter-spacing: 0.6px;
 }
 
-.fastcut-switcher {
+/* Compact FastCut style for main video output row */
+.fastcut-switcher.compact {
+  margin: 0 auto 6px auto;
+  max-width: 630px;
+  gap: 6px;
   display: flex;
+  flex-wrap: nowrap;
   justify-content: center;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 19px;
-  margin: 36px auto 26px auto;
-  max-width: 940px;
 }
-.fastcut-switcher .fastcut-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 104px;
-  height: 52px;
-  padding: 0 22px;
-  font-size: 1.13rem;
+.fastcut-switcher.compact .fastcut-btn {
+  min-width: 38px;
+  max-width: 56px;
+  height: 34px;
+  padding: 0 4px;
+  font-size: 0.92rem;
   font-weight: 700;
-  border: none;
-  border-radius: 9px;
+  border-radius: 6px;
   background: linear-gradient(91deg, #ffe57f 60%, #e53935 100%);
   color: #221c19;
-  cursor: pointer;
-  box-shadow: 0 4px 18px #ffe57f44,0 1.5px 0.5px #ffe57f33;
-  letter-spacing: 1.1px;
-  transition: background 0.17s, box-shadow 0.17s, transform 0.14s, color 0.13s;
-  outline: none;
-  margin: 0;
-  position: relative;
-  font-family: 'Orbitron', 'Montserrat', Arial, sans-serif;
+  margin: 0 2px;
+  box-shadow: 0 2px 7px #ffe57f22;
+  letter-spacing: 0.5px;
+  transition: background 0.13s, color 0.12s, box-shadow 0.13s;
 }
-.fastcut-switcher .fastcut-btn:hover,
-.fastcut-switcher .fastcut-btn:focus {
-  background: linear-gradient(91deg, #ffe57f 40%, #e53935 100%);
-  color: #fff;
-  box-shadow: 0 6px 28px #ffe57f66,0 2px 8px #e5393540;
-  transform: translateY(-2px) scale(1.04);
-}
-.fastcut-switcher .fastcut-btn.active {
+.fastcut-switcher.compact .fastcut-btn.active {
   background: linear-gradient(91deg, #e53935 60%, #ffe57f 100%) !important;
   color: #fff !important;
-  box-shadow: 0 6px 30px #e5393577;
   border: 2px solid #e53935;
-  z-index: 2;
-  transform: scale(1.08);
-  text-shadow: 0 1.5px 0 #ffe57f77,0 2.5px 4px #e5393580;
+  box-shadow: 0 2px 11px #e5393555;
+  transform: scale(1.05);
 }
-
-@media (max-width: 900px) {
-  .fastcut-switcher {
-    gap: 11px;
-    max-width: 99vw;
+.fastcut-switcher.compact .fastcut-btn:hover {
+  background: linear-gradient(91deg, #ffe57f 35%, #e53935 100%);
+  color: #fff;
+}
+@media (max-width: 700px) {
+  .hollywood-header h2, .master-output-section, .audio-track-block {
+    font-size: 1em;
+    width: 99vw;
+    padding-left: 0;
+    padding-right: 0;
   }
-  .fastcut-switcher .fastcut-btn {
-    min-width: 84px;
-    font-size: 1.02rem;
-    height: 44px;
-    padding: 0 12px;
+  .members-counter { right: 0; left: 0; margin: 0 auto; top: 7px;}
+  .fastcut-switcher.compact {
+    max-width: 99vw;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .fastcut-switcher.compact .fastcut-btn {
+    min-width: 32px;
+    height: 32px;
+    font-size: 0.88rem;
+    padding: 0 2px;
+    margin: 1px;
   }
 }
 
@@ -384,13 +379,4 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 3px;
-}
-@media (max-width: 700px) {
-  .hollywood-header h2, .master-output-section, .audio-track-block {
-    font-size: 1em;
-    width: 99vw;
-    padding-left: 0;
-    padding-right: 0;
-  }
-  .members-counter { right: 0; left: 0; margin: 0 auto; top: 7px;}
 }
