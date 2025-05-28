@@ -192,9 +192,6 @@ let source = null;
 let audioSessionStartTime = null;
 let decodedAudioBuffer = null;
 
-// For frame caching (to prevent black flashes)
-let lastFrameImage = null;
-
 mainRecordBtn.onclick = async function() {
   recordStatus.textContent = "";
   exportStatus.textContent = "";
@@ -310,15 +307,9 @@ mainRecordBtn.onclick = async function() {
       ctx.fillStyle = "#111";
       ctx.fillRect(0, 0, TRACK_WIDTH, TRACK_HEIGHT);
       ctx.drawImage(v, 0, 0, TRACK_WIDTH, TRACK_HEIGHT);
-      // Save last good frame
-      lastFrameImage = ctx.getImageData(0, 0, TRACK_WIDTH, TRACK_HEIGHT);
-    } else if (lastFrameImage) {
-      // Draw last good frame to prevent black flash
-      ctx.putImageData(lastFrameImage, 0, 0);
-    } else {
-      ctx.fillStyle = "#111";
-      ctx.fillRect(0, 0, TRACK_WIDTH, TRACK_HEIGHT);
+      // No frame caching, just freeze canvas on last good frame if video not ready
     }
+    // If video not available, do not redraw the canvas (leaves last frame showing)
     if (elapsed < duration && mixing) {
       drawRequestId = requestAnimationFrame(draw);
     } else {
@@ -372,7 +363,6 @@ function stopMasterRecording() {
     audioCtx.close();
     audioCtx = null;
   }
-  lastFrameImage = null; // Reset last frame for future recordings
 }
 
 // Export logic
