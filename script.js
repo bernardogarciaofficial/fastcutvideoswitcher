@@ -1,6 +1,6 @@
 const NUM_TRACKS = 10;
-const TRACK_WIDTH = 600, TRACK_HEIGHT = 340;
-const PREVIEW_WIDTH = 160, PREVIEW_HEIGHT = 100;
+const TRACK_WIDTH = 320, TRACK_HEIGHT = 180;
+const PREVIEW_WIDTH = 96, PREVIEW_HEIGHT = 60;
 
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
 const VIDEO_ACCEPTED = ".mp4,.webm,.mov,.ogg,.mkv,video/*";
@@ -64,7 +64,11 @@ switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => {
 // --- Ensure all video elements loop, preventing early end/black frame ---
 for (let i = 0; i < NUM_TRACKS; i++) {
   const video = document.getElementById(`video-${i}`);
-  if (video) video.loop = true;
+  if (video) {
+    video.loop = true;
+    video.width = PREVIEW_WIDTH;
+    video.height = PREVIEW_HEIGHT;
+  }
 }
 
 const videoTracks = [];
@@ -86,7 +90,7 @@ for (let i = 0; i < NUM_TRACKS; i++) {
     recIndicator.style.display = "inline";
     recordedChunks = [];
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 360, frameRate: 24 }, audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({ video: { width: TRACK_WIDTH, height: TRACK_HEIGHT, frameRate: 15 }, audio: true });
       video.srcObject = stream;
       video.muted = true;
       video.controls = false;
@@ -183,6 +187,8 @@ const masterOutputVideo = document.getElementById('masterOutputVideo');
 const exportBtn = document.getElementById('exportBtn');
 const exportStatus = document.getElementById('exportStatus');
 const mixCanvas = document.getElementById('mixCanvas');
+mixCanvas.width = TRACK_WIDTH;
+mixCanvas.height = TRACK_HEIGHT;
 
 let mixing = false, mediaRecorder = null, masterChunks = [];
 let drawRequestId = null;
@@ -191,6 +197,7 @@ let audioCtx = null;
 let source = null;
 let audioSessionStartTime = null;
 let decodedAudioBuffer = null;
+let syncTimer = null;
 
 mainRecordBtn.onclick = async function() {
   recordStatus.textContent = "";
@@ -234,7 +241,7 @@ mainRecordBtn.onclick = async function() {
     if (v && v.src) {
       v.pause();
       v.currentTime = 0;
-      v.loop = true; // Ensure looping even if the user uploaded/recorded
+      v.loop = true;
     }
   }
 
@@ -243,7 +250,7 @@ mainRecordBtn.onclick = async function() {
   ctx.fillStyle = "#111";
   ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
 
-  const stream = mixCanvas.captureStream(30);
+  const stream = mixCanvas.captureStream(15); // Lower frame rate
   masterChunks = [];
   mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
   mediaRecorder.ondataavailable = e => { if (e.data.size > 0) masterChunks.push(e.data); };
@@ -271,7 +278,7 @@ mainRecordBtn.onclick = async function() {
   recordStatus.textContent = "Recording... Use the FastCut buttons to live-switch!";
   exportBtn.disabled = true;
 
-  // Sync all videos to 0, muted, and play (but we'll resync them constantly in draw())
+  // Sync all videos to 0, muted, and play (but we'll resync them periodically)
   for (let i = 0; i < NUM_TRACKS; i++) {
     const v = document.getElementById(`video-${i}`);
     if (v && v.src) {
@@ -288,28 +295,32 @@ mainRecordBtn.onclick = async function() {
 
   mediaRecorder.start();
 
-  function draw() {
+  // Sync videos every 250ms instead of every frame
+  function syncVideos() {
     if (!mixing) return;
-    // Use audioCtx.currentTime as master
     const elapsed = audioCtx.currentTime - audioSessionStartTime;
-    // Sync each video to the master clock if drift > 40ms
     for (let i = 0; i < NUM_TRACKS; i++) {
       const v = document.getElementById(`video-${i}`);
-      if (v && v.src && Math.abs(v.currentTime - elapsed) > 0.04 && !v.seeking && !v.ended) {
+      if (v && v.src && Math.abs(v.currentTime - elapsed) > 0.08 && !v.seeking && !v.ended) {
         try {
           v.currentTime = Math.min(elapsed, v.duration || 9999);
         } catch (e) {}
       }
     }
-    // Draw the current active track
+    syncTimer = setTimeout(syncVideos, 250);
+  }
+  syncVideos();
+
+  function draw() {
+    if (!mixing) return;
+    // Only draw if the video is ready and playing
     const v = document.getElementById(`video-${activeTrack}`);
     if (v && !v.paused && !v.ended && v.readyState >= 2) {
       ctx.fillStyle = "#111";
       ctx.fillRect(0, 0, TRACK_WIDTH, TRACK_HEIGHT);
       ctx.drawImage(v, 0, 0, TRACK_WIDTH, TRACK_HEIGHT);
-      // No frame caching, just freeze canvas on last good frame if video not ready
     }
-    // If video not available, do not redraw the canvas (leaves last frame showing)
+    const elapsed = audioCtx.currentTime - audioSessionStartTime;
     if (elapsed < duration && mixing) {
       drawRequestId = requestAnimationFrame(draw);
     } else {
@@ -362,6 +373,10 @@ function stopMasterRecording() {
   if (audioCtx) {
     audioCtx.close();
     audioCtx = null;
+  }
+  if (syncTimer) {
+    clearTimeout(syncTimer);
+    syncTimer = null;
   }
 }
 
