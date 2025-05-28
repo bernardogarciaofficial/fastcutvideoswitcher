@@ -43,11 +43,6 @@
     <h3 class="output-title">Master Output Video <span class="filmstrip">🎞️</span></h3>
     <video id="masterOutputVideo" controls width="600" height="340"></video>
     <div style="margin-top:16px;">
-      <select id="exportFormat" class="export-format">
-        <option value="webm">Export as .webm (fastest, best for Chrome)</option>
-        <option value="mp4">Export as .mp4 (universal, slower)</option>
-        <option value="mov">Export as .mov (Apple devices, slower)</option>
-      </select>
       <button id="exportBtn" class="export-btn" disabled>Export Music Video</button>
       <span id="exportStatus" class="export-status"></span>
     </div>
@@ -59,7 +54,6 @@
     <span class="clapperboard-icon">🎬</span>
     <span>FastCut by <b>bernardogarciaofficial</b> | <span class="camera-icon">🎥</span></span>
   </footer>
-  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.4/dist/ffmpeg.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
