@@ -2,64 +2,68 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>🎬 FastCut Music Video Switcher</title>
+  <title>FastCut Timeline Editor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Orbitron:700|Montserrat:400,700&display=swap">
 </head>
 <body>
-  <div class="theme-bg"></div>
-  <div class="set-lights">
-    <div class="spotlight spotlight-left"></div>
-    <div class="spotlight spotlight-right"></div>
-    <div class="spotlight spotlight-top"></div>
-  </div>
-  <header class="hollywood-header">
-    <span class="camera-icon">🎥</span>
-    <h2>FastCut Music Video Switcher</h2>
-    <span class="clapperboard-icon">🎬</span>
-    <div class="lights-action">LIGHTS <span class="dot">•</span> CAMERA <span class="dot">•</span> ACTION!</div>
-    <div class="members-counter" id="membersCounter">
-      <span class="counter-icon">🧑‍🤝‍🧑</span>
-      <span id="membersCountNumber">15,347</span> members online
-    </div>
+  <header>
+    <h1>FastCut Timeline Editor</h1>
+    <nav>
+      <ul>
+        <li><a href="#" aria-current="page">Editor</a></li>
+        <li><a href="#">Export</a></li>
+        <li><a href="#">Help</a></li>
+      </ul>
+    </nav>
   </header>
 
-  <div class="audio-track-block">
-    <label for="songInput"><b><span class="music-icon">🎵</span> Main Music Track:</b></label>
-    <input type="file" id="songInput" accept=".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*">
-    <span id="audioStatus"></span>
-    <audio id="audio" controls style="display:none"></audio>
-  </div>
+  <main>
+    <section id="videoSection">
+      <h2 class="sr-only">Video Output</h2>
+      <div id="mainOutputContainer">
+        <video id="mainOutputVideo" controls preload="metadata" tabindex="0" aria-label="Timeline preview video">
+          <!-- Source to be added via JS or user upload -->
+        </video>
+        <div class="video-controls">
+          <button id="uploadVideoBtn" type="button">Upload Video</button>
+          <button id="captureFrameBtn" type="button">Capture Frame</button>
+        </div>
+      </div>
+    </section>
 
-  <div id="switcherTracks" class="switcher-track-grid"></div>
+    <section id="timelineContainer">
+      <h2>Timeline</h2>
+      <div class="timeline-track">
+        <div class="timeline-label">Video Track</div>
+        <div class="timeline-video" tabindex="0" aria-label="Timeline video track"></div>
+        <div class="timeline-label">Audio Track</div>
+        <div class="timeline-audio" draggable="true" tabindex="0" aria-label="Timeline audio track"></div>
+      </div>
+      <div class="timeline-controls">
+        <button id="detachAudioBtn" type="button">Detach Audio</button>
+        <span id="audioOffsetLabel">Offset: 0 ms</span>
+        <button id="previewSyncBtn" type="button">Preview Sync</button>
+      </div>
+    </section>
+  </main>
 
-  <div class="master-output-section">
-    <div class="switcher-controls">
-      <button id="mainRecordBtn" class="main-record-btn">⏺️ Main Record</button>
-      <button id="mainStopBtn" class="main-stop-btn" disabled>⏹️ Stop</button>
-      <span id="recordStatus" class="record-status"></span>
+  <aside id="sidePanel">
+    <h2>Tools</h2>
+    <button id="cutBtn" type="button">Cut</button>
+    <button id="splitBtn" type="button">Split</button>
+    <button id="undoBtn" type="button">Undo</button>
+    <button id="redoBtn" type="button">Redo</button>
+    <div>
+      <label for="zoomRange">Zoom Timeline:</label>
+      <input type="range" id="zoomRange" min="1" max="10" value="1">
     </div>
-    <div id="fastcutSwitcher" class="fastcut-switcher compact"></div>
-    <h3 class="output-title">Master Output Video <span class="filmstrip">🎞️</span></h3>
-    <video id="masterOutputVideo" controls width="600" height="340"></video>
-    <div style="margin-top:16px;">
-      <select id="exportFormat" class="export-format">
-        <option value="webm">Export as .webm (fastest, best for Chrome)</option>
-        <option value="mp4">Export as .mp4 (universal, slower)</option>
-        <option value="mov">Export as .mov (Apple devices, slower)</option>
-      </select>
-      <button id="exportBtn" class="export-btn" disabled>Export Music Video</button>
-      <span id="exportStatus" class="export-status"></span>
-    </div>
-  </div>
+  </aside>
 
-  <canvas id="mixCanvas" width="600" height="340" style="display:none"></canvas>
-
-  <footer class="hollywood-footer">
-    <span class="clapperboard-icon">🎬</span>
-    <span>FastCut by <b>bernardogarciaofficial</b> | <span class="camera-icon">🎥</span></span>
+  <footer>
+    <small>&copy; 2025 FastCut. All rights reserved.</small>
   </footer>
-  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.4/dist/ffmpeg.min.js"></script>
+
   <script src="script.js"></script>
 </body>
 </html>
