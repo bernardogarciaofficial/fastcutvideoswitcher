@@ -1,18 +1,4 @@
-const NUM_TRACKS = 4; // Video tracks
-const TRACK_WIDTH = 600, TRACK_HEIGHT = 340;
-const PREVIEW_WIDTH = 220, PREVIEW_HEIGHT = 140;
-
-// Accept popular audio formats
-const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
-// Accept popular video formats for upload (recorded and uploaded)
-const VIDEO_ACCEPTED = ".mp4,.webm,.mov,.ogg,.mkv,video/*";
-// Export options for finished video (webm, mp4 for browsers that support it)
-const EXPORT_FORMATS = [
-  { mime: "video/webm", ext: "webm" },
-  { mime: "video/mp4", ext: "mp4" }
-];
-
-// Members counter
+// Members counter animation
 function animateMembersCounter() {
   const el = document.getElementById('membersCountNumber');
   let n = 15347, up = true;
@@ -25,12 +11,15 @@ function animateMembersCounter() {
 }
 animateMembersCounter();
 
-const songInput = document.getElementById('songInput');
-songInput.setAttribute('accept', AUDIO_ACCEPTED);
+// Audio track input (accepts most popular formats)
+const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
+document.getElementById('songInput').setAttribute('accept', AUDIO_ACCEPTED);
+
 const audio = document.getElementById('audio');
 const audioStatus = document.getElementById('audioStatus');
 let masterAudioFile = null;
-songInput.onchange = e => {
+
+document.getElementById('songInput').onchange = e => {
   const file = e.target.files[0];
   masterAudioFile = file;
   if (file) {
@@ -44,129 +33,133 @@ songInput.onchange = e => {
   }
 };
 
-// Track names for clarity
+// --- Main Recording Section Logic ---
+const mainRecorderPreview = document.getElementById('mainRecorderPreview');
+const mainRecorderRecordBtn = document.getElementById('mainRecorderRecordBtn');
+const mainRecorderStopBtn = document.getElementById('mainRecorderStopBtn');
+const mainRecorderDownloadBtn = document.getElementById('mainRecorderDownloadBtn');
+const mainRecorderStatus = document.getElementById('mainRecorderStatus');
+
+let mainRecorderStream = null;
+let mainRecorderMediaRecorder = null;
+let mainRecorderChunks = [];
+let mainRecorderBlobURL = null;
+
+mainRecorderRecordBtn.onclick = async () => {
+  if (!masterAudioFile) {
+    mainRecorderStatus.textContent = "Please upload an audio track first!";
+    return;
+  }
+  mainRecorderRecordBtn.disabled = true;
+  mainRecorderStopBtn.disabled = false;
+  mainRecorderDownloadBtn.disabled = true;
+  mainRecorderStatus.textContent = "Recording...";
+
+  mainRecorderChunks = [];
+  // Get camera and mic
+  mainRecorderStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  mainRecorderPreview.srcObject = mainRecorderStream;
+  mainRecorderPreview.muted = true;
+  mainRecorderPreview.controls = false;
+
+  // Start music in sync
+  audio.currentTime = 0;
+  audio.play();
+
+  // Record video + audio
+  mainRecorderMediaRecorder = new MediaRecorder(mainRecorderStream, { mimeType: "video/webm" });
+  mainRecorderMediaRecorder.ondataavailable = e => { if (e.data.size > 0) mainRecorderChunks.push(e.data); };
+  mainRecorderMediaRecorder.onstop = () => {
+    if (mainRecorderPreview.srcObject) {
+      mainRecorderPreview.srcObject.getTracks().forEach(track => track.stop());
+      mainRecorderPreview.srcObject = null;
+    }
+    const blob = new Blob(mainRecorderChunks, { type: "video/webm" });
+    if (mainRecorderBlobURL) URL.revokeObjectURL(mainRecorderBlobURL);
+    mainRecorderBlobURL = URL.createObjectURL(blob);
+    mainRecorderPreview.src = mainRecorderBlobURL;
+    mainRecorderPreview.controls = true;
+    mainRecorderPreview.muted = false;
+    mainRecorderPreview.load();
+    mainRecorderDownloadBtn.disabled = false;
+    mainRecorderStatus.textContent = "Recording complete! Download your take.";
+  };
+  mainRecorderMediaRecorder.start();
+};
+
+mainRecorderStopBtn.onclick = () => {
+  if (mainRecorderMediaRecorder && mainRecorderMediaRecorder.state !== "inactive") {
+    mainRecorderMediaRecorder.stop();
+  }
+  mainRecorderRecordBtn.disabled = false;
+  mainRecorderStopBtn.disabled = true;
+  audio.pause();
+  audio.currentTime = 0;
+};
+
+mainRecorderDownloadBtn.onclick = () => {
+  if (!mainRecorderBlobURL) return;
+  const a = document.createElement('a');
+  a.href = mainRecorderBlobURL;
+  a.download = `fastcut_take_${Date.now()}.webm`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  mainRecorderStatus.textContent = "Take downloaded. Repeat for each angle!";
+};
+
+// --- Switcher Upload Section Logic (Upload-Only) ---
+const NUM_TRACKS = 4;
 const TRACK_NAMES = [
   "Main Camera",
   "Closeup / Vocals",
   "Instrument / B-Roll",
   "Creative Angle"
 ];
-
-// Switcher track UI (ALL in a row)
+const VIDEO_ACCEPTED = ".mp4,.webm,.mov,.ogg,.mkv,video/*";
 const switcherTracks = document.getElementById("switcherTracks");
-const TRACKS_WITH_UPLOAD = [1, 3]; // 0-indexed: tracks 2, 4
-switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => {
-  let uploadBtn = "";
-  if (TRACKS_WITH_UPLOAD.includes(i)) {
-    uploadBtn = `
-      <label class="upload-video-label" for="uploadVideoInput-${i}">Upload Video File</label>
+switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => `
+  <div class="switcher-track" id="switcher-track-${i}">
+    <div class="track-title">${TRACK_NAMES[i]}</div>
+    <video id="video-${i}" width="220" height="140" controls muted></video>
+    <div>
+      <label class="upload-video-label" for="uploadVideoInput-${i}">Upload Take</label>
       <input type="file" id="uploadVideoInput-${i}" class="upload-video-input" accept="${VIDEO_ACCEPTED}" style="display:none;">
-      <button class="upload-video-btn" id="uploadVideoBtn-${i}">🎬 Upload Video</button>
-    `;
-  }
-  return `
-    <div class="switcher-track" id="switcher-track-${i}">
-      <div class="track-title">${TRACK_NAMES[i]}</div>
-      <video id="video-${i}" width="${PREVIEW_WIDTH}" height="${PREVIEW_HEIGHT}" controls muted></video>
-      <div>
-        <button id="recordBtn-${i}" class="select-btn">Record</button>
-        <button id="stopBtn-${i}" class="select-btn" disabled>Stop</button>
-        <span id="recIndicator-${i}" class="rec-indicator" style="display:none;">● REC</span>
-      </div>
-      ${uploadBtn}
+      <button class="upload-video-btn" id="uploadVideoBtn-${i}">🎬 Upload Take</button>
     </div>
-  `;
-}).join("");
+  </div>
+`).join("");
 
-// Track recording/playback logic
-const videoTracks = [];
+// Store video elements and uploaded blob URLs
+const uploadedVideos = Array(NUM_TRACKS).fill(null);
+
 for (let i = 0; i < NUM_TRACKS; i++) {
-  let mediaRecorder = null;
-  let recordedChunks = [];
-  let stream = null;
-
-  const recordBtn = document.getElementById(`recordBtn-${i}`);
-  const stopBtn = document.getElementById(`stopBtn-${i}`);
+  const uploadBtn = document.getElementById(`uploadVideoBtn-${i}`);
+  const uploadInput = document.getElementById(`uploadVideoInput-${i}`);
   const video = document.getElementById(`video-${i}`);
-  const recIndicator = document.getElementById(`recIndicator-${i}`);
-
-  videoTracks.push({ video, recordedChunks });
-
-  recordBtn.onclick = async () => {
-    recordBtn.disabled = true;
-    stopBtn.disabled = false;
-    recIndicator.style.display = "inline";
-    recordedChunks = [];
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      video.srcObject = stream;
-      video.muted = true;
-      video.controls = false;
-      video.play();
-
-      if (audio.src) {
-        audio.currentTime = 0;
-        audio.play().catch(() => {
-          audioStatus.textContent = "Click the audio controls once to enable music sync.";
-        });
-      }
-
-      mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
-      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
-      mediaRecorder.onstop = () => {
-        if (video.srcObject) {
-          video.srcObject.getTracks().forEach(track => track.stop());
-          video.srcObject = null;
-        }
-        const blob = new Blob(recordedChunks, { type: "video/webm" });
-        video.src = URL.createObjectURL(blob);
-        video.controls = true;
-        video.muted = false;
-        video.load();
-        recIndicator.style.display = "none";
-      };
-      mediaRecorder.start();
-    } catch (err) {
-      alert("Webcam access denied or error: " + err.message);
-      recordBtn.disabled = false;
-      stopBtn.disabled = true;
-      recIndicator.style.display = "none";
-    }
+  uploadBtn.onclick = () => uploadInput.click();
+  uploadInput.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    video.src = url;
+    video.controls = true;
+    video.muted = false;
+    video.load();
+    uploadBtn.textContent = "🎬 Uploaded!";
+    uploadedVideos[i] = url;
+    setTimeout(() => uploadBtn.textContent = "🎬 Upload Take", 3000);
+    checkAllTakesUploaded();
   };
-
-  stopBtn.onclick = () => {
-    if (mediaRecorder && mediaRecorder.state !== "inactive") {
-      mediaRecorder.stop();
-    }
-    recordBtn.disabled = false;
-    stopBtn.disabled = true;
-    recIndicator.style.display = "none";
-    if (!audio.paused) {
-      audio.pause();
-      audio.currentTime = 0;
-    }
-  };
-
-  // --- Video File Upload for theme tracks
-  if (TRACKS_WITH_UPLOAD.includes(i)) {
-    const uploadBtn = document.getElementById(`uploadVideoBtn-${i}`);
-    const uploadInput = document.getElementById(`uploadVideoInput-${i}`);
-    uploadBtn.onclick = () => uploadInput.click();
-    uploadInput.onchange = e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const url = URL.createObjectURL(file);
-      video.src = url;
-      video.controls = true;
-      video.muted = false;
-      video.load();
-      uploadBtn.textContent = "🎬 Uploaded!";
-      setTimeout(() => uploadBtn.textContent = "🎬 Upload Video", 3000);
-    };
-  }
 }
 
-// FastCut Switcher Row (4 buttons for live switching)
+function checkAllTakesUploaded() {
+  const allUploaded = uploadedVideos.every(v => !!v);
+  document.getElementById("exportBtn").disabled = !allUploaded;
+  setupSwitcherTracks();
+}
+
+// --- FastCut Switcher Logic (Upload-Only) ---
 const fastcutSwitcher = document.getElementById('fastcutSwitcher');
 fastcutSwitcher.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) =>
   `<button class="fastcut-btn" id="fastcutBtn-${i}">${TRACK_NAMES[i]}</button>`
@@ -190,10 +183,16 @@ function setActiveTrack(idx) {
 }
 setActiveTrack(0);
 
-// Main record/stop/export logic
-const mainRecordBtn = document.getElementById('mainRecordBtn');
-const mainStopBtn = document.getElementById('mainStopBtn');
-const recordStatus = document.getElementById('recordStatus');
+function setupSwitcherTracks() {
+  // Prepare video elements for switching
+  for (let i = 0; i < NUM_TRACKS; i++) {
+    const v = document.getElementById(`video-${i}`);
+    v.pause();
+    v.currentTime = 0;
+  }
+}
+
+// --- Master Output/Export Logic ---
 const masterOutputVideo = document.getElementById('masterOutputVideo');
 const exportBtn = document.getElementById('exportBtn');
 const exportStatus = document.getElementById('exportStatus');
@@ -203,197 +202,87 @@ let mixing = false, mediaRecorder = null, masterChunks = [];
 let drawRequestId = null;
 let livePlaybackUrl = null;
 
-mainRecordBtn.onclick = async function() {
-  recordStatus.textContent = "";
+exportBtn.onclick = () => {
+  if (!uploadedVideos.every(v => !!v)) {
+    exportStatus.textContent = "Upload all 4 takes to enable export.";
+    return;
+  }
   exportStatus.textContent = "";
-  exportBtn.disabled = true;
-
-  // Prepare all video tracks: must be loaded and ready
-  const readyVideos = [];
+  // Sync all videos to 0
   for (let i = 0; i < NUM_TRACKS; i++) {
     const v = document.getElementById(`video-${i}`);
-    if (v && v.src && v.readyState >= 2) readyVideos.push(v);
+    v.currentTime = 0;
+    v.pause();
   }
-  if (!masterAudioFile) {
-    recordStatus.textContent = "Load your audio track first!";
-    return;
-  }
-  if (readyVideos.length < 2) {
-    recordStatus.textContent = "Record at least 2 videos!";
-    return;
-  }
-
-  // Get audio duration
-  const audioBlobURL = URL.createObjectURL(masterAudioFile);
-  const tempAudio = new Audio(audioBlobURL);
-  await new Promise(r => { tempAudio.onloadedmetadata = r; });
-  const duration = tempAudio.duration;
-  URL.revokeObjectURL(audioBlobURL);
-
-  // Sync all videos and audio to 0 and pause
-  for (let i = 0; i < NUM_TRACKS; i++) {
-    const v = document.getElementById(`video-${i}`);
-    if (v && v.src) {
-      v.currentTime = 0; v.pause();
-    }
-  }
-  audio.currentTime = 0; audio.pause();
-
-  // Wait for all videos to seek to 0 and be ready to play
-  await Promise.all(
-    Array.from({length: NUM_TRACKS}, (_, i) => {
-      const v = document.getElementById(`video-${i}`);
-      if (v && v.src) {
-        return new Promise(resolve => {
-          const seekHandler = () => {
-            v.removeEventListener('seeked', seekHandler);
-            resolve();
-          };
-          v.addEventListener('seeked', seekHandler);
-          v.currentTime = 0;
-        });
-      } else {
-        return Promise.resolve();
-      }
-    })
-  );
-
-  // Prepare canvas and MediaRecorder
+  // Play all, but draw only active
   const ctx = mixCanvas.getContext('2d');
   ctx.fillStyle = "#111";
   ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
 
   const stream = mixCanvas.captureStream(30);
   masterChunks = [];
-  // Default to webm for all browsers, try mp4 if supported (rare)
-  let chosenMime = "video/webm";
-  if (MediaRecorder.isTypeSupported("video/mp4")) chosenMime = "video/mp4";
-  mediaRecorder = new MediaRecorder(stream, { mimeType: chosenMime });
+  mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
   mediaRecorder.ondataavailable = e => { if (e.data.size > 0) masterChunks.push(e.data); };
+  mediaRecorder.onstop = () => {
+    masterOutputVideo.srcObject = null;
+    if(livePlaybackUrl) {
+      URL.revokeObjectURL(livePlaybackUrl);
+      livePlaybackUrl = null;
+    }
+    const blob = new Blob(masterChunks, { type: "video/webm" });
+    const url = URL.createObjectURL(blob);
+    masterOutputVideo.src = url;
+    masterOutputVideo.load();
+    livePlaybackUrl = url;
+    exportStatus.textContent = "Export complete! Download your final video.";
+    // Offer download
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `fastcut_music_video.webm`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
 
-  // Audio for recording (mixAudioTrack)
-  let audioTrack;
-  try {
-    const audioCtx = new AudioContext();
-    const source = audioCtx.createBufferSource();
-    const audioFileBuffer = await masterAudioFile.arrayBuffer();
-    const decoded = await audioCtx.decodeAudioData(audioFileBuffer);
-    source.buffer = decoded;
-    const dest = audioCtx.createMediaStreamDestination();
-    source.connect(dest);
-    audioTrack = dest.stream.getAudioTracks()[0];
-    stream.addTrack(audioTrack);
-    source.start();
-  } catch (e) {
-    recordStatus.textContent = "Cannot mix audio - browser does not support advanced audio mixing.";
-    return;
-  }
-
-  // Show live canvas in main output video
-  if(livePlaybackUrl) {
-    URL.revokeObjectURL(livePlaybackUrl);
-    livePlaybackUrl = null;
-  }
-  masterOutputVideo.srcObject = stream;
-  masterOutputVideo.play();
-
-  // Start everything in sync
-  mixing = true;
-  mainRecordBtn.disabled = true;
-  mainStopBtn.disabled = false;
-  recordStatus.textContent = "Recording... Use the FastCut buttons to live-switch!";
-  exportBtn.disabled = true;
-
-  // Play all videos, but only display the active one on canvas
+  // Start all videos in sync
   for (let i = 0; i < NUM_TRACKS; i++) {
     const v = document.getElementById(`video-${i}`);
-    if (v && v.src) {
-      v.currentTime = 0;
-      v.muted = true;
-      v.play();
-    }
+    v.currentTime = 0;
+    v.muted = true;
+    v.play();
   }
-  audio.currentTime = 0;
-  audio.play();
 
+  // Draw the active video to canvas (switchable)
+  mixing = true;
+  let duration = 0;
+  const refVideo = document.getElementById('video-0');
+  if (refVideo && !isNaN(refVideo.duration)) duration = refVideo.duration;
+  else duration = 180; // fallback
+
+  masterOutputVideo.srcObject = stream;
+  masterOutputVideo.play();
   mediaRecorder.start();
 
   let t0 = performance.now();
   function draw() {
     if (!mixing) return;
-    // Draw active track frame to canvas
     const v = document.getElementById(`video-${activeTrack}`);
     if (v && !v.paused && !v.ended) {
       ctx.fillStyle = "#111";
-      ctx.fillRect(0, 0, TRACK_WIDTH, TRACK_HEIGHT);
-      ctx.drawImage(v, 0, 0, TRACK_WIDTH, TRACK_HEIGHT);
+      ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
+      ctx.drawImage(v, 0, 0, 600, 340);
     } else {
       ctx.fillStyle = "#111";
-      ctx.fillRect(0, 0, TRACK_WIDTH, TRACK_HEIGHT);
+      ctx.fillRect(0, 0, 600, 340);
     }
     if ((performance.now() - t0)/1000 < duration && mixing) {
       drawRequestId = requestAnimationFrame(draw);
     } else {
-      stopMasterRecording();
+      mixing = false;
+      mediaRecorder.stop();
+      if (drawRequestId !== null) cancelAnimationFrame(drawRequestId);
+      drawRequestId = null;
     }
   }
   draw();
-};
-
-mainStopBtn.onclick = () => {
-  stopMasterRecording();
-};
-
-function stopMasterRecording() {
-  if (!mixing) return;
-  mixing = false;
-  mainRecordBtn.disabled = false;
-  mainStopBtn.disabled = true;
-  recordStatus.textContent = "";
-
-  for (let i = 0; i < NUM_TRACKS; i++) {
-    const v = document.getElementById(`video-${i}`);
-    if (v && v.src) v.pause();
-  }
-  audio.pause();
-  if (mediaRecorder && mediaRecorder.state !== "inactive") {
-    mediaRecorder.stop();
-    mediaRecorder.onstop = () => {
-      masterOutputVideo.srcObject = null;
-      if(livePlaybackUrl) {
-        URL.revokeObjectURL(livePlaybackUrl);
-        livePlaybackUrl = null;
-      }
-      const blob = new Blob(masterChunks, { type: mediaRecorder.mimeType });
-      const url = URL.createObjectURL(blob);
-      masterOutputVideo.src = url;
-      masterOutputVideo.load();
-      livePlaybackUrl = url;
-      recordStatus.textContent = "Done! Preview below.";
-      exportBtn.disabled = false;
-    };
-  }
-  if (drawRequestId !== null) {
-    cancelAnimationFrame(drawRequestId);
-    drawRequestId = null;
-  }
-}
-
-// Export logic with format choice based on what was recorded
-exportBtn.onclick = () => {
-  if (!masterOutputVideo.src && !livePlaybackUrl) {
-    exportStatus.textContent = "No master video to export!";
-    return;
-  }
-  // Use recorded format, but suggest .webm and .mp4 as top options
-  const blobUrl = masterOutputVideo.src || livePlaybackUrl;
-  let fileExt = "webm";
-  if (masterOutputVideo.src && masterOutputVideo.src.endsWith(".mp4")) fileExt = "mp4";
-  const a = document.createElement('a');
-  a.href = blobUrl;
-  a.download = `fastcut_music_video.${fileExt}`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  exportStatus.textContent = "Download started!";
 };
