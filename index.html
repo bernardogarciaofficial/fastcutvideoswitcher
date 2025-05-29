@@ -70,7 +70,18 @@
   <!-- Step 4: FastCut Switcher/Export -->
   <div class="master-output-section">
     <h3 class="output-title">Master Output Video <span class="filmstrip">🎞️</span></h3>
-    <video id="masterOutputVideo" controls width="600" height="340"></video>
+    <!-- NEW master output video screen -->
+    <video
+      id="masterOutputVideo"
+      width="720"
+      height="405"
+      controls
+      style="background:#181c23; border-radius:16px; border:3px solid #ffe57f; box-shadow:0 4px 24px #000a; display:block; margin:0 auto;"
+      poster="master_output_poster.png"
+    >
+      <!-- Optionally, fallback text -->
+      Your browser does not support the video tag.
+    </video>
     <div id="exportStatus" class="export-status"></div>
     <div id="syncInstructions" class="sync-instructions">
       <strong>How to Fix Audio/Video Sync in Your Editor:</strong>
