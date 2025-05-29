@@ -32,38 +32,31 @@
     <audio id="audio" controls style="display:none"></audio>
   </div>
 
-  <!-- Step 2: Main Recording Screen -->
-  <div class="main-recorder-section">
-    <h3>Step 2: Record Your Take</h3>
-    <video id="mainRecorderPreview" width="600" height="340" autoplay muted></video>
-    <div class="main-recorder-controls-group">
-      <div class="main-recorder-controls">
-        <button id="mainRecorderRecordBtn" class="main-recorder-btn custom-record-btn">⏺️ Main Record</button>
-        <button id="mainRecorderStopBtn" class="main-recorder-btn custom-stop-btn" disabled>⏹️ Stop</button>
-        <button id="mainRecorderDownloadBtn" class="main-recorder-btn custom-download-btn" disabled>⬇️ Download Take</button>
-        <span id="mainRecorderStatus" class="main-recorder-status"></span>
-      </div>
-      <div id="fastcutSwitcher" class="fastcut-switcher compact"></div>
-    </div>
-    <div class="take-instructions">
-      <span>After recording, download your take and repeat for each camera angle. Once you have 4 takes, upload them below!</span>
-    </div>
+  <!-- Step 2: Upload Takes for 4-Track Switching -->
+  <div class="switcher-upload-section">
+    <h3>Step 2: Upload Your 4 Takes</h3>
+    <div id="switcherTracks" class="switcher-track-grid-row"></div>
   </div>
 
-  <!-- Step 3: Upload Takes for 4-Track Switching -->
-  <div class="switcher-upload-section">
-    <h3>Step 3: Upload Your 4 Takes</h3>
-    <div id="switcherTracks" class="switcher-track-grid-row"></div>
+  <!-- Step 3: Live Switch and Record -->
+  <div class="switcher-control-section">
+    <div class="switcher-live-controls">
+      <button id="startSwitchingBtn" class="live-switch-btn record-btn" disabled>⏺️ Start Switching</button>
+      <button id="stopSwitchingBtn" class="live-switch-btn stop-btn" disabled>⏹️ Stop Switching</button>
+    </div>
+    <div id="fastcutSwitcher" class="fastcut-switcher compact"></div>
+    <div class="switching-instructions">
+      <span>
+        <b>How it works:</b> Once all takes are uploaded, click <b>Start Switching</b>, then switch cameras live by pressing the camera buttons below. When you're done, click <b>Stop Switching</b> to generate your master video!
+      </span>
+    </div>
   </div>
 
   <!-- Step 4: FastCut Switcher/Export -->
   <div class="master-output-section">
     <h3 class="output-title">Master Output Video <span class="filmstrip">🎞️</span></h3>
     <video id="masterOutputVideo" controls width="600" height="340"></video>
-    <div style="margin-top:16px;">
-      <button id="exportBtn" class="export-btn" disabled>Export Music Video</button>
-      <span id="exportStatus" class="export-status"></span>
-    </div>
+    <div id="exportStatus" class="export-status"></div>
     <div id="syncInstructions" class="sync-instructions">
       <strong>How to Fix Audio/Video Sync in Your Editor:</strong>
       <ol>
