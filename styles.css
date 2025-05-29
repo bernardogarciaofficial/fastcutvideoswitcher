@@ -107,7 +107,7 @@ body {
   100% { opacity: 0.3;}
 }
 
-.audio-track-block, .master-output-section {
+.audio-track-block, .master-output-section, .main-recorder-section, .switcher-upload-section {
   background: linear-gradient(120deg, #22263a 70%, #33211f 100%);
   border-radius: 18px;
   box-shadow: 0 6px 32px rgba(30,10,5,0.24), 0 1.5px 0.5px #ffe57f33;
@@ -126,6 +126,23 @@ body {
   background: linear-gradient(120deg, #251b1c 60%, #412d2c 100%);
   border: 2px solid #e5393555;
   box-shadow: 0 10px 38px #0007, 0 1.5px 0.5px #ffe57f33;
+}
+.main-recorder-section {
+  width: 670px;
+  max-width: 99vw;
+  margin-top: 38px;
+  background: linear-gradient(120deg, #1a2133 60%, #314f85 100%);
+  border: 2px solid #42a5f5bb;
+  box-shadow: 0 8px 28px #1565c055;
+}
+.switcher-upload-section {
+  width: 900px;
+  max-width: 99vw;
+  margin-top: 38px;
+  margin-bottom: 38px;
+  background: linear-gradient(120deg, #23263c 60%, #404080 100%);
+  border: 2px solid #42a5f577;
+  box-shadow: 0 8px 28px #42a5f555;
 }
 .music-icon { font-size:1.1em; color:#ffe57f;}
 .output-title { color: #ffe57f; letter-spacing:1.5px; text-shadow:0 2px 6px #000; }
@@ -304,26 +321,24 @@ body {
   }
 }
 
-.switcher-controls {
+.main-recorder-controls {
   display: flex;
   justify-content: center;
-  gap: 22px;
-  margin-bottom: 28px;
   align-items: center;
+  gap: 16px;
+  margin-top: 18px;
+  margin-bottom: 10px;
 }
-.main-record-btn,
-.main-stop-btn {
-  font-size: 1.23rem;
+.main-recorder-btn {
+  font-size: 1.12rem;
   font-weight: 700;
-  padding: 14px 36px;
+  padding: 12px 32px;
   border-radius: 9px;
   border: none;
   cursor: pointer;
-  letter-spacing:1.2px;
-  transition: background 0.18s, color 0.13s;
+  letter-spacing:1.05px;
+  transition: background 0.17s, color 0.13s;
 }
-
-/* Custom Record Button Styling (blue) */
 .custom-record-btn {
   background: linear-gradient(91deg,#42a5f5 60%,#1565c0 100%);
   color: #fff;
@@ -333,8 +348,6 @@ body {
   background: linear-gradient(91deg,#1565c0 60%,#42a5f5 100%);
   color: #fff;
 }
-
-/* Custom Stop Button Styling (deep orange) */
 .custom-stop-btn {
   background: linear-gradient(91deg,#ff7043 60%,#d84315 100%);
   color: #fff;
@@ -344,18 +357,37 @@ body {
   background: linear-gradient(91deg,#d84315 60%,#ff7043 100%);
   color: #fff;
 }
-.main-stop-btn:disabled,
-.main-record-btn:disabled {
+.custom-download-btn {
+  background: linear-gradient(91deg,#43e5c6 60%,#148a6f 100%);
+  color: #fff;
+  box-shadow: 0 2px 12px #43e5c644;
+}
+.custom-download-btn:hover {
+  background: linear-gradient(91deg,#148a6f 60%,#43e5c6 100%);
+  color: #fff;
+}
+.main-recorder-btn:disabled {
   background: #aaa !important;
   color: #fff !important;
   cursor: not-allowed;
 }
-.record-status {
+.main-recorder-status {
   margin-left: 18px;
   font-weight: 700;
-  color: #ffe57f;
+  color: #42a5f5;
   font-size: 1.13rem;
-  text-shadow:0 2px 6px #e53935,0 1px 0 #ffe57f;
+  text-shadow:0 2px 6px #1565c0,0 1px 0 #42a5f5;
+}
+.take-instructions {
+  margin-top: 12px;
+  font-size: 1em;
+  color: #b8e2ff;
+  background: #1565c044;
+  padding: 8px 18px;
+  border-radius: 7px;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .export-btn {
@@ -418,7 +450,7 @@ body {
   gap: 3px;
 }
 @media (max-width: 700px) {
-  .hollywood-header h2, .master-output-section, .audio-track-block {
+  .hollywood-header h2, .master-output-section, .audio-track-block, .main-recorder-section, .switcher-upload-section {
     font-size: 1em;
     width: 99vw;
     padding-left: 0;
