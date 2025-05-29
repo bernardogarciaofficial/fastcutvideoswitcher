@@ -238,6 +238,7 @@ document.addEventListener('DOMContentLoaded', function() {
     switchingTimeline.push({ time: timeMs, track: trackIdx });
   }
 
+  // --- Key logic update: combine audio and video stream for recording! ---
   startSwitchingBtn.onclick = () => {
     exportStatus.textContent = "";
     for (let i = 0; i < NUM_TRACKS; i++) {
@@ -266,9 +267,31 @@ document.addEventListener('DOMContentLoaded', function() {
     ctx.fillStyle = "#111";
     ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
 
-    const stream = mixCanvas.captureStream(30);
+    // --- NEW: Get both video and audio streams and combine ---
+    const videoStream = mixCanvas.captureStream(30);
+
+    // Try to get an audio stream from the <audio> element (music track)
+    let audioStream = null;
+    if (audio.captureStream) {
+      audioStream = audio.captureStream();
+    } else if (audio.mozCaptureStream) {
+      audioStream = audio.mozCaptureStream();
+    }
+
+    // Combine video and audio tracks into a single MediaStream
+    let combinedStream;
+    if (audioStream) {
+      combinedStream = new MediaStream([
+        ...videoStream.getVideoTracks(),
+        ...audioStream.getAudioTracks()
+      ]);
+    } else {
+      combinedStream = videoStream;
+      exportStatus.textContent = "Warning: Audio captureStream not supported in your browser. Output will be silent.";
+    }
+
     masterChunks = [];
-    mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+    mediaRecorder = new MediaRecorder(combinedStream, { mimeType: "video/webm" });
     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) masterChunks.push(e.data); };
     mediaRecorder.onstop = () => {
       masterOutputVideo.srcObject = null;
@@ -298,9 +321,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (refVideo && !isNaN(refVideo.duration)) duration = refVideo.duration;
     else duration = 180;
 
-    masterOutputVideo.srcObject = stream;
+    // Use srcObject for live preview, but don't accidentally play audio twice
+    masterOutputVideo.srcObject = combinedStream;
+    masterOutputVideo.muted = true; // Prevent echo/feedback during live recording
     masterOutputVideo.play();
-    masterOutputVideo.muted = false; // ensure unmuted for built-in volume
+    audio.currentTime = 0;
+    audio.play();
     mediaRecorder.start();
 
     function draw() {
@@ -319,11 +345,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const ctx = mixCanvas.getContext('2d');
         ctx.fillStyle = "#111";
         ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
-        ctx.drawImage(v, 0, 0, 600, 340);
+        ctx.drawImage(v, 0, 0, mixCanvas.width, mixCanvas.height);
       } else {
         const ctx = mixCanvas.getContext('2d');
         ctx.fillStyle = "#111";
-        ctx.fillRect(0, 0, 600, 340);
+        ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
       }
       if ((Date.now() - switchingStartTime)/1000 < duration && mixing && isSwitching) {
         drawRequestId = requestAnimationFrame(draw);
