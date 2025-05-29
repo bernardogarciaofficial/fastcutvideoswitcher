@@ -199,7 +199,6 @@ document.addEventListener('DOMContentLoaded', function() {
   const startSwitchingBtn = document.getElementById('startSwitchingBtn');
   const stopSwitchingBtn = document.getElementById('stopSwitchingBtn');
   const masterOutputVideo = document.getElementById('masterOutputVideo');
-  const masterOutputVolume = document.getElementById('masterOutputVolume');
   const exportStatus = document.getElementById('exportStatus');
   const mixCanvas = document.getElementById('mixCanvas');
 
@@ -209,13 +208,6 @@ document.addEventListener('DOMContentLoaded', function() {
   let livePlaybackUrl = null;
   let switchingStartTime = 0;
   let switchingTimeline = [];
-
-  // Volume control for main video output
-  masterOutputVideo.volume = masterOutputVolume.value;
-
-  masterOutputVolume.addEventListener('input', (e) => {
-    masterOutputVideo.volume = e.target.value;
-  });
 
   // Activate the built-in browser volume UI (speaker icon bottom right)
   // Unmute, so the control is not "crossed out" and is interactive
@@ -289,8 +281,6 @@ document.addEventListener('DOMContentLoaded', function() {
       masterOutputVideo.src = url;
       masterOutputVideo.load();
       // Set volume after new src loaded
-      masterOutputVideo.volume = masterOutputVolume.value;
-      // Unmute, so UI speaker is active
       masterOutputVideo.muted = false;
       livePlaybackUrl = url;
       exportStatus.textContent = "Export complete! Download your final video.";
@@ -310,7 +300,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     masterOutputVideo.srcObject = stream;
     masterOutputVideo.play();
-    masterOutputVideo.volume = masterOutputVolume.value;
     masterOutputVideo.muted = false; // ensure unmuted for built-in volume
     mediaRecorder.start();
 
