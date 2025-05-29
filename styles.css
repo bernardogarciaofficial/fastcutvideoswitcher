@@ -183,6 +183,102 @@ body {
   color: #fff;
 }
 
+/* --- MAIN RECORDER SECTION (NEW) --- */
+.main-recorder-section {
+  width: 670px;
+  max-width: 99vw;
+  margin: 32px auto 38px auto;
+  background: linear-gradient(120deg, #1a2133 60%, #314f85 100%);
+  border: 2px solid #42a5f5bb;
+  border-radius: 18px;
+  box-shadow: 0 8px 28px #1565c055;
+  text-align: center;
+  padding: 28px 30px 32px 30px;
+}
+
+.main-recorder-section h3 {
+  color: #ffe57f;
+  margin-bottom: 16px;
+  letter-spacing: 1.2px;
+}
+
+#mainRecorderPreview {
+  display: block;
+  margin: 0 auto 18px auto;
+  background: #222;
+  border-radius: 12px;
+  border: 2px solid #ffe57f55;
+  box-shadow: 0 3px 18px #1565c044;
+}
+
+.main-recorder-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+}
+
+.main-recorder-btn {
+  font-size: 1.12rem;
+  font-weight: 700;
+  padding: 12px 32px;
+  border-radius: 9px;
+  border: none;
+  cursor: pointer;
+  letter-spacing:1.05px;
+  transition: background 0.17s, color 0.13s;
+}
+.custom-record-btn {
+  background: linear-gradient(91deg,#42a5f5 60%,#1565c0 100%);
+  color: #fff;
+  box-shadow: 0 2px 12px #42a5f544;
+}
+.custom-record-btn:hover {
+  background: linear-gradient(91deg,#1565c0 60%,#42a5f5 100%);
+  color: #fff;
+}
+.custom-stop-btn {
+  background: linear-gradient(91deg,#ff7043 60%,#d84315 100%);
+  color: #fff;
+  box-shadow: 0 2px 12px #ff704344;
+}
+.custom-stop-btn:hover {
+  background: linear-gradient(91deg,#d84315 60%,#ff7043 100%);
+  color: #fff;
+}
+.custom-download-btn {
+  background: linear-gradient(91deg,#43e5c6 60%,#148a6f 100%);
+  color: #fff;
+  box-shadow: 0 2px 12px #43e5c644;
+}
+.custom-download-btn:hover {
+  background: linear-gradient(91deg,#148a6f 60%,#43e5c6 100%);
+  color: #fff;
+}
+.main-recorder-btn:disabled {
+  background: #aaa !important;
+  color: #fff !important;
+  cursor: not-allowed;
+}
+.main-recorder-status {
+  margin-left: 18px;
+  font-weight: 700;
+  color: #42a5f5;
+  font-size: 1.13rem;
+  text-shadow:0 2px 6px #1565c0,0 1px 0 #42a5f5;
+}
+.take-instructions {
+  margin-top: 12px;
+  font-size: 1em;
+  color: #b8e2ff;
+  background: #1565c044;
+  padding: 8px 18px;
+  border-radius: 7px;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .switcher-control-section {
   width: 900px;
   max-width: 99vw;
@@ -362,7 +458,7 @@ body {
   }
 }
 @media (max-width: 700px) {
-  .hollywood-header h2, .master-output-section, .audio-track-block, .switcher-upload-section, .switcher-control-section {
+  .hollywood-header h2, .master-output-section, .audio-track-block, .switcher-upload-section, .main-recorder-section, .switcher-control-section {
     font-size: 1em;
     width: 99vw;
     padding-left: 0;
