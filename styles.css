@@ -279,6 +279,55 @@ body {
   margin-right: auto;
 }
 
+/* Switcher Switch Buttons Horizontal Row */
+.fastcut-switcher-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 32px;
+  margin: 24px auto 12px auto;
+  flex-direction: row;
+  max-width: 900px;
+}
+.fastcut-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 128px;
+  height: 56px;
+  padding: 0 30px;
+  font-size: 1.19rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 9px;
+  background: linear-gradient(91deg, #ffe57f 60%, #e53935 100%);
+  color: #221c19;
+  cursor: pointer;
+  box-shadow: 0 4px 18px #ffe57f44,0 1.5px 0.5px #ffe57f33;
+  letter-spacing: 1.1px;
+  transition: background 0.17s, box-shadow 0.17s, transform 0.14s, color 0.13s;
+  outline: none;
+  margin: 0;
+  position: relative;
+  font-family: 'Orbitron', 'Montserrat', Arial, sans-serif;
+}
+.fastcut-btn:hover,
+.fastcut-btn:focus {
+  background: linear-gradient(91deg, #ffe57f 40%, #e53935 100%);
+  color: #fff;
+  box-shadow: 0 6px 28px #ffe57f66,0 2px 8px #e5393540;
+  transform: translateY(-2px) scale(1.04);
+}
+.fastcut-btn.active {
+  background: linear-gradient(91deg, #e53935 60%, #ffe57f 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 30px #e5393577;
+  border: 2px solid #e53935;
+  z-index: 2;
+  transform: scale(1.08);
+  text-shadow: 0 1.5px 0 #ffe57f77,0 2.5px 4px #e5393580;
+}
+
 .switcher-control-section {
   width: 900px;
   max-width: 99vw;
@@ -325,54 +374,6 @@ body {
   background: #aaa !important;
   color: #fff !important;
   cursor: not-allowed;
-}
-
-.fastcut-switcher {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 18px;
-  margin: 0 auto 0 auto;
-  max-width: 680px;
-}
-.fastcut-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 128px;
-  height: 56px;
-  padding: 0 30px;
-  font-size: 1.19rem;
-  font-weight: 700;
-  border: none;
-  border-radius: 9px;
-  background: linear-gradient(91deg, #ffe57f 60%, #e53935 100%);
-  color: #221c19;
-  cursor: pointer;
-  box-shadow: 0 4px 18px #ffe57f44,0 1.5px 0.5px #ffe57f33;
-  letter-spacing: 1.1px;
-  transition: background 0.17s, box-shadow 0.17s, transform 0.14s, color 0.13s;
-  outline: none;
-  margin: 0;
-  position: relative;
-  font-family: 'Orbitron', 'Montserrat', Arial, sans-serif;
-}
-.fastcut-btn:hover,
-.fastcut-btn:focus {
-  background: linear-gradient(91deg, #ffe57f 40%, #e53935 100%);
-  color: #fff;
-  box-shadow: 0 6px 28px #ffe57f66,0 2px 8px #e5393540;
-  transform: translateY(-2px) scale(1.04);
-}
-.fastcut-btn.active {
-  background: linear-gradient(91deg, #e53935 60%, #ffe57f 100%) !important;
-  color: #fff !important;
-  box-shadow: 0 6px 30px #e5393577;
-  border: 2px solid #e53935;
-  z-index: 2;
-  transform: scale(1.08);
-  text-shadow: 0 1.5px 0 #ffe57f77,0 2.5px 4px #e5393580;
 }
 
 .switching-instructions {
@@ -441,10 +442,14 @@ body {
     max-width: 350px;
     width: 95vw;
   }
+  .fastcut-switcher-row {
+    gap: 16px;
+    max-width: 99vw;
+  }
 }
 @media (max-width: 900px) {
-  .fastcut-switcher {
-    gap: 11px;
+  .fastcut-switcher-row {
+    gap: 10px;
     max-width: 99vw;
   }
   .fastcut-btn {
@@ -463,5 +468,9 @@ body {
     width: 99vw;
     padding-left: 0;
     padding-right: 0;
+  }
+  .fastcut-switcher-row {
+    flex-direction: column;
+    gap: 8px;
   }
 }
