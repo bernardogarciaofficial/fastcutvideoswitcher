@@ -216,6 +216,10 @@ document.addEventListener('DOMContentLoaded', function() {
     masterOutputVideo.volume = e.target.value;
   });
 
+  // Activate the built-in browser volume UI (speaker icon bottom right)
+  // Unmute, so the control is not "crossed out" and is interactive
+  masterOutputVideo.muted = false;
+
   function checkAllTakesUploaded() {
     const allUploaded = uploadedVideos.every(v => !!v);
     startSwitchingBtn.disabled = !allUploaded;
@@ -280,6 +284,8 @@ document.addEventListener('DOMContentLoaded', function() {
       masterOutputVideo.load();
       // Set volume after new src loaded
       masterOutputVideo.volume = masterOutputVolume.value;
+      // Unmute, so UI speaker is active
+      masterOutputVideo.muted = false;
       livePlaybackUrl = url;
       exportStatus.textContent = "Export complete! Download your final video.";
       const a = document.createElement('a');
@@ -299,6 +305,7 @@ document.addEventListener('DOMContentLoaded', function() {
     masterOutputVideo.srcObject = stream;
     masterOutputVideo.play();
     masterOutputVideo.volume = masterOutputVolume.value;
+    masterOutputVideo.muted = false; // ensure unmuted for built-in volume
     mediaRecorder.start();
 
     function draw() {
@@ -350,4 +357,7 @@ document.addEventListener('DOMContentLoaded', function() {
   startSwitchingBtn.disabled = true;
   stopSwitchingBtn.disabled = true;
   fastcutBtns.forEach(btn => btn.disabled = true);
+
+  // Ensure main output video is unmuted for built-in speaker icon on page load
+  masterOutputVideo.muted = false;
 });
