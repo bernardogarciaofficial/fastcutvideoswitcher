@@ -376,6 +376,22 @@ body {
   cursor: not-allowed;
 }
 
+.volume-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 18px 0;
+}
+.volume-icon {
+  font-size: 1.2em;
+  vertical-align: middle;
+}
+#masterOutputVolume {
+  width: 160px;
+  accent-color: #ffe57f;
+}
+
 .switching-instructions {
   margin-top: 16px;
   color: #b8e2ff;
