@@ -125,6 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
     "Instrument / B-Roll",
     "Creative Angle"
   ];
+  // Render buttons in a single row
   const fastcutSwitcher = document.getElementById('fastcutSwitcher');
   fastcutSwitcher.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) =>
     `<button class="fastcut-btn" id="fastcutBtn-${i}">${TRACK_NAMES[i]}</button>`
@@ -236,13 +237,17 @@ document.addEventListener('DOMContentLoaded', function() {
       v.currentTime = 0;
       v.pause();
     }
-    // Start all videos in sync
+    // Play all videos in sync
     for (let i = 0; i < NUM_TRACKS; i++) {
       const v = document.getElementById(`video-${i}`);
       v.currentTime = 0;
       v.muted = true;
       v.play();
     }
+    // Play main audio in sync (NEW: play when switching starts)
+    audio.currentTime = 0;
+    audio.play();
+
     // Prepare switching timeline
     switchingTimeline = [{ time: 0, track: activeTrack }];
     switchingStartTime = Date.now();
@@ -328,6 +333,7 @@ document.addEventListener('DOMContentLoaded', function() {
     startSwitchingBtn.disabled = false;
     stopSwitchingBtn.disabled = true;
     fastcutBtns.forEach(btn => btn.disabled = true);
+    audio.pause();
     if (mediaRecorder && mediaRecorder.state !== "inactive") {
       mediaRecorder.stop();
     }
