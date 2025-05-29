@@ -33,8 +33,8 @@ document.getElementById('songInput').onchange = e => {
   }
 };
 
-// --- FastCut Switcher Logic (Main Recorder Section) ---
 document.addEventListener('DOMContentLoaded', function() {
+  // --- FastCut Switcher Logic ---
   const NUM_TRACKS = 4;
   const TRACK_NAMES = [
     "Main Camera",
@@ -52,7 +52,13 @@ document.addEventListener('DOMContentLoaded', function() {
   for (let i = 0; i < NUM_TRACKS; i++) {
     const btn = document.getElementById(`fastcutBtn-${i}`);
     fastcutBtns.push(btn);
-    btn.onclick = () => setActiveTrack(i);
+    btn.onclick = () => {
+      setActiveTrack(i);
+      if (isSwitching) {
+        // record the time and track switch
+        recordSwitch(Date.now() - switchingStartTime, i);
+      }
+    };
   }
   function setActiveTrack(idx) {
     activeTrack = idx;
@@ -69,89 +75,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   setActiveTrack(0);
 
-  // --- Main Recording Section Logic ---
-  const mainRecorderPreview = document.getElementById('mainRecorderPreview');
-  const mainRecorderRecordBtn = document.getElementById('mainRecorderRecordBtn');
-  const mainRecorderStopBtn = document.getElementById('mainRecorderStopBtn');
-  const mainRecorderDownloadBtn = document.getElementById('mainRecorderDownloadBtn');
-  const mainRecorderStatus = document.getElementById('mainRecorderStatus');
-
-  let mainRecorderStream = null;
-  let mainRecorderMediaRecorder = null;
-  let mainRecorderChunks = [];
-  let mainRecorderBlobURL = null;
-
-  mainRecorderRecordBtn.onclick = async () => {
-    if (!masterAudioFile) {
-      mainRecorderStatus.textContent = "Please upload an audio track first!";
-      return;
-    }
-    mainRecorderRecordBtn.disabled = true;
-    mainRecorderStopBtn.disabled = false;
-    mainRecorderDownloadBtn.disabled = true;
-    mainRecorderStatus.textContent = "Recording...";
-
-    mainRecorderChunks = [];
-    // Get camera and mic
-    try {
-      mainRecorderStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    } catch (err) {
-      mainRecorderStatus.textContent = "Camera or microphone access denied.";
-      mainRecorderRecordBtn.disabled = false;
-      mainRecorderStopBtn.disabled = true;
-      return;
-    }
-    mainRecorderPreview.srcObject = mainRecorderStream;
-    mainRecorderPreview.muted = true;
-    mainRecorderPreview.controls = false;
-
-    // Start music in sync
-    audio.currentTime = 0;
-    audio.play();
-
-    // Record video + audio
-    mainRecorderMediaRecorder = new MediaRecorder(mainRecorderStream, { mimeType: "video/webm" });
-    mainRecorderMediaRecorder.ondataavailable = e => { if (e.data.size > 0) mainRecorderChunks.push(e.data); };
-    mainRecorderMediaRecorder.onstop = () => {
-      if (mainRecorderPreview.srcObject) {
-        mainRecorderPreview.srcObject.getTracks().forEach(track => track.stop());
-        mainRecorderPreview.srcObject = null;
-      }
-      const blob = new Blob(mainRecorderChunks, { type: "video/webm" });
-      if (mainRecorderBlobURL) URL.revokeObjectURL(mainRecorderBlobURL);
-      mainRecorderBlobURL = URL.createObjectURL(blob);
-      mainRecorderPreview.src = mainRecorderBlobURL;
-      mainRecorderPreview.controls = true;
-      mainRecorderPreview.muted = false;
-      mainRecorderPreview.load();
-      mainRecorderDownloadBtn.disabled = false;
-      mainRecorderStatus.textContent = "Recording complete! Download your take.";
-    };
-    mainRecorderMediaRecorder.start();
-  };
-
-  mainRecorderStopBtn.onclick = () => {
-    if (mainRecorderMediaRecorder && mainRecorderMediaRecorder.state !== "inactive") {
-      mainRecorderMediaRecorder.stop();
-    }
-    mainRecorderRecordBtn.disabled = false;
-    mainRecorderStopBtn.disabled = true;
-    audio.pause();
-    audio.currentTime = 0;
-  };
-
-  mainRecorderDownloadBtn.onclick = () => {
-    if (!mainRecorderBlobURL) return;
-    const a = document.createElement('a');
-    a.href = mainRecorderBlobURL;
-    a.download = `fastcut_take_${Date.now()}.webm`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    mainRecorderStatus.textContent = "Take downloaded. Repeat for each angle!";
-  };
-
-  // --- Switcher Upload Section Logic (Upload-Only) ---
+  // --- Upload Section ---
   const VIDEO_ACCEPTED = ".mp4,.webm,.mov,.ogg,.mkv,video/*";
   const switcherTracks = document.getElementById("switcherTracks");
   switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => `
@@ -189,14 +113,27 @@ document.addEventListener('DOMContentLoaded', function() {
     };
   }
 
+  // --- Switching/Recording Logic ---
+  const startSwitchingBtn = document.getElementById('startSwitchingBtn');
+  const stopSwitchingBtn = document.getElementById('stopSwitchingBtn');
+  const masterOutputVideo = document.getElementById('masterOutputVideo');
+  const exportStatus = document.getElementById('exportStatus');
+  const mixCanvas = document.getElementById('mixCanvas');
+
+  let isSwitching = false;
+  let mixing = false, mediaRecorder = null, masterChunks = [];
+  let drawRequestId = null;
+  let livePlaybackUrl = null;
+  let switchingStartTime = 0;
+  let switchingTimeline = [];
+
   function checkAllTakesUploaded() {
     const allUploaded = uploadedVideos.every(v => !!v);
-    document.getElementById("exportBtn").disabled = !allUploaded;
+    startSwitchingBtn.disabled = !allUploaded;
     setupSwitcherTracks();
   }
 
   function setupSwitcherTracks() {
-    // Prepare video elements for switching
     for (let i = 0; i < NUM_TRACKS; i++) {
       const v = document.getElementById(`video-${i}`);
       v.pause();
@@ -204,29 +141,37 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // --- Master Output/Export Logic ---
-  const masterOutputVideo = document.getElementById('masterOutputVideo');
-  const exportBtn = document.getElementById('exportBtn');
-  const exportStatus = document.getElementById('exportStatus');
-  const mixCanvas = document.getElementById('mixCanvas');
+  function recordSwitch(timeMs, trackIdx) {
+    // timeMs from switchingStartTime, trackIdx is 0-3
+    if (switchingTimeline.length === 0 && timeMs > 100) return; // skip accidental click
+    if (switchingTimeline.length > 0 && switchingTimeline[switchingTimeline.length-1].track === trackIdx) return;
+    switchingTimeline.push({ time: timeMs, track: trackIdx });
+  }
 
-  let mixing = false, mediaRecorder = null, masterChunks = [];
-  let drawRequestId = null;
-  let livePlaybackUrl = null;
-
-  exportBtn.onclick = () => {
-    if (!uploadedVideos.every(v => !!v)) {
-      exportStatus.textContent = "Upload all 4 takes to enable export.";
-      return;
-    }
+  startSwitchingBtn.onclick = () => {
     exportStatus.textContent = "";
-    // Sync all videos to 0
+    // Reset all
     for (let i = 0; i < NUM_TRACKS; i++) {
       const v = document.getElementById(`video-${i}`);
       v.currentTime = 0;
       v.pause();
     }
-    // Play all, but draw only active
+    // Start all videos in sync
+    for (let i = 0; i < NUM_TRACKS; i++) {
+      const v = document.getElementById(`video-${i}`);
+      v.currentTime = 0;
+      v.muted = true;
+      v.play();
+    }
+    // Prepare switching timeline
+    switchingTimeline = [{ time: 0, track: activeTrack }];
+    switchingStartTime = Date.now();
+    isSwitching = true;
+    startSwitchingBtn.disabled = true;
+    stopSwitchingBtn.disabled = false;
+    fastcutBtns.forEach(btn => btn.disabled = false);
+
+    // Start drawing to canvas and recording
     const ctx = mixCanvas.getContext('2d');
     ctx.fillStyle = "#111";
     ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
@@ -256,15 +201,7 @@ document.addEventListener('DOMContentLoaded', function() {
       document.body.removeChild(a);
     };
 
-    // Start all videos in sync
-    for (let i = 0; i < NUM_TRACKS; i++) {
-      const v = document.getElementById(`video-${i}`);
-      v.currentTime = 0;
-      v.muted = true;
-      v.play();
-    }
-
-    // Draw the active video to canvas (switchable)
+    // Draw video to canvas, switching as per timeline
     mixing = true;
     let duration = 0;
     const refVideo = document.getElementById('video-0');
@@ -275,10 +212,20 @@ document.addEventListener('DOMContentLoaded', function() {
     masterOutputVideo.play();
     mediaRecorder.start();
 
-    let t0 = performance.now();
+    let t0 = Date.now();
     function draw() {
       if (!mixing) return;
-      const v = document.getElementById(`video-${activeTrack}`);
+      // Figure out which track should be shown at this time
+      let elapsed = Date.now() - switchingStartTime;
+      let track = switchingTimeline[0].track;
+      for (let i = 0; i < switchingTimeline.length; i++) {
+        if (switchingTimeline[i].time <= elapsed) {
+          track = switchingTimeline[i].track;
+        } else {
+          break;
+        }
+      }
+      const v = document.getElementById(`video-${track}`);
       if (v && !v.paused && !v.ended) {
         ctx.fillStyle = "#111";
         ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
@@ -287,15 +234,31 @@ document.addEventListener('DOMContentLoaded', function() {
         ctx.fillStyle = "#111";
         ctx.fillRect(0, 0, 600, 340);
       }
-      if ((performance.now() - t0)/1000 < duration && mixing) {
+      if ((Date.now() - switchingStartTime)/1000 < duration && mixing && isSwitching) {
         drawRequestId = requestAnimationFrame(draw);
-      } else {
-        mixing = false;
-        mediaRecorder.stop();
-        if (drawRequestId !== null) cancelAnimationFrame(drawRequestId);
-        drawRequestId = null;
       }
     }
     draw();
   };
+
+  stopSwitchingBtn.onclick = () => {
+    if (!isSwitching) return;
+    mixing = false;
+    isSwitching = false;
+    startSwitchingBtn.disabled = false;
+    stopSwitchingBtn.disabled = true;
+    fastcutBtns.forEach(btn => btn.disabled = true);
+    // Stop recording
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      mediaRecorder.stop();
+    }
+    if (drawRequestId !== null) cancelAnimationFrame(drawRequestId);
+    drawRequestId = null;
+    exportStatus.textContent = "Rendering and export complete! Download below.";
+  };
+
+  // On load, disable all switching controls until videos are uploaded
+  startSwitchingBtn.disabled = true;
+  stopSwitchingBtn.disabled = true;
+  fastcutBtns.forEach(btn => btn.disabled = true);
 });
