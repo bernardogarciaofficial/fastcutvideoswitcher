@@ -32,13 +32,28 @@
     <audio id="audio" controls style="display:none"></audio>
   </div>
 
+  <!-- Main Video Recording Screen (NEW) -->
+  <div class="main-recorder-section">
+    <h3>Step 1.5: Record Your Main Video Take</h3>
+    <video id="mainRecorderPreview" width="600" height="340" autoplay muted></video>
+    <div class="main-recorder-controls">
+      <button id="mainRecorderRecordBtn" class="main-recorder-btn custom-record-btn">⏺️ Record</button>
+      <button id="mainRecorderStopBtn" class="main-recorder-btn custom-stop-btn" disabled>⏹️ Stop</button>
+      <button id="mainRecorderDownloadBtn" class="main-recorder-btn custom-download-btn" disabled>⬇️ Download</button>
+      <span id="mainRecorderStatus" class="main-recorder-status"></span>
+    </div>
+    <div class="take-instructions">
+      <span>Record your main video take synced to the audio track. Download and use it as one of your 4 takes below!</span>
+    </div>
+  </div>
+
   <!-- Step 2: Upload Takes for 4-Track Switching -->
   <div class="switcher-upload-section">
     <h3>Step 2: Upload Your 4 Takes</h3>
     <div id="switcherTracks" class="switcher-track-grid-row"></div>
   </div>
 
-  <!-- Step 3: Live Switch and Record (these buttons go here!) -->
+  <!-- Step 3: Live Switch and Record -->
   <div class="switcher-control-section">
     <div class="switcher-live-controls">
       <button id="startSwitchingBtn" class="live-switch-btn record-btn" disabled>⏺️ Start Switching</button>
