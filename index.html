@@ -36,11 +36,15 @@
   <div class="main-recorder-section">
     <h3>Step 2: Record Your Take</h3>
     <video id="mainRecorderPreview" width="600" height="340" autoplay muted></video>
-    <div class="main-recorder-controls">
-      <button id="mainRecorderRecordBtn" class="main-recorder-btn custom-record-btn">⏺️ Record Take</button>
-      <button id="mainRecorderStopBtn" class="main-recorder-btn custom-stop-btn" disabled>⏹️ Stop</button>
-      <button id="mainRecorderDownloadBtn" class="main-recorder-btn custom-download-btn" disabled>⬇️ Download Take</button>
-      <span id="mainRecorderStatus" class="main-recorder-status"></span>
+    <!-- Place the record/stop and switcher buttons together -->
+    <div class="main-recorder-controls-group">
+      <div class="main-recorder-controls">
+        <button id="mainRecorderRecordBtn" class="main-recorder-btn custom-record-btn">⏺️ Main Record</button>
+        <button id="mainRecorderStopBtn" class="main-recorder-btn custom-stop-btn" disabled>⏹️ Stop</button>
+        <button id="mainRecorderDownloadBtn" class="main-recorder-btn custom-download-btn" disabled>⬇️ Download Take</button>
+        <span id="mainRecorderStatus" class="main-recorder-status"></span>
+      </div>
+      <div id="fastcutSwitcher" class="fastcut-switcher compact"></div>
     </div>
     <div class="take-instructions">
       <span>After recording, download your take and repeat for each camera angle. Once you have 4 takes, upload them below!</span>
@@ -55,7 +59,6 @@
 
   <!-- Step 4: FastCut Switcher/Export -->
   <div class="master-output-section">
-    <div id="fastcutSwitcher" class="fastcut-switcher compact"></div>
     <h3 class="output-title">Master Output Video <span class="filmstrip">🎞️</span></h3>
     <video id="masterOutputVideo" controls width="600" height="340"></video>
     <div style="margin-top:16px;">
