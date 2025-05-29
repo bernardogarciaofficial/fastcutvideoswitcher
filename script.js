@@ -199,6 +199,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const startSwitchingBtn = document.getElementById('startSwitchingBtn');
   const stopSwitchingBtn = document.getElementById('stopSwitchingBtn');
   const masterOutputVideo = document.getElementById('masterOutputVideo');
+  const masterOutputVolume = document.getElementById('masterOutputVolume');
   const exportStatus = document.getElementById('exportStatus');
   const mixCanvas = document.getElementById('mixCanvas');
 
@@ -208,6 +209,12 @@ document.addEventListener('DOMContentLoaded', function() {
   let livePlaybackUrl = null;
   let switchingStartTime = 0;
   let switchingTimeline = [];
+
+  // Volume control for main video output
+  masterOutputVideo.volume = masterOutputVolume.value;
+  masterOutputVolume.addEventListener('input', (e) => {
+    masterOutputVideo.volume = e.target.value;
+  });
 
   function checkAllTakesUploaded() {
     const allUploaded = uploadedVideos.every(v => !!v);
@@ -231,13 +238,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
   startSwitchingBtn.onclick = () => {
     exportStatus.textContent = "";
-    // Reset all
     for (let i = 0; i < NUM_TRACKS; i++) {
       const v = document.getElementById(`video-${i}`);
       v.currentTime = 0;
       v.pause();
     }
-    // Play all videos in sync
     for (let i = 0; i < NUM_TRACKS; i++) {
       const v = document.getElementById(`video-${i}`);
       v.currentTime = 0;
@@ -248,7 +253,6 @@ document.addEventListener('DOMContentLoaded', function() {
     audio.currentTime = 0;
     audio.play();
 
-    // Prepare switching timeline
     switchingTimeline = [{ time: 0, track: activeTrack }];
     switchingStartTime = Date.now();
     isSwitching = true;
@@ -256,7 +260,6 @@ document.addEventListener('DOMContentLoaded', function() {
     stopSwitchingBtn.disabled = false;
     fastcutBtns.forEach(btn => btn.disabled = false);
 
-    // Start drawing to canvas and recording
     const ctx = mixCanvas.getContext('2d');
     ctx.fillStyle = "#111";
     ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
@@ -275,9 +278,10 @@ document.addEventListener('DOMContentLoaded', function() {
       const url = URL.createObjectURL(blob);
       masterOutputVideo.src = url;
       masterOutputVideo.load();
+      // Set volume after new src loaded
+      masterOutputVideo.volume = masterOutputVolume.value;
       livePlaybackUrl = url;
       exportStatus.textContent = "Export complete! Download your final video.";
-      // Offer download
       const a = document.createElement('a');
       a.href = url;
       a.download = `fastcut_music_video.webm`;
@@ -286,7 +290,6 @@ document.addEventListener('DOMContentLoaded', function() {
       document.body.removeChild(a);
     };
 
-    // Draw video to canvas, switching as per timeline
     mixing = true;
     let duration = 0;
     const refVideo = document.getElementById('video-0');
@@ -295,6 +298,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     masterOutputVideo.srcObject = stream;
     masterOutputVideo.play();
+    masterOutputVideo.volume = masterOutputVolume.value;
     mediaRecorder.start();
 
     function draw() {
