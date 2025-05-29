@@ -71,6 +71,10 @@
   <div class="master-output-section">
     <h3 class="output-title">Master Output Video <span class="filmstrip">🎞️</span></h3>
     <video id="masterOutputVideo" controls width="600" height="340"></video>
+    <div class="volume-controls">
+      <label for="masterOutputVolume"><span class="volume-icon">🔊</span> Volume:</label>
+      <input type="range" id="masterOutputVolume" min="0" max="1" step="0.01" value="1">
+    </div>
     <div id="exportStatus" class="export-status"></div>
     <div id="syncInstructions" class="sync-instructions">
       <strong>How to Fix Audio/Video Sync in Your Editor:</strong>
