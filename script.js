@@ -212,6 +212,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Volume control for main video output
   masterOutputVideo.volume = masterOutputVolume.value;
+
   masterOutputVolume.addEventListener('input', (e) => {
     masterOutputVideo.volume = e.target.value;
   });
@@ -219,6 +220,11 @@ document.addEventListener('DOMContentLoaded', function() {
   // Activate the built-in browser volume UI (speaker icon bottom right)
   // Unmute, so the control is not "crossed out" and is interactive
   masterOutputVideo.muted = false;
+
+  // Ensure that user interaction unlocks audio output in browsers with autoplay restrictions
+  masterOutputVideo.addEventListener('play', () => {
+    masterOutputVideo.muted = false;
+  });
 
   function checkAllTakesUploaded() {
     const allUploaded = uploadedVideos.every(v => !!v);
