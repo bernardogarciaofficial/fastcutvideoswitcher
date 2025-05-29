@@ -55,14 +55,12 @@ document.addEventListener('DOMContentLoaded', function() {
     btn.onclick = () => {
       setActiveTrack(i);
       if (isSwitching) {
-        // record the time and track switch
         recordSwitch(Date.now() - switchingStartTime, i);
       }
     };
   }
   function setActiveTrack(idx) {
     activeTrack = idx;
-    // Only highlight .switcher-track boxes if they exist (upload section)
     const tracks = document.querySelectorAll('.switcher-track');
     if (tracks.length === NUM_TRACKS) {
       tracks.forEach((el, j) =>
@@ -142,8 +140,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function recordSwitch(timeMs, trackIdx) {
-    // timeMs from switchingStartTime, trackIdx is 0-3
-    if (switchingTimeline.length === 0 && timeMs > 100) return; // skip accidental click
+    if (switchingTimeline.length === 0 && timeMs > 100) return;
     if (switchingTimeline.length > 0 && switchingTimeline[switchingTimeline.length-1].track === trackIdx) return;
     switchingTimeline.push({ time: timeMs, track: trackIdx });
   }
@@ -206,16 +203,14 @@ document.addEventListener('DOMContentLoaded', function() {
     let duration = 0;
     const refVideo = document.getElementById('video-0');
     if (refVideo && !isNaN(refVideo.duration)) duration = refVideo.duration;
-    else duration = 180; // fallback
+    else duration = 180;
 
     masterOutputVideo.srcObject = stream;
     masterOutputVideo.play();
     mediaRecorder.start();
 
-    let t0 = Date.now();
     function draw() {
       if (!mixing) return;
-      // Figure out which track should be shown at this time
       let elapsed = Date.now() - switchingStartTime;
       let track = switchingTimeline[0].track;
       for (let i = 0; i < switchingTimeline.length; i++) {
@@ -248,7 +243,6 @@ document.addEventListener('DOMContentLoaded', function() {
     startSwitchingBtn.disabled = false;
     stopSwitchingBtn.disabled = true;
     fastcutBtns.forEach(btn => btn.disabled = true);
-    // Stop recording
     if (mediaRecorder && mediaRecorder.state !== "inactive") {
       mediaRecorder.stop();
     }
