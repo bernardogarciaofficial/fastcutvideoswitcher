@@ -1,20 +1,251 @@
-/* ...existing styles... */
-
-/* Group for main record/stop and switcher buttons */
-.main-recorder-controls-group {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  align-items: center;
-  margin-top: 18px;
-  margin-bottom: 10px;
+body {
+  font-family: 'Montserrat', Arial, sans-serif;
+  background: #181c23;
+  color: #f4f7fb;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0 0 30px 0;
+  position: relative;
+  overflow-x: hidden;
+}
+.theme-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background: linear-gradient(120deg, #181c23 30%, #2b3450 60%, #812424 100%);
+  filter: blur(0.5px);
+  animation: bg-move 14s infinite linear alternate;
+}
+@keyframes bg-move {
+  0% { background-position: 0% 40%; }
+  100% { background-position: 100% 70%; }
 }
 
-.main-recorder-controls {
+/* Spotlights */
+.set-lights {
+  pointer-events: none;
+}
+.spotlight {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.18;
+  pointer-events: none;
+  filter: blur(28px);
+  z-index: -1;
+}
+.spotlight-left {
+  width: 420px; height: 420px;
+  top: 60px; left: -120px;
+  background: radial-gradient(circle, #ffe57f 0%, #fffbe0 60%, transparent 100%);
+  animation: lmove 6s infinite alternate;
+}
+.spotlight-right {
+  width: 370px; height: 370px;
+  top: 160px; right: -100px;
+  background: radial-gradient(circle, #ffb07f 0%, #ffe0e0 60%, transparent 100%);
+  animation: rmove 6s infinite alternate;
+}
+.spotlight-top {
+  width: 600px; height: 220px;
+  top: -90px; left: 30%;
+  background: radial-gradient(circle, #fff 0%, #ffe57f 65%, transparent 100%);
+  opacity: 0.13;
+  animation: tmove 7.7s infinite alternate;
+}
+@keyframes lmove { 0%{ top:60px;} 100%{top:90px;} }
+@keyframes rmove { 0%{ top:160px;} 100%{top:210px;} }
+@keyframes tmove { 0%{ left:30%;} 100%{left:40%;} }
+
+.hollywood-header {
+  text-align: center;
+  margin-top: 18px;
+  margin-bottom: 32px;
+  font-family: 'Orbitron', 'Montserrat', Arial, sans-serif;
+  letter-spacing: 2.5px;
+  font-size: 1.2rem;
+  color: #ffe57f;
+  text-shadow: 0 2px 12px #000, 0 1px 0 #fff8;
+  position: relative;
+  z-index: 2;
+}
+.hollywood-header h2 {
+  display: inline-block;
+  margin: 0 16px 0 16px;
+  font-size: 2.15rem;
+  font-family: 'Orbitron', 'Montserrat', Arial, sans-serif;
+  letter-spacing: 3.5px;
+  color: #ffe57f;
+  text-shadow: 0 8px 36px #000, 0 2px 0 #fff8;
+  font-weight: 700;
+}
+.camera-icon, .clapperboard-icon {
+  font-size: 2.1em;
+  filter: drop-shadow(0 2px 12px #0008);
+  vertical-align: middle;
+}
+.lights-action {
+  font-family: 'Orbitron', 'Montserrat', Arial, sans-serif;
+  font-size: 1.14em;
+  margin-top: 8px;
+  color: #fffbe0;
+  text-shadow: 0 2px 7px #ffe57f,0 1px 0 #0008;
+  letter-spacing: 2.5px;
+  font-weight: 700;
+  animation: flicker 2.2s infinite alternate;
+}
+.lights-action .dot { color: #e53935; font-weight:bold; animation: action-dot 1.4s infinite alternate; }
+@keyframes flicker {
+  0% { opacity: 1;}
+  10% { opacity: 0.75;}
+  20% { opacity: 1;}
+  80% { opacity: 1;}
+  100% { opacity: 0.9;}
+}
+@keyframes action-dot {
+  0% { opacity: 1;}
+  60% { opacity: 1;}
+  100% { opacity: 0.3;}
+}
+
+.audio-track-block, .master-output-section, .main-recorder-section, .switcher-upload-section {
+  background: linear-gradient(120deg, #22263a 70%, #33211f 100%);
+  border-radius: 18px;
+  box-shadow: 0 6px 32px rgba(30,10,5,0.24), 0 1.5px 0.5px #ffe57f33;
+  padding: 28px 30px 32px 30px;
+  margin: 0 auto 36px auto;
+  width: 540px;
+  max-width: 98vw;
+  text-align: center;
+  border: 2px solid #ffe57f55;
+}
+.master-output-section {
+  width: 670px;
+  max-width: 99vw;
+  margin-top: 38px;
+  margin-bottom: 40px;
+  background: linear-gradient(120deg, #251b1c 60%, #412d2c 100%);
+  border: 2px solid #e5393555;
+  box-shadow: 0 10px 38px #0007, 0 1.5px 0.5px #ffe57f33;
+}
+.main-recorder-section {
+  width: 670px;
+  max-width: 99vw;
+  margin-top: 38px;
+  background: linear-gradient(120deg, #1a2133 60%, #314f85 100%);
+  border: 2px solid #42a5f5bb;
+  box-shadow: 0 8px 28px #1565c055;
+}
+.switcher-upload-section {
+  width: 900px;
+  max-width: 99vw;
+  margin-top: 38px;
+  margin-bottom: 38px;
+  background: linear-gradient(120deg, #23263c 60%, #404080 100%);
+  border: 2px solid #42a5f577;
+  box-shadow: 0 8px 28px #42a5f555;
+}
+.music-icon { font-size:1.1em; color:#ffe57f;}
+.output-title { color: #ffe57f; letter-spacing:1.5px; text-shadow:0 2px 6px #000; }
+.filmstrip { font-size:1.1em; }
+
+.switcher-track-grid-row {
   display: flex;
+  flex-direction: row;
   justify-content: center;
-  align-items: center;
-  gap: 16px;
+  align-items: flex-start;
+  gap: 24px;
+  max-width: 1200px;
+  margin: 0 auto 18px auto;
+}
+.switcher-track {
+  background: linear-gradient(115deg,#292f48 60%,#442424 100%);
+  border-radius: 14px;
+  box-shadow: 0 4px 22px rgba(0,0,0,0.13),0 2.5px 0.75px #ffe57f22;
+  padding: 20px 14px 22px 14px;
+  text-align: center;
+  position: relative;
+  border: 2.5px solid transparent;
+  transition: border 0.14s, box-shadow 0.2s;
+  min-width: 210px;
+  max-width: 230px;
+  flex: 1 1 0;
+}
+.switcher-track.active {
+  border: 2.5px solid #e53935;
+  box-shadow: 0 0 0 7px rgba(229,57,53,0.08),0 2px 16px #e5393544;
+}
+.switcher-track video {
+  width: 100%;
+  min-height: 150px;
+  max-height: 180px;
+  border-radius: 8px;
+  background: #111;
+  box-shadow: 0 3px 18px #12121255;
+  border: 1.5px solid #ffe57f55;
+}
+.switcher-track .track-title {
+  font-size: 1.19rem;
+  margin: 7px 0 13px 0;
+  font-weight: bold;
+  color: #ffe57f;
+  text-shadow:0 1.5px 0 #000a;
+  letter-spacing:1.2px;
+}
+.switcher-track .select-btn {
+  padding: 10px 30px;
+  border-radius: 7px;
+  background: linear-gradient(90deg, #ffe57f 70%, #e53935 100%);
+  color: #231c19;
+  border: 1.5px solid #ffe57f99;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 1.13rem;
+  margin-top: 8px;
+  margin-right: 6px;
+  margin-left: 6px;
+  transition: background 0.13s, box-shadow 0.13s, color 0.13s;
+  box-shadow: 0 2px 10px #ffe57f33;
+  letter-spacing:0.7px;
+  outline: none;
+}
+.switcher-track .select-btn:active,
+.switcher-track .select-btn.active {
+  background: linear-gradient(90deg, #e53935 60%, #ffe57f 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 18px #e5393544;
+}
+.switcher-track .rec-indicator {
+  color: #ffe57f;
+  text-shadow:0 2px 8px #e53935,0 0px 2px #ffe57f;
+  font-weight: bold;
+  position: absolute;
+  top: 10px; right: 15px;
+  font-size: 1.12em;
+}
+.upload-video-label {
+  display: block;
+  margin: 12px 0 7px 0;
+  font-weight: 600;
+  color: #ffe57f;
+  font-size: 1.05em;
+}
+.upload-video-btn {
+  padding: 5px 20px;
+  border-radius: 6px;
+  border: 1px solid #ffe57f99;
+  background: linear-gradient(90deg, #ffe57f 60%, #e53935 100%);
+  color: #231c19;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 1.03em;
+  margin-top: 5px;
+  margin-bottom: 3px;
+  transition: background 0.13s, color 0.13s;
+}
+
+.upload-video-btn:active {
+  background: linear-gradient(90deg, #e53935 60%, #ffe57f 100%);
+  color: #fff;
 }
 
 .fastcut-switcher {
@@ -22,10 +253,177 @@
   justify-content: center;
   align-items: center;
   flex-wrap: wrap;
-  gap: 28px;
-  margin: 0 auto 0 auto; /* remove top margin so it's close to controls */
+  gap: 18px;
+  margin: 0 auto;
   max-width: 680px;
 }
 
-/* The rest of your CSS remains unchanged. If you want to tighten spacing further,
-   you may adjust gap/top/bottom margin as desired. */
+.main-recorder-controls-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  margin-top: 18px;
+  margin-bottom: 16px;
+}
+
+.main-recorder-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 0;
+}
+
+.main-recorder-btn {
+  font-size: 1.12rem;
+  font-weight: 700;
+  padding: 12px 32px;
+  border-radius: 9px;
+  border: none;
+  cursor: pointer;
+  letter-spacing:1.05px;
+  transition: background 0.17s, color 0.13s;
+}
+.custom-record-btn {
+  background: linear-gradient(91deg,#42a5f5 60%,#1565c0 100%);
+  color: #fff;
+  box-shadow: 0 2px 12px #42a5f544;
+}
+.custom-record-btn:hover {
+  background: linear-gradient(91deg,#1565c0 60%,#42a5f5 100%);
+  color: #fff;
+}
+.custom-stop-btn {
+  background: linear-gradient(91deg,#ff7043 60%,#d84315 100%);
+  color: #fff;
+  box-shadow: 0 2px 12px #ff704344;
+}
+.custom-stop-btn:hover {
+  background: linear-gradient(91deg,#d84315 60%,#ff7043 100%);
+  color: #fff;
+}
+.custom-download-btn {
+  background: linear-gradient(91deg,#43e5c6 60%,#148a6f 100%);
+  color: #fff;
+  box-shadow: 0 2px 12px #43e5c644;
+}
+.custom-download-btn:hover {
+  background: linear-gradient(91deg,#148a6f 60%,#43e5c6 100%);
+  color: #fff;
+}
+.main-recorder-btn:disabled {
+  background: #aaa !important;
+  color: #fff !important;
+  cursor: not-allowed;
+}
+.main-recorder-status {
+  margin-left: 18px;
+  font-weight: 700;
+  color: #42a5f5;
+  font-size: 1.13rem;
+  text-shadow:0 2px 6px #1565c0,0 1px 0 #42a5f5;
+}
+.take-instructions {
+  margin-top: 12px;
+  font-size: 1em;
+  color: #b8e2ff;
+  background: #1565c044;
+  padding: 8px 18px;
+  border-radius: 7px;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.export-btn {
+  background: linear-gradient(91deg,#e53935 60%,#ffe57f 100%);
+  font-size: 1.13rem;
+  font-weight: 700;
+  padding: 13px 38px;
+  border-radius: 10px;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  letter-spacing:1.2px;
+  box-shadow: 0 2px 18px #e5393555;
+  transition: background 0.13s, color 0.13s;
+}
+.export-btn:disabled {
+  background: #aaa;
+  color: #fff;
+  cursor: not-allowed;
+}
+.export-status { margin-left: 18px; font-weight: 700; color: #ffe57f; text-shadow:0 1px 0 #e53935; }
+
+.sync-instructions {
+  margin-top: 28px;
+  background: #ffe57f22;
+  border-radius: 9px;
+  padding: 18px 20px 12px 20px;
+  color: #ffe57f;
+  font-size: 1.09em;
+  letter-spacing: 1px;
+  text-align: left;
+  box-shadow: 0 2px 18px #ffe57f44;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.sync-instructions ol {
+  margin: 10px 0 8px 25px;
+  padding: 0;
+}
+.sync-note {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.97em;
+  color: #ffe57f;
+  opacity: 0.82;
+}
+
+.hollywood-footer {
+  text-align: center;
+  color: #ffe57f;
+  font-size: 1.1em;
+  margin: 64px auto 0 auto;
+  letter-spacing: 2px;
+  text-shadow: 0 2px 9px #000;
+  font-family: 'Orbitron', 'Montserrat', Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+@media (max-width: 1300px) {
+  .switcher-track-grid-row {
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+  .switcher-track {
+    min-width: 210px;
+    max-width: 350px;
+    width: 95vw;
+  }
+}
+@media (max-width: 900px) {
+  .fastcut-switcher {
+    gap: 11px;
+    max-width: 99vw;
+  }
+  .fastcut-switcher .fastcut-btn {
+    min-width: 84px;
+    font-size: 1.02rem;
+    height: 44px;
+    padding: 0 14px;
+  }
+}
+@media (max-width: 700px) {
+  .hollywood-header h2, .master-output-section, .audio-track-block, .main-recorder-section, .switcher-upload-section {
+    font-size: 1em;
+    width: 99vw;
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
