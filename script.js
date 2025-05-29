@@ -33,6 +33,89 @@ document.getElementById('songInput').onchange = e => {
   }
 };
 
+// --- Main Video Recording Logic ---
+const mainRecorderPreview = document.getElementById('mainRecorderPreview');
+const mainRecorderRecordBtn = document.getElementById('mainRecorderRecordBtn');
+const mainRecorderStopBtn = document.getElementById('mainRecorderStopBtn');
+const mainRecorderDownloadBtn = document.getElementById('mainRecorderDownloadBtn');
+const mainRecorderStatus = document.getElementById('mainRecorderStatus');
+
+let mainRecorderStream = null;
+let mainRecorderMediaRecorder = null;
+let mainRecorderChunks = [];
+let mainRecorderBlobURL = null;
+
+mainRecorderRecordBtn.onclick = async () => {
+  if (!masterAudioFile) {
+    mainRecorderStatus.textContent = "Please upload an audio track first!";
+    return;
+  }
+  mainRecorderRecordBtn.disabled = true;
+  mainRecorderStopBtn.disabled = false;
+  mainRecorderDownloadBtn.disabled = true;
+  mainRecorderStatus.textContent = "Recording...";
+
+  mainRecorderChunks = [];
+  try {
+    mainRecorderStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  } catch (err) {
+    mainRecorderStatus.textContent = "Camera or microphone access denied.";
+    mainRecorderRecordBtn.disabled = false;
+    mainRecorderStopBtn.disabled = true;
+    return;
+  }
+  mainRecorderPreview.srcObject = mainRecorderStream;
+  mainRecorderPreview.muted = true;
+  mainRecorderPreview.controls = false;
+
+  // Start music in sync
+  audio.currentTime = 0;
+  audio.play();
+
+  // Record video + audio
+  mainRecorderMediaRecorder = new MediaRecorder(mainRecorderStream, { mimeType: "video/webm" });
+  mainRecorderMediaRecorder.ondataavailable = e => { if (e.data.size > 0) mainRecorderChunks.push(e.data); };
+  mainRecorderMediaRecorder.onstop = () => {
+    if (mainRecorderPreview.srcObject) {
+      mainRecorderPreview.srcObject.getTracks().forEach(track => track.stop());
+      mainRecorderPreview.srcObject = null;
+    }
+    const blob = new Blob(mainRecorderChunks, { type: "video/webm" });
+    if (mainRecorderBlobURL) URL.revokeObjectURL(mainRecorderBlobURL);
+    mainRecorderBlobURL = URL.createObjectURL(blob);
+    mainRecorderPreview.src = mainRecorderBlobURL;
+    mainRecorderPreview.controls = true;
+    mainRecorderPreview.muted = false;
+    mainRecorderPreview.load();
+    mainRecorderDownloadBtn.disabled = false;
+    mainRecorderStatus.textContent = "Recording complete! Download your take.";
+  };
+  mainRecorderMediaRecorder.start();
+};
+
+mainRecorderStopBtn.onclick = () => {
+  if (mainRecorderMediaRecorder && mainRecorderMediaRecorder.state !== "inactive") {
+    mainRecorderMediaRecorder.stop();
+  }
+  mainRecorderRecordBtn.disabled = false;
+  mainRecorderStopBtn.disabled = true;
+  audio.pause();
+  audio.currentTime = 0;
+};
+
+mainRecorderDownloadBtn.onclick = () => {
+  if (!mainRecorderBlobURL) return;
+  const a = document.createElement('a');
+  a.href = mainRecorderBlobURL;
+  a.download = `fastcut_take_${Date.now()}.webm`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  mainRecorderStatus.textContent = "Take downloaded. Repeat or upload it as a 'Main Camera' take below!";
+};
+
+// --- Rest of your code remains unchanged for switching and export ---
+
 document.addEventListener('DOMContentLoaded', function() {
   // --- FastCut Switcher Logic ---
   const NUM_TRACKS = 4;
@@ -222,10 +305,12 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       const v = document.getElementById(`video-${track}`);
       if (v && !v.paused && !v.ended) {
+        const ctx = mixCanvas.getContext('2d');
         ctx.fillStyle = "#111";
         ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
         ctx.drawImage(v, 0, 0, 600, 340);
       } else {
+        const ctx = mixCanvas.getContext('2d');
         ctx.fillStyle = "#111";
         ctx.fillRect(0, 0, 600, 340);
       }
