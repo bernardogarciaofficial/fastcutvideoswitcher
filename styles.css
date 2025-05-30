@@ -103,7 +103,7 @@ body {
   box-shadow: 0 10px 38px #0007, 0 1.5px 0.5px #ffe57f33;
 }
 .switcher-upload-section {
-  width: 900px;
+  width: 1200px;
   max-width: 99vw;
   margin-top: 38px;
   margin-bottom: 38px;
@@ -120,21 +120,22 @@ body {
   flex-direction: row;
   justify-content: center;
   align-items: flex-start;
-  gap: 24px;
-  max-width: 1200px;
+  gap: 16px;
+  max-width: 1800px;
   margin: 0 auto 18px auto;
+  flex-wrap: wrap;
 }
 .switcher-track {
   background: linear-gradient(115deg,#292f48 60%,#442424 100%);
   border-radius: 14px;
   box-shadow: 0 4px 22px rgba(0,0,0,0.13),0 2.5px 0.75px #ffe57f22;
-  padding: 20px 14px 22px 14px;
+  padding: 20px 8px 22px 8px;
   text-align: center;
   position: relative;
   border: 2.5px solid transparent;
   transition: border 0.14s, box-shadow 0.2s;
-  min-width: 210px;
-  max-width: 230px;
+  min-width: 160px;
+  max-width: 180px;
   flex: 1 1 0;
 }
 .switcher-track.active {
@@ -143,39 +144,39 @@ body {
 }
 .switcher-track video {
   width: 100%;
-  min-height: 150px;
-  max-height: 180px;
+  min-height: 100px;
+  max-height: 120px;
   border-radius: 8px;
   background: #111;
   box-shadow: 0 3px 18px #12121255;
   border: 1.5px solid #ffe57f55;
 }
 .switcher-track .track-title {
-  font-size: 1.19rem;
-  margin: 7px 0 13px 0;
+  font-size: 1.05rem;
+  margin: 4px 0 9px 0;
   font-weight: bold;
   color: #ffe57f;
   text-shadow:0 1.5px 0 #000a;
-  letter-spacing:1.2px;
+  letter-spacing:1.1px;
 }
 .upload-video-label {
   display: block;
-  margin: 12px 0 7px 0;
+  margin: 8px 0 6px 0;
   font-weight: 600;
   color: #ffe57f;
-  font-size: 1.05em;
+  font-size: 0.96em;
 }
 .upload-video-btn {
-  padding: 5px 20px;
+  padding: 4px 12px;
   border-radius: 6px;
   border: 1px solid #ffe57f99;
   background: linear-gradient(90deg, #ffe57f 60%, #e53935 100%);
   color: #231c19;
   font-weight: 700;
   cursor: pointer;
-  font-size: 1.03em;
-  margin-top: 5px;
-  margin-bottom: 3px;
+  font-size: 0.95em;
+  margin-top: 3px;
+  margin-bottom: 1px;
   transition: background 0.13s, color 0.13s;
 }
 .upload-video-btn:active {
@@ -284,19 +285,20 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 32px;
+  gap: 12px;
   margin: 24px auto 12px auto;
   flex-direction: row;
-  max-width: 900px;
+  max-width: 1200px;
+  flex-wrap: wrap;
 }
 .fastcut-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 128px;
-  height: 56px;
-  padding: 0 30px;
-  font-size: 1.19rem;
+  min-width: 84px;
+  height: 38px;
+  padding: 0 10px;
+  font-size: 0.93rem;
   font-weight: 700;
   border: none;
   border-radius: 9px;
@@ -304,7 +306,7 @@ body {
   color: #221c19;
   cursor: pointer;
   box-shadow: 0 4px 18px #ffe57f44,0 1.5px 0.5px #ffe57f33;
-  letter-spacing: 1.1px;
+  letter-spacing: 1.05px;
   transition: background 0.17s, box-shadow 0.17s, transform 0.14s, color 0.13s;
   outline: none;
   margin: 0;
@@ -329,7 +331,7 @@ body {
 }
 
 .switcher-control-section {
-  width: 900px;
+  width: 1200px;
   max-width: 99vw;
   margin: 0 auto 38px auto;
   padding: 22px 0 18px 0;
@@ -443,25 +445,25 @@ body {
     width: 98vw;
   }
   .switcher-track {
-    min-width: 210px;
+    min-width: 160px;
     max-width: 350px;
     width: 95vw;
   }
   .fastcut-switcher-row {
-    gap: 16px;
+    gap: 10px;
     max-width: 99vw;
   }
 }
 @media (max-width: 900px) {
   .fastcut-switcher-row {
-    gap: 10px;
+    gap: 8px;
     max-width: 99vw;
   }
   .fastcut-btn {
-    min-width: 84px;
-    font-size: 1.02rem;
-    height: 44px;
-    padding: 0 14px;
+    min-width: 70px;
+    font-size: 0.82rem;
+    height: 32px;
+    padding: 0 7px;
   }
   .switcher-control-section {
     width: 99vw;
@@ -476,6 +478,6 @@ body {
   }
   .fastcut-switcher-row {
     flex-direction: column;
-    gap: 8px;
+    gap: 5px;
   }
 }
