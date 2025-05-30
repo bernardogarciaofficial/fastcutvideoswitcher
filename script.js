@@ -111,19 +111,21 @@ mainRecorderDownloadBtn.onclick = () => {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  mainRecorderStatus.textContent = "Take downloaded. Repeat or upload it as a 'Main Camera' take below!";
+  mainRecorderStatus.textContent = "Take downloaded. Repeat or upload it as a take below!";
 };
 
 // --- Rest of your code remains unchanged for switching and export ---
 
 document.addEventListener('DOMContentLoaded', function() {
   // --- FastCut Switcher Logic ---
-  const NUM_TRACKS = 4;
+  const NUM_TRACKS = 6;
   const TRACK_NAMES = [
-    "Main Camera",
-    "Closeup / Vocals",
-    "Instrument / B-Roll",
-    "Creative Angle"
+    "Video Track 1",
+    "Video Track 2",
+    "Video Track 3",
+    "Video Track 4",
+    "Video Track 5",
+    "Video Track 6"
   ];
   // Render buttons in a single row
   const fastcutSwitcher = document.getElementById('fastcutSwitcher');
@@ -163,7 +165,7 @@ document.addEventListener('DOMContentLoaded', function() {
   switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => `
     <div class="switcher-track" id="switcher-track-${i}">
       <div class="track-title">${TRACK_NAMES[i]}</div>
-      <video id="video-${i}" width="220" height="140" controls muted></video>
+      <video id="video-${i}" width="140" height="90" controls muted></video>
       <div>
         <label class="upload-video-label" for="uploadVideoInput-${i}">Upload Take</label>
         <input type="file" id="uploadVideoInput-${i}" class="upload-video-input" accept="${VIDEO_ACCEPTED}" style="display:none;">
