@@ -43,6 +43,7 @@ const mainRecorderStatus = document.getElementById('mainRecorderStatus');
 // Update instruction text dynamically in JS in case you want to change via script:
 document.querySelector('.main-recorder-section h3').textContent = "after each take is recorded,click 'download' to save it to your computer-and don't forget to name your take";
 document.querySelector('.take-instructions span').textContent = "after each take is recorded,click 'download' to save it to your computer—and don't forget to name your take";
+document.querySelector('.switcher-upload-section h3').textContent = "easyly upload each take right here";
 
 let mainRecorderStream = null;
 let mainRecorderMediaRecorder = null;
