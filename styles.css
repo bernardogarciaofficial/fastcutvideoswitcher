@@ -474,6 +474,14 @@ body {
   align-items: center;
   gap: 3px;
 }
+.footer-email {
+  color: #ffe57f;
+  font-family: 'Montserrat', Arial, sans-serif;
+  font-size: 1em;
+  margin-top: 2px;
+  opacity: 0.75;
+  letter-spacing: 1px;
+}
 @media (max-width: 1300px) {
   .switcher-track-grid-row,
   .switcher-control-section {
