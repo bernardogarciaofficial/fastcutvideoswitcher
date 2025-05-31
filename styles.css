@@ -224,6 +224,10 @@ body {
   color: #ffe57f;
   margin-bottom: 16px;
   letter-spacing: 1.2px;
+  /* Allow long instructions to wrap nicely */
+  font-size: 1.04em;
+  font-weight: 700;
+  white-space: pre-line;
 }
 
 #mainRecorderPreview {
@@ -301,6 +305,8 @@ body {
   max-width: 500px;
   margin-left: auto;
   margin-right: auto;
+  /* Allow wrapping for long instruction */
+  white-space: pre-line;
 }
 
 /* Switcher Switch Buttons Horizontal Row */
