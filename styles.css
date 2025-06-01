@@ -276,8 +276,6 @@ body {
   }
 }
 
-/* Rest of FastCut styles remain the same as previous version ... */
-
 /* --- THEME & HEADER --- */
 .theme-bg {
   position: fixed;
@@ -703,7 +701,6 @@ body {
   opacity: 0.7;
 }
 
-/* Remove the volume-controls block if it exists */
 .volume-controls {
   display: none !important;
 }
