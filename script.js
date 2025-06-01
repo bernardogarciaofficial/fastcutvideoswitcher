@@ -25,90 +25,48 @@ function animateMembersCounter() {
 }
 animateMembersCounter();
 
-// --- GIG AD SLOTS LOGIC (Firebase persistent, multi-user) ---
+// --- GIG AD SLOTS LOGIC (Multi-slot support) ---
 const MAIN_AD_SLOTS = 6;
-const SIDEBAR_AD_SLOTS = 2;
-const SPREAD_AD_BELOW_MASTER = 2;
-const FOOTER_AD_SLOTS = 2;
 const GIG_EMPTY_THUMB = `<div class="gig-empty-thumb" title="No ad yet">🎸</div>`;
 const DEMO_USER = "anonymous";
 
-let gigAdSlots = [];
-for (let i = 0; i < MAIN_AD_SLOTS; i++) {
-  gigAdSlots.push({
-    slot: i,
-    videoUrl: null,
-    client: null,
-    locked: false,
-    lockOwner: null,
-    timestamp: null,
-    storagePath: null
-  });
-}
-let sidebarAdSlots = Array(SIDEBAR_AD_SLOTS).fill(null).map(() => ({ spread: false, promotedAdIndex: null }));
-let spreadAdSlotsBelow = Array(SPREAD_AD_BELOW_MASTER).fill(null).map(() => ({ spread: false, promotedAdIndex: null }));
-let footerAdSlots = Array(FOOTER_AD_SLOTS).fill(null).map(() => ({ spread: false, promotedAdIndex: null }));
+// Slot state
+let gigAdSlots = Array.from({length: MAIN_AD_SLOTS}, (_, i) => ({
+  slot: i,
+  videoUrl: null,
+  client: null,
+  locked: false,
+  lockOwner: null,
+  timestamp: null,
+  storagePath: null
+}));
 
-function getAllSpreadSlots() {
-  return [
-    { arr: sidebarAdSlots, render: renderSidebarAdSlots },
-    { arr: spreadAdSlotsBelow, render: renderSpreadAdSlotsBelow },
-    { arr: footerAdSlots, render: renderFooterAdSlots }
-  ];
-}
-
+// Fetch and render all gig ad slots from Firestore
 async function fetchGigAdSlots() {
-  const snap = await db.collection("gigAdSlots").orderBy("slot").get();
+  const snap = await db.collection("gigAdSlots").get();
   snap.forEach(doc => {
     const data = doc.data();
-    gigAdSlots[data.slot] = { ...gigAdSlots[data.slot], ...data };
+    if (typeof data.slot === "number" && data.slot >= 0 && data.slot < MAIN_AD_SLOTS) {
+      gigAdSlots[data.slot] = { ...gigAdSlots[data.slot], ...data };
+    }
   });
-  renderAllAdSlots();
+  renderGigAdSlots();
 }
+
+// Render all slots
 function renderGigAdSlots() {
   const grid = document.getElementById("gigAdGrid");
   grid.innerHTML = "";
   gigAdSlots.forEach((slot, i) => {
-    grid.appendChild(renderSingleAdSlot(slot, i, "main"));
+    grid.appendChild(renderSingleAdSlot(slot, i));
   });
 }
-function renderSidebarAdSlots() {
-  const sidebar = document.getElementById("sidebarAdSlots");
-  if (!sidebar) return;
-  sidebar.innerHTML = "";
-  sidebarAdSlots.forEach((slot, i) => {
-    sidebar.appendChild(renderSingleAdSlot(getPromotedSlotData(slot), i, "sidebar", slot.spread));
-  });
-}
-function renderSpreadAdSlotsBelow() {
-  const below = document.getElementById("spreadAdSlotsBelow");
-  if (!below) return;
-  below.innerHTML = "";
-  spreadAdSlotsBelow.forEach((slot, i) => {
-    below.appendChild(renderSingleAdSlot(getPromotedSlotData(slot), i, "spread", slot.spread));
-  });
-}
-function renderFooterAdSlots() {
-  const footer = document.getElementById("footerAdSlots");
-  if (!footer) return;
-  footer.innerHTML = "";
-  footerAdSlots.forEach((slot, i) => {
-    footer.appendChild(renderSingleAdSlot(getPromotedSlotData(slot), i, "footer", slot.spread));
-  });
-}
-function getPromotedSlotData(slot) {
-  if (!slot.spread || slot.promotedAdIndex == null || !gigAdSlots[slot.promotedAdIndex]) {
-    return { videoUrl: null, client: null, promoted: false, locked: false };
-  }
-  return {
-    ...gigAdSlots[slot.promotedAdIndex],
-    spread: true,
-    promoted: true
-  };
-}
-function renderSingleAdSlot(slot, index, location, isSpread = false) {
+
+// Render a single ad slot
+function renderSingleAdSlot(slot, slotIndex) {
   const slotDiv = document.createElement("div");
-  slotDiv.className = "gig-ad-slot" + (slot.spread || slot.promoted ? " promoted" : "");
+  slotDiv.className = "gig-ad-slot";
+  // Video or empty
   if (slot.videoUrl) {
     const v = document.createElement("video");
     v.src = slot.videoUrl;
@@ -121,50 +79,55 @@ function renderSingleAdSlot(slot, index, location, isSpread = false) {
   } else {
     slotDiv.innerHTML += GIG_EMPTY_THUMB;
   }
+  // Client name
   if (slot.client) {
     const client = document.createElement("div");
     client.className = "gig-ad-client";
     client.textContent = `Ad by: ${slot.client}`;
     slotDiv.appendChild(client);
   }
+  // Timestamp
   if (slot.timestamp) {
     const ts = document.createElement("div");
     ts.className = "gig-ad-timestamp";
     ts.textContent = `Updated: ${slot.timestamp}`;
     slotDiv.appendChild(ts);
   }
-  if (slot.spread || slot.promoted) {
-    slotDiv.title = "This ad is promoted by a client and shown here for extra exposure!";
-    return slotDiv;
-  }
+  // Locked state
   if (slot.locked) {
     const lockMsg = document.createElement("div");
     lockMsg.className = "gig-ad-locked-msg";
     lockMsg.textContent = "🔒 Slot is locked!";
     slotDiv.appendChild(lockMsg);
+
     if (slot.lockOwner) {
       const owner = document.createElement("div");
       owner.className = "gig-lock-owner";
       owner.textContent = `Locked by: ${slot.lockOwner}`;
       slotDiv.appendChild(owner);
     }
+    // Only owner can upload
     if (slot.lockOwner === DEMO_USER) {
-      slotDiv.appendChild(createGigAdUploadBtn(index, true));
+      slotDiv.appendChild(createGigAdUploadBtn(slotIndex, true));
     } else {
-      const uploadBtn = createGigAdUploadBtn(index, false);
+      const uploadBtn = createGigAdUploadBtn(slotIndex, false);
       uploadBtn.disabled = true;
       slotDiv.appendChild(uploadBtn);
     }
   } else {
-    slotDiv.appendChild(createGigAdUploadBtn(index, true));
+    // Not locked: anyone can upload
+    slotDiv.appendChild(createGigAdUploadBtn(slotIndex, true));
+    // Show "Lock this slot" button
     const lockBtn = document.createElement("button");
     lockBtn.className = "gig-ad-lock-btn";
     lockBtn.textContent = "Lock this slot (Pay)";
-    lockBtn.onclick = () => lockGigAdSlot(index);
+    lockBtn.onclick = () => lockGigAdSlot(slotIndex);
     slotDiv.appendChild(lockBtn);
   }
   return slotDiv;
 }
+
+// Upload button for a slot
 function createGigAdUploadBtn(slotIndex, enabled) {
   const label = document.createElement("label");
   label.className = "gig-ad-upload-btn";
@@ -203,6 +166,8 @@ function createGigAdUploadBtn(slotIndex, enabled) {
   label.onclick = enabled ? () => input.click() : (e) => e.preventDefault();
   return label;
 }
+
+// Lock slot
 async function lockGigAdSlot(index) {
   if (confirm("To lock this ad slot and promote it across the platform, you must pay. Simulate payment now?")) {
     await db.collection("gigAdSlots").doc("slot" + index).set({
@@ -215,15 +180,7 @@ async function lockGigAdSlot(index) {
   }
 }
 
-getAllSpreadSlots().forEach(slotGroup => slotGroup.render());
-function renderAllAdSlots() {
-  renderGigAdSlots();
-  renderSidebarAdSlots();
-  renderSpreadAdSlotsBelow();
-  renderFooterAdSlots();
-}
-
-// Live Firestore sync
+// Live Firestore sync: listen to changes
 db.collection("gigAdSlots").onSnapshot(fetchGigAdSlots);
 fetchGigAdSlots();
 
