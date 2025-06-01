@@ -11,93 +11,177 @@ function animateMembersCounter() {
 }
 animateMembersCounter();
 
-// --- GIG AD SLOTS LOGIC ---
-const GIG_AD_SLOTS = 6; // number of ad slots
+// --- GIG AD SLOTS LOGIC WITH SPREAD ---
+const MAIN_AD_SLOTS = 6;
+const SIDEBAR_AD_SLOTS = 2;
+const SPREAD_AD_BELOW_MASTER = 2;
+const FOOTER_AD_SLOTS = 2;
 const GIG_EMPTY_THUMB = `<div class="gig-empty-thumb" title="No ad yet">🎸</div>`;
-const GIG_AD_DEFAULT_CLIENT = "Anonymous";
-const DEMO_USER = "potential_client"; // Replace with login/account logic if you wish
+const DEMO_USER = "potential_client"; // Simulate logged in user
 
-// Simple browser memory for demo (reset on refresh). For real app, use backend!
-let gigAdSlots = Array(GIG_AD_SLOTS).fill(null).map(() => ({
+// The main ad grid slots (homepage)
+let gigAdSlots = Array(MAIN_AD_SLOTS).fill(null).map(() => ({
   videoUrl: null,
   client: null,
   locked: false,
   lockOwner: null,
   lockUntil: null,
   timestamp: null,
+  spread: false, // is this slot a "spread" slot for a locked ad?
+  promotedAdIndex: null, // for spread: which ad index is this displaying?
 }));
 
+// Sidebar, below master, and footer ad slots (used for spreading locked ads)
+let sidebarAdSlots = Array(SIDEBAR_AD_SLOTS).fill(null).map(() => ({
+  spread: false,
+  promotedAdIndex: null,
+}));
+let spreadAdSlotsBelow = Array(SPREAD_AD_BELOW_MASTER).fill(null).map(() => ({
+  spread: false,
+  promotedAdIndex: null,
+}));
+let footerAdSlots = Array(FOOTER_AD_SLOTS).fill(null).map(() => ({
+  spread: false,
+  promotedAdIndex: null,
+}));
+
+// Utility to collect all "spread" slots for convenience
+function getAllSpreadSlots() {
+  return [
+    { arr: sidebarAdSlots, render: renderSidebarAdSlots },
+    { arr: spreadAdSlotsBelow, render: renderSpreadAdSlotsBelow },
+    { arr: footerAdSlots, render: renderFooterAdSlots }
+  ];
+}
+
+// RENDER MAIN HOMEPAGE AD GRID
 function renderGigAdSlots() {
   const grid = document.getElementById("gigAdGrid");
   grid.innerHTML = "";
   gigAdSlots.forEach((slot, i) => {
-    const slotDiv = document.createElement("div");
-    slotDiv.className = "gig-ad-slot";
-    // Video or empty thumb
-    if (slot.videoUrl) {
-      const v = document.createElement("video");
-      v.src = slot.videoUrl;
-      v.autoplay = true;
-      v.loop = true;
-      v.muted = true;
-      v.playsInline = true;
-      v.setAttribute("controls", false);
-      v.className = "gig-ad-thumb";
-      slotDiv.appendChild(v);
-    } else {
-      slotDiv.innerHTML += GIG_EMPTY_THUMB;
-    }
-    // Client info
-    if (slot.client) {
-      const client = document.createElement("div");
-      client.className = "gig-ad-client";
-      client.textContent = `Ad by: ${slot.client}`;
-      slotDiv.appendChild(client);
-    }
-    // Timestamp
-    if (slot.timestamp) {
-      const ts = document.createElement("div");
-      ts.className = "gig-ad-timestamp";
-      ts.textContent = `Updated: ${slot.timestamp}`;
-      slotDiv.appendChild(ts);
-    }
-    // Locked state
-    if (slot.locked) {
-      const lockMsg = document.createElement("div");
-      lockMsg.className = "gig-ad-locked-msg";
-      lockMsg.textContent = "🔒 Slot is locked!";
-      slotDiv.appendChild(lockMsg);
-
-      if (slot.lockOwner) {
-        const owner = document.createElement("div");
-        owner.className = "gig-lock-owner";
-        owner.textContent = `Locked by: ${slot.lockOwner}`;
-        slotDiv.appendChild(owner);
-      }
-      // If current user is the lock owner, show upload (replace) button
-      if (slot.lockOwner === DEMO_USER) {
-        slotDiv.appendChild(createGigAdUploadBtn(i, true));
-      } else {
-        // Not lock owner, disable upload
-        const uploadBtn = createGigAdUploadBtn(i, false);
-        uploadBtn.disabled = true;
-        slotDiv.appendChild(uploadBtn);
-      }
-      // If not locked by this user, allow "Lock this slot" is hidden
-    } else {
-      // Not locked: anyone can upload/replace
-      slotDiv.appendChild(createGigAdUploadBtn(i, true));
-      // Show "Lock this slot" button
-      const lockBtn = document.createElement("button");
-      lockBtn.className = "gig-ad-lock-btn";
-      lockBtn.textContent = "Lock this slot (Pay)";
-      lockBtn.onclick = () => lockGigAdSlot(i);
-      slotDiv.appendChild(lockBtn);
-    }
-    grid.appendChild(slotDiv);
+    grid.appendChild(renderSingleAdSlot(slot, i, "main"));
   });
 }
 
+// RENDER SIDEBAR SPREAD SLOTS
+function renderSidebarAdSlots() {
+  const sidebar = document.getElementById("sidebarAdSlots");
+  sidebar.innerHTML = "";
+  sidebarAdSlots.forEach((slot, i) => {
+    sidebar.appendChild(renderSingleAdSlot(getPromotedSlotData(slot), i, "sidebar", slot.spread));
+  });
+}
+
+// RENDER BELOW MASTER OUTPUT SPREAD SLOTS
+function renderSpreadAdSlotsBelow() {
+  const below = document.getElementById("spreadAdSlotsBelow");
+  below.innerHTML = "";
+  spreadAdSlotsBelow.forEach((slot, i) => {
+    below.appendChild(renderSingleAdSlot(getPromotedSlotData(slot), i, "spread", slot.spread));
+  });
+}
+
+// RENDER FOOTER SPREAD SLOTS
+function renderFooterAdSlots() {
+  const footer = document.getElementById("footerAdSlots");
+  footer.innerHTML = "";
+  footerAdSlots.forEach((slot, i) => {
+    footer.appendChild(renderSingleAdSlot(getPromotedSlotData(slot), i, "footer", slot.spread));
+  });
+}
+
+// Helper to get promoted ad data for a spread slot
+function getPromotedSlotData(slot) {
+  if (!slot.spread || slot.promotedAdIndex == null || !gigAdSlots[slot.promotedAdIndex]) {
+    // Return empty slot
+    return { videoUrl: null, client: null, promoted: false, locked: false };
+  }
+  // Copy data from original locked slot
+  return {
+    ...gigAdSlots[slot.promotedAdIndex],
+    spread: true,
+    promoted: true
+  };
+}
+
+// Renders a single ad slot div (main, sidebar, below, footer)
+function renderSingleAdSlot(slot, index, location, isSpread = false) {
+  const slotDiv = document.createElement("div");
+  slotDiv.className = "gig-ad-slot" + (slot.spread || slot.promoted ? " promoted" : "");
+
+  // Video or empty thumb
+  if (slot.videoUrl) {
+    const v = document.createElement("video");
+    v.src = slot.videoUrl;
+    v.autoplay = true;
+    v.loop = true;
+    v.muted = true;
+    v.playsInline = true;
+    v.setAttribute("controls", false);
+    v.className = "gig-ad-thumb";
+    slotDiv.appendChild(v);
+  } else {
+    slotDiv.innerHTML += GIG_EMPTY_THUMB;
+  }
+
+  // Client info
+  if (slot.client) {
+    const client = document.createElement("div");
+    client.className = "gig-ad-client";
+    client.textContent = `Ad by: ${slot.client}`;
+    slotDiv.appendChild(client);
+  }
+
+  // Timestamp
+  if (slot.timestamp) {
+    const ts = document.createElement("div");
+    ts.className = "gig-ad-timestamp";
+    ts.textContent = `Updated: ${slot.timestamp}`;
+    slotDiv.appendChild(ts);
+  }
+
+  // If spread/promoted, do not show upload or lock options
+  if (slot.spread || slot.promoted) {
+    slotDiv.title = "This ad is promoted by a client and shown here for extra exposure!";
+    return slotDiv;
+  }
+
+  // Locked state
+  if (slot.locked) {
+    const lockMsg = document.createElement("div");
+    lockMsg.className = "gig-ad-locked-msg";
+    lockMsg.textContent = "🔒 Slot is locked!";
+    slotDiv.appendChild(lockMsg);
+
+    if (slot.lockOwner) {
+      const owner = document.createElement("div");
+      owner.className = "gig-lock-owner";
+      owner.textContent = `Locked by: ${slot.lockOwner}`;
+      slotDiv.appendChild(owner);
+    }
+    // If current user is the lock owner, show upload (replace) button
+    if (slot.lockOwner === DEMO_USER) {
+      slotDiv.appendChild(createGigAdUploadBtn(index, true));
+    } else {
+      // Not lock owner, disable upload
+      const uploadBtn = createGigAdUploadBtn(index, false);
+      uploadBtn.disabled = true;
+      slotDiv.appendChild(uploadBtn);
+    }
+  } else {
+    // Not locked: anyone can upload/replace
+    slotDiv.appendChild(createGigAdUploadBtn(index, true));
+    // Show "Lock this slot" button
+    const lockBtn = document.createElement("button");
+    lockBtn.className = "gig-ad-lock-btn";
+    lockBtn.textContent = "Lock this slot (Pay)";
+    lockBtn.onclick = () => lockGigAdSlot(index);
+    slotDiv.appendChild(lockBtn);
+  }
+  return slotDiv;
+}
+
+// Create upload button for ad slot
 function createGigAdUploadBtn(slotIndex, enabled) {
   const label = document.createElement("label");
   label.className = "gig-ad-upload-btn";
@@ -116,7 +200,7 @@ function createGigAdUploadBtn(slotIndex, enabled) {
     gigAdSlots[slotIndex].videoUrl = url;
     gigAdSlots[slotIndex].client = DEMO_USER;
     gigAdSlots[slotIndex].timestamp = new Date().toLocaleString();
-    renderGigAdSlots();
+    renderAllAdSlots();
   };
   label.appendChild(input);
   if (!enabled) label.disabled = true;
@@ -124,18 +208,52 @@ function createGigAdUploadBtn(slotIndex, enabled) {
   return label;
 }
 
-function lockGigAdSlot(slotIndex) {
-  // DEMO: Simulate payment with a confirm dialog
-  if (confirm("To lock this ad slot and prevent others from replacing your ad, you must pay. Simulate payment now?")) {
-    gigAdSlots[slotIndex].locked = true;
-    gigAdSlots[slotIndex].lockOwner = DEMO_USER;
-    gigAdSlots[slotIndex].lockUntil = null; // You can add expiration logic here
-    renderGigAdSlots();
-    alert("Slot locked! Only you can update this ad until you unlock or your exclusive period ends.");
+// Lock slot: simulate payment and spread ad to other slots
+function lockGigAdSlot(index) {
+  if (confirm("To lock this ad slot and promote it across the platform, you must pay. Simulate payment now?")) {
+    gigAdSlots[index].locked = true;
+    gigAdSlots[index].lockOwner = DEMO_USER;
+    gigAdSlots[index].lockUntil = null; // Add time-based expiry if desired
+    spreadLockedAd(index);
+    renderAllAdSlots();
+    alert("Slot locked and promoted! Your ad will be shown in multiple locations for extra exposure.");
   }
 }
 
-renderGigAdSlots();
+// Spread the locked ad into bonus slots around the platform
+function spreadLockedAd(adIndex) {
+  // Find all available spread slots (sidebar, below, footer) and fill with this ad
+  getAllSpreadSlots().forEach(slotGroup => {
+    slotGroup.arr.forEach(slot => {
+      slot.spread = true;
+      slot.promotedAdIndex = adIndex;
+    });
+    slotGroup.render();
+  });
+}
+
+// When an ad is unlocked or replaced, un-spread it (not shown in this demo, but you can implement!)
+function clearSpreadFromAd(adIndex) {
+  getAllSpreadSlots().forEach(slotGroup => {
+    slotGroup.arr.forEach(slot => {
+      if (slot.promotedAdIndex === adIndex) {
+        slot.spread = false;
+        slot.promotedAdIndex = null;
+      }
+    });
+    slotGroup.render();
+  });
+}
+
+// Render all ad slot locations
+function renderAllAdSlots() {
+  renderGigAdSlots();
+  renderSidebarAdSlots();
+  renderSpreadAdSlotsBelow();
+  renderFooterAdSlots();
+}
+
+renderAllAdSlots();
 
 // --- Audio Track Input (accepts most popular formats) ---
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
@@ -166,12 +284,9 @@ const mainRecorderStopBtn = document.getElementById('mainRecorderStopBtn');
 const mainRecorderDownloadBtn = document.getElementById('mainRecorderDownloadBtn');
 const mainRecorderStatus = document.getElementById('mainRecorderStatus');
 
-// Update instruction text dynamically in JS in case you want to change via script:
 document.querySelector('.main-recorder-section h3').textContent = "after each take is recorded,click 'download' to save it to your computer-and don't forget to name your take";
 document.querySelector('.take-instructions span').textContent = "after each take is recorded,click 'download' to save it to your computer—and don't forget to name your take";
 document.querySelector('.switcher-upload-section h3').textContent = "easyly upload each take right here";
-
-// No script needed for the email, since it's static in the HTML
 
 let mainRecorderStream = null;
 let mainRecorderMediaRecorder = null;
@@ -247,7 +362,7 @@ mainRecorderDownloadBtn.onclick = () => {
   mainRecorderStatus.textContent = "Take downloaded. Repeat or upload it as a take below!";
 };
 
-// --- Rest of your code remains unchanged for switching and export ---
+// --- Rest of FastCut code unchanged (switcher, export, etc.) ---
 
 document.addEventListener('DOMContentLoaded', function() {
   // --- FastCut Switcher Logic ---
@@ -260,7 +375,6 @@ document.addEventListener('DOMContentLoaded', function() {
     "Video Track 5",
     "Video Track 6"
   ];
-  // Render buttons in a single row
   const fastcutSwitcher = document.getElementById('fastcutSwitcher');
   fastcutSwitcher.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) =>
     `<button class="fastcut-btn" id="fastcutBtn-${i}">${TRACK_NAMES[i]}</button>`
@@ -278,7 +392,7 @@ document.addEventListener('DOMContentLoaded', function() {
         recordSwitch(Date.now() - switchingStartTime, i);
       }
     };
-    btn.disabled = true; // Initially disabled
+    btn.disabled = true;
   }
   function setActiveTrack(idx) {
     activeTrack = idx;
@@ -309,7 +423,6 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
   `).join("");
 
-  // Store video elements and uploaded blob URLs
   const uploadedVideos = Array(NUM_TRACKS).fill(null);
 
   for (let i = 0; i < NUM_TRACKS; i++) {
@@ -332,7 +445,6 @@ document.addEventListener('DOMContentLoaded', function() {
     };
   }
 
-  // --- Switching/Recording Logic ---
   const startSwitchingBtn = document.getElementById('startSwitchingBtn');
   const stopSwitchingBtn = document.getElementById('stopSwitchingBtn');
   const masterOutputVideo = document.getElementById('masterOutputVideo');
@@ -347,14 +459,10 @@ document.addEventListener('DOMContentLoaded', function() {
   let switchingStartTime = 0;
   let switchingTimeline = [];
 
-  // Always allow start button (for testing) but show error if takes missing.
   startSwitchingBtn.disabled = false;
   stopSwitchingBtn.disabled = true;
 
   function checkAllTakesUploaded() {
-    // Optional: Enable startSwitchingBtn only when all uploaded
-    // let allUploaded = uploadedVideos.every(v => !!v);
-    // startSwitchingBtn.disabled = !allUploaded;
     setupSwitcherTracks();
   }
 
@@ -372,10 +480,8 @@ document.addEventListener('DOMContentLoaded', function() {
     switchingTimeline.push({ time: timeMs, track: trackIdx });
   }
 
-  // --- Key logic update: combine audio and video stream for recording! ---
   startSwitchingBtn.onclick = () => {
     switchingError.textContent = '';
-    // Check if all takes are uploaded
     const allUploaded = uploadedVideos.every(v => !!v);
     if (!allUploaded) {
       switchingError.textContent = "Please upload all 6 video takes before starting switching!";
@@ -393,7 +499,6 @@ document.addEventListener('DOMContentLoaded', function() {
       v.muted = true;
       v.play();
     }
-    // Play main audio in sync (NEW: play when switching starts)
     audio.currentTime = 0;
     audio.play();
 
@@ -402,16 +507,13 @@ document.addEventListener('DOMContentLoaded', function() {
     isSwitching = true;
     startSwitchingBtn.disabled = true;
     stopSwitchingBtn.disabled = false;
-    fastcutBtns.forEach(btn => btn.disabled = false);
+    fastcutBtns.forEach(btn => btn.disabled = true);
 
     const ctx = mixCanvas.getContext('2d');
     ctx.fillStyle = "#111";
     ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
 
-    // --- NEW: Get both video and audio streams and combine ---
     const videoStream = mixCanvas.captureStream(30);
-
-    // Try to get an audio stream from the <audio> element (music track)
     let audioStream = null;
     if (audio.captureStream) {
       audioStream = audio.captureStream();
@@ -419,7 +521,6 @@ document.addEventListener('DOMContentLoaded', function() {
       audioStream = audio.mozCaptureStream();
     }
 
-    // Combine video and audio tracks into a single MediaStream
     let combinedStream;
     if (audioStream) {
       combinedStream = new MediaStream([
@@ -444,7 +545,6 @@ document.addEventListener('DOMContentLoaded', function() {
       const url = URL.createObjectURL(blob);
       masterOutputVideo.src = url;
       masterOutputVideo.load();
-      // Set volume after new src loaded
       masterOutputVideo.muted = false;
       livePlaybackUrl = url;
       exportStatus.textContent = "Export complete! Download your final video.";
@@ -462,9 +562,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (refVideo && !isNaN(refVideo.duration)) duration = refVideo.duration;
     else duration = 180;
 
-    // Use srcObject for live preview, but don't accidentally play audio twice
     masterOutputVideo.srcObject = combinedStream;
-    masterOutputVideo.muted = true; // Prevent echo/feedback during live recording
+    masterOutputVideo.muted = true;
     masterOutputVideo.play();
     audio.currentTime = 0;
     audio.play();
@@ -505,7 +604,6 @@ document.addEventListener('DOMContentLoaded', function() {
     isSwitching = false;
     startSwitchingBtn.disabled = false;
     stopSwitchingBtn.disabled = true;
-    fastcutBtns.forEach(btn => btn.disabled = true);
     audio.pause();
     if (mediaRecorder && mediaRecorder.state !== "inactive") {
       mediaRecorder.stop();
@@ -515,16 +613,10 @@ document.addEventListener('DOMContentLoaded', function() {
     exportStatus.textContent = "Rendering and export complete! Download below.";
   };
 
-  // On load, disable all switching controls until videos are uploaded
-  // Buttons are enabled/disabled in logic above.
-
-  // Ensure main output video is unmuted for built-in speaker icon on page load
   masterOutputVideo.muted = false;
 
-  // --- Export Music Video Button Logic ---
   const exportMusicVideoBtn = document.getElementById('exportMusicVideoBtn');
   exportMusicVideoBtn.onclick = function() {
-    // Try to get the current src of the master output video
     let videoUrl = masterOutputVideo.src;
     if (!videoUrl || videoUrl === window.location.href) {
       exportStatus.textContent = "No exported video available to download yet!";
@@ -535,7 +627,6 @@ document.addEventListener('DOMContentLoaded', function() {
       }, 1600);
       return;
     }
-    // Download the video as "fastcut_music_video.webm"
     const a = document.createElement('a');
     a.href = videoUrl;
     a.download = "fastcut_music_video.webm";
