@@ -367,6 +367,12 @@ body {
   transform: scale(1.08);
   text-shadow: 0 1.5px 0 #ffe57f77,0 2.5px 4px #e5393580;
 }
+.fastcut-btn:disabled {
+  background: #aaa !important;
+  color: #fff !important;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
 
 .switcher-control-section {
   width: 1200px;
@@ -414,6 +420,7 @@ body {
   background: #aaa !important;
   color: #fff !important;
   cursor: not-allowed;
+  opacity: 0.7;
 }
 
 /* Remove the volume-controls block if it exists */
