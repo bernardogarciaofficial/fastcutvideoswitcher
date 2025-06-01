@@ -11,6 +11,132 @@ function animateMembersCounter() {
 }
 animateMembersCounter();
 
+// --- GIG AD SLOTS LOGIC ---
+const GIG_AD_SLOTS = 6; // number of ad slots
+const GIG_EMPTY_THUMB = `<div class="gig-empty-thumb" title="No ad yet">🎸</div>`;
+const GIG_AD_DEFAULT_CLIENT = "Anonymous";
+const DEMO_USER = "potential_client"; // Replace with login/account logic if you wish
+
+// Simple browser memory for demo (reset on refresh). For real app, use backend!
+let gigAdSlots = Array(GIG_AD_SLOTS).fill(null).map(() => ({
+  videoUrl: null,
+  client: null,
+  locked: false,
+  lockOwner: null,
+  lockUntil: null,
+  timestamp: null,
+}));
+
+function renderGigAdSlots() {
+  const grid = document.getElementById("gigAdGrid");
+  grid.innerHTML = "";
+  gigAdSlots.forEach((slot, i) => {
+    const slotDiv = document.createElement("div");
+    slotDiv.className = "gig-ad-slot";
+    // Video or empty thumb
+    if (slot.videoUrl) {
+      const v = document.createElement("video");
+      v.src = slot.videoUrl;
+      v.autoplay = true;
+      v.loop = true;
+      v.muted = true;
+      v.playsInline = true;
+      v.setAttribute("controls", false);
+      v.className = "gig-ad-thumb";
+      slotDiv.appendChild(v);
+    } else {
+      slotDiv.innerHTML += GIG_EMPTY_THUMB;
+    }
+    // Client info
+    if (slot.client) {
+      const client = document.createElement("div");
+      client.className = "gig-ad-client";
+      client.textContent = `Ad by: ${slot.client}`;
+      slotDiv.appendChild(client);
+    }
+    // Timestamp
+    if (slot.timestamp) {
+      const ts = document.createElement("div");
+      ts.className = "gig-ad-timestamp";
+      ts.textContent = `Updated: ${slot.timestamp}`;
+      slotDiv.appendChild(ts);
+    }
+    // Locked state
+    if (slot.locked) {
+      const lockMsg = document.createElement("div");
+      lockMsg.className = "gig-ad-locked-msg";
+      lockMsg.textContent = "🔒 Slot is locked!";
+      slotDiv.appendChild(lockMsg);
+
+      if (slot.lockOwner) {
+        const owner = document.createElement("div");
+        owner.className = "gig-lock-owner";
+        owner.textContent = `Locked by: ${slot.lockOwner}`;
+        slotDiv.appendChild(owner);
+      }
+      // If current user is the lock owner, show upload (replace) button
+      if (slot.lockOwner === DEMO_USER) {
+        slotDiv.appendChild(createGigAdUploadBtn(i, true));
+      } else {
+        // Not lock owner, disable upload
+        const uploadBtn = createGigAdUploadBtn(i, false);
+        uploadBtn.disabled = true;
+        slotDiv.appendChild(uploadBtn);
+      }
+      // If not locked by this user, allow "Lock this slot" is hidden
+    } else {
+      // Not locked: anyone can upload/replace
+      slotDiv.appendChild(createGigAdUploadBtn(i, true));
+      // Show "Lock this slot" button
+      const lockBtn = document.createElement("button");
+      lockBtn.className = "gig-ad-lock-btn";
+      lockBtn.textContent = "Lock this slot (Pay)";
+      lockBtn.onclick = () => lockGigAdSlot(i);
+      slotDiv.appendChild(lockBtn);
+    }
+    grid.appendChild(slotDiv);
+  });
+}
+
+function createGigAdUploadBtn(slotIndex, enabled) {
+  const label = document.createElement("label");
+  label.className = "gig-ad-upload-btn";
+  label.style.cursor = enabled ? "pointer" : "not-allowed";
+  label.innerHTML = "Upload Ad Video";
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".mp4,.webm,.mov,.ogg,.mkv,video/*";
+  input.style.display = "none";
+  input.onchange = e => {
+    if (!enabled) return;
+    const file = e.target.files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    // Update slot
+    gigAdSlots[slotIndex].videoUrl = url;
+    gigAdSlots[slotIndex].client = DEMO_USER;
+    gigAdSlots[slotIndex].timestamp = new Date().toLocaleString();
+    renderGigAdSlots();
+  };
+  label.appendChild(input);
+  if (!enabled) label.disabled = true;
+  label.onclick = enabled ? () => input.click() : (e) => e.preventDefault();
+  return label;
+}
+
+function lockGigAdSlot(slotIndex) {
+  // DEMO: Simulate payment with a confirm dialog
+  if (confirm("To lock this ad slot and prevent others from replacing your ad, you must pay. Simulate payment now?")) {
+    gigAdSlots[slotIndex].locked = true;
+    gigAdSlots[slotIndex].lockOwner = DEMO_USER;
+    gigAdSlots[slotIndex].lockUntil = null; // You can add expiration logic here
+    renderGigAdSlots();
+    alert("Slot locked! Only you can update this ad until you unlock or your exclusive period ends.");
+  }
+}
+
+renderGigAdSlots();
+
 // --- Audio Track Input (accepts most popular formats) ---
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
 document.getElementById('songInput').setAttribute('accept', AUDIO_ACCEPTED);
