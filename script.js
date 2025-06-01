@@ -1,3 +1,16 @@
+// --- Firebase Initialization ---
+// Replace these values with your own from the Firebase console!
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY_HERE",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
 // --- Animate Members Counter ---
 function animateMembersCounter() {
   const el = document.getElementById('membersCountNumber');
@@ -11,7 +24,8 @@ function animateMembersCounter() {
 }
 animateMembersCounter();
 
-// --- GIG AD SLOTS LOGIC WITH SPREAD + PERSISTENCE (localStorage) ---
+// --- GIG AD SLOTS LOGIC WITH SPREAD + FIREBASE ---
+// Note: Video URLs are only local blob URLs for demo (not uploaded to cloud)
 const MAIN_AD_SLOTS = 6;
 const SIDEBAR_AD_SLOTS = 2;
 const SPREAD_AD_BELOW_MASTER = 2;
@@ -19,56 +33,90 @@ const FOOTER_AD_SLOTS = 2;
 const GIG_EMPTY_THUMB = `<div class="gig-empty-thumb" title="No ad yet">🎸</div>`;
 const DEMO_USER = "potential_client"; // Simulate logged in user
 
-// Storage keys
-const STORAGE_KEYS = {
-  main: "fastcut_gigAdSlots",
-  sidebar: "fastcut_sidebarAdSlots",
-  below: "fastcut_spreadAdSlotsBelow",
-  footer: "fastcut_footerAdSlots"
-};
+let gigAdSlots = Array(MAIN_AD_SLOTS).fill(null).map(() => ({
+  videoUrl: null,
+  client: null,
+  locked: false,
+  lockOwner: null,
+  lockUntil: null,
+  timestamp: null,
+  spread: false,
+  promotedAdIndex: null
+}));
+let sidebarAdSlots = Array(SIDEBAR_AD_SLOTS).fill(null).map(() => ({
+  spread: false,
+  promotedAdIndex: null,
+}));
+let spreadAdSlotsBelow = Array(SPREAD_AD_BELOW_MASTER).fill(null).map(() => ({
+  spread: false,
+  promotedAdIndex: null,
+}));
+let footerAdSlots = Array(FOOTER_AD_SLOTS).fill(null).map(() => ({
+  spread: false,
+  promotedAdIndex: null,
+}));
 
-// Load ad slots from localStorage or create new
-function loadAdSlots(key, def) {
-  try {
-    const data = localStorage.getItem(key);
-    if (data) return JSON.parse(data);
-  } catch (e) {}
-  // fallback: fresh array
-  return Array(def).fill(null).map(() => ({
-    videoUrl: null,
-    client: null,
-    locked: false,
-    lockOwner: null,
-    lockUntil: null,
-    timestamp: null,
-    spread: false,
-    promotedAdIndex: null
-  }));
-}
-let gigAdSlots = loadAdSlots(STORAGE_KEYS.main, MAIN_AD_SLOTS);
-let sidebarAdSlots = loadAdSlots(STORAGE_KEYS.sidebar, SIDEBAR_AD_SLOTS);
-let spreadAdSlotsBelow = loadAdSlots(STORAGE_KEYS.below, SPREAD_AD_BELOW_MASTER);
-let footerAdSlots = loadAdSlots(STORAGE_KEYS.footer, FOOTER_AD_SLOTS);
-
-// Utility to collect all "spread" slots for convenience
 function getAllSpreadSlots() {
   return [
-    { arr: sidebarAdSlots, render: renderSidebarAdSlots, key: STORAGE_KEYS.sidebar },
-    { arr: spreadAdSlotsBelow, render: renderSpreadAdSlotsBelow, key: STORAGE_KEYS.below },
-    { arr: footerAdSlots, render: renderFooterAdSlots, key: STORAGE_KEYS.footer }
+    { arr: sidebarAdSlots, render: renderSidebarAdSlots, key: "sidebar" },
+    { arr: spreadAdSlotsBelow, render: renderSpreadAdSlotsBelow, key: "below" },
+    { arr: footerAdSlots, render: renderFooterAdSlots, key: "footer" }
   ];
 }
 
-// Save all ad slots to localStorage
-function saveAllAdSlots() {
-  try {
-    localStorage.setItem(STORAGE_KEYS.main, JSON.stringify(gigAdSlots));
-    localStorage.setItem(STORAGE_KEYS.sidebar, JSON.stringify(sidebarAdSlots));
-    localStorage.setItem(STORAGE_KEYS.below, JSON.stringify(spreadAdSlotsBelow));
-    localStorage.setItem(STORAGE_KEYS.footer, JSON.stringify(footerAdSlots));
-  } catch (e) {
-    // LocalStorage full or not available, ignore for now (demo)
-  }
+// ---- FIREBASE INTEGRATION ----
+
+// Helper: Save all gig ad slots to Firestore (run after every change)
+async function saveAllAdSlotsToFirebase() {
+  await db.collection("ads").doc("main").set({ slots: gigAdSlots });
+  await db.collection("ads").doc("sidebar").set({ slots: sidebarAdSlots });
+  await db.collection("ads").doc("below").set({ slots: spreadAdSlotsBelow });
+  await db.collection("ads").doc("footer").set({ slots: footerAdSlots });
+}
+
+// Helper: Load all gig ad slots from Firestore
+async function loadAllAdSlotsFromFirebase() {
+  const mainDoc = await db.collection("ads").doc("main").get();
+  if (mainDoc.exists && mainDoc.data().slots) gigAdSlots = mainDoc.data().slots;
+
+  const sidebarDoc = await db.collection("ads").doc("sidebar").get();
+  if (sidebarDoc.exists && sidebarDoc.data().slots) sidebarAdSlots = sidebarDoc.data().slots;
+
+  const belowDoc = await db.collection("ads").doc("below").get();
+  if (belowDoc.exists && belowDoc.data().slots) spreadAdSlotsBelow = belowDoc.data().slots;
+
+  const footerDoc = await db.collection("ads").doc("footer").get();
+  if (footerDoc.exists && footerDoc.data().slots) footerAdSlots = footerDoc.data().slots;
+
+  renderAllAdSlots();
+}
+
+// Real-time sync: listen to changes in Firestore and update ad slots instantly
+function subscribeToAdSlots() {
+  db.collection("ads").doc("main").onSnapshot(doc => {
+    if (doc.exists && doc.data().slots) {
+      gigAdSlots = doc.data().slots;
+      renderGigAdSlots();
+    }
+  });
+  db.collection("ads").doc("sidebar").onSnapshot(doc => {
+    if (doc.exists && doc.data().slots) {
+      sidebarAdSlots = doc.data().slots;
+      renderSidebarAdSlots();
+    }
+  });
+  db.collection("ads").doc("below").onSnapshot(doc => {
+    if (doc.exists && doc.data().slots) {
+      spreadAdSlotsBelow = doc.data().slots;
+      renderSpreadAdSlotsBelow();
+    }
+  });
+  db.collection("ads").doc("footer").onSnapshot(doc => {
+    if (doc.exists && doc.data().slots) {
+      footerAdSlots = doc.data().slots;
+      renderFooterAdSlots();
+    }
+  });
 }
 
 // RENDER MAIN HOMEPAGE AD GRID
@@ -107,13 +155,10 @@ function renderFooterAdSlots() {
   });
 }
 
-// Helper to get promoted ad data for a spread slot
 function getPromotedSlotData(slot) {
   if (!slot.spread || slot.promotedAdIndex == null || !gigAdSlots[slot.promotedAdIndex]) {
-    // Return empty slot
     return { videoUrl: null, client: null, promoted: false, locked: false };
   }
-  // Copy data from original locked slot
   return {
     ...gigAdSlots[slot.promotedAdIndex],
     spread: true,
@@ -121,7 +166,6 @@ function getPromotedSlotData(slot) {
   };
 }
 
-// Renders a single ad slot div (main, sidebar, below, footer)
 function renderSingleAdSlot(slot, index, location, isSpread = false) {
   const slotDiv = document.createElement("div");
   slotDiv.className = "gig-ad-slot" + (slot.spread || slot.promoted ? " promoted" : "");
@@ -198,7 +242,6 @@ function renderSingleAdSlot(slot, index, location, isSpread = false) {
   return slotDiv;
 }
 
-// Create upload button for ad slot
 function createGigAdUploadBtn(slotIndex, enabled) {
   const label = document.createElement("label");
   label.className = "gig-ad-upload-btn";
@@ -208,16 +251,15 @@ function createGigAdUploadBtn(slotIndex, enabled) {
   input.type = "file";
   input.accept = ".mp4,.webm,.mov,.ogg,.mkv,video/*";
   input.style.display = "none";
-  input.onchange = e => {
+  input.onchange = async e => {
     if (!enabled) return;
     const file = e.target.files[0];
     if (!file) return;
     const url = URL.createObjectURL(file);
-    // Update slot
     gigAdSlots[slotIndex].videoUrl = url;
     gigAdSlots[slotIndex].client = DEMO_USER;
     gigAdSlots[slotIndex].timestamp = new Date().toLocaleString();
-    saveAllAdSlots();
+    await saveAllAdSlotsToFirebase();
     renderAllAdSlots();
   };
   label.appendChild(input);
@@ -226,22 +268,19 @@ function createGigAdUploadBtn(slotIndex, enabled) {
   return label;
 }
 
-// Lock slot: simulate payment and spread ad to other slots
-function lockGigAdSlot(index) {
+async function lockGigAdSlot(index) {
   if (confirm("To lock this ad slot and promote it across the platform, you must pay. Simulate payment now?")) {
     gigAdSlots[index].locked = true;
     gigAdSlots[index].lockOwner = DEMO_USER;
-    gigAdSlots[index].lockUntil = null; // Add time-based expiry if desired
+    gigAdSlots[index].lockUntil = null;
     spreadLockedAd(index);
-    saveAllAdSlots();
+    await saveAllAdSlotsToFirebase();
     renderAllAdSlots();
     alert("Slot locked and promoted! Your ad will be shown in multiple locations for extra exposure.");
   }
 }
 
-// Spread the locked ad into bonus slots around the platform
 function spreadLockedAd(adIndex) {
-  // Find all available spread slots (sidebar, below, footer) and fill with this ad
   getAllSpreadSlots().forEach(slotGroup => {
     slotGroup.arr.forEach(slot => {
       slot.spread = true;
@@ -249,10 +288,8 @@ function spreadLockedAd(adIndex) {
     });
     slotGroup.render();
   });
-  saveAllAdSlots();
 }
 
-// When an ad is unlocked or replaced, un-spread it (not shown in this demo, but you can implement!)
 function clearSpreadFromAd(adIndex) {
   getAllSpreadSlots().forEach(slotGroup => {
     slotGroup.arr.forEach(slot => {
@@ -263,17 +300,20 @@ function clearSpreadFromAd(adIndex) {
     });
     slotGroup.render();
   });
-  saveAllAdSlots();
 }
 
-// Render all ad slot locations
 function renderAllAdSlots() {
   renderGigAdSlots();
   renderSidebarAdSlots();
   renderSpreadAdSlotsBelow();
   renderFooterAdSlots();
 }
-renderAllAdSlots();
+
+// --- INITIALIZE AD SYSTEM ON PAGE LOAD ---
+window.addEventListener('DOMContentLoaded', async function() {
+  await loadAllAdSlotsFromFirebase();
+  subscribeToAdSlots();
+});
 
 // --- Audio Track Input (accepts most popular formats) ---
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
@@ -336,11 +376,9 @@ mainRecorderRecordBtn.onclick = async () => {
   mainRecorderPreview.muted = true;
   mainRecorderPreview.controls = false;
 
-  // Start music in sync
   audio.currentTime = 0;
   audio.play();
 
-  // Record video + audio
   mainRecorderMediaRecorder = new MediaRecorder(mainRecorderStream, { mimeType: "video/webm" });
   mainRecorderMediaRecorder.ondataavailable = e => { if (e.data.size > 0) mainRecorderChunks.push(e.data); };
   mainRecorderMediaRecorder.onstop = () => {
