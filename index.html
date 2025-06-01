@@ -24,17 +24,22 @@
     </div>
   </header>
 
-  <!-- INSTANT EDIT BANNER INSERTED HERE -->
   <div class="instant-edit-banner">
     get your music video filmed and edited instantly—no more long waits or video editing delay
   </div>
 
-  <!-- NEW: Gig Ad Slots Section -->
+  <!-- MAIN AD SLOTS BLOCK (Homepage, grid) -->
   <section class="gig-ad-section">
     <h2 class="gig-ad-title">Advertise Your Gig!</h2>
-    <p class="gig-ad-desc">Upload a looping ad video for your gig below. Anyone can replace your ad by uploading to the same slot—unless you lock it in by paying for exclusivity!</p>
+    <p class="gig-ad-desc">Upload a looping ad video for your gig below. Anyone can replace your ad by uploading to the same slot—unless you lock it in by paying for exclusivity! If you lock your ad, it will be promoted across the platform for extra exposure.</p>
     <div class="gig-ad-grid" id="gigAdGrid"></div>
   </section>
+
+  <!-- SIDEBAR AD BLOCK -->
+  <aside class="sidebar-ads">
+    <div class="sidebar-ad-title">🎵 Featured Gigs</div>
+    <div id="sidebarAdSlots"></div>
+  </aside>
 
   <!-- Step 1: Audio Upload -->
   <div class="audio-track-block">
@@ -87,9 +92,9 @@
     >
       Your browser does not support the video tag.
     </video>
-    <!-- EXPORT MUSIC VIDEO BUTTON ADDED BELOW -->
     <button id="exportMusicVideoBtn" class="export-music-btn">Export Music Video</button>
     <div id="exportStatus" class="export-status"></div>
+    <div id="spreadAdSlotsBelow"></div>
     <div id="syncInstructions" class="sync-instructions">
       <strong>How to Fix Audio/Video Sync in Your Editor:</strong>
       <ol>
@@ -101,7 +106,6 @@
     </div>
   </div>
 
-  <!-- Moving how-it-works instructions here as requested -->
   <div class="switching-instructions" style="margin-top:-12px;">
     <span>
       <b>How it works:</b> Once all takes are uploaded, click <b>Start Switching</b>, then switch cameras live by pressing the camera buttons below. When you're done, click <b>Stop Switching</b> to generate your master video!
@@ -111,7 +115,9 @@
 
   <canvas id="mixCanvas" width="720" height="405" style="display:none"></canvas>
 
+  <!-- FOOTER AD SLOTS -->
   <footer class="hollywood-footer">
+    <div id="footerAdSlots"></div>
     <span class="clapperboard-icon">🎬</span>
     <span>FastCut by <b>bernardogarciaofficial</b> | <span class="camera-icon">🎥</span></span>
     <span class="footer-email">bernardogarciagarcia441@gmail.com</span>
