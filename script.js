@@ -394,4 +394,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Ensure main output video is unmuted for built-in speaker icon on page load
   masterOutputVideo.muted = false;
+
+  // --- Export Music Video Button Logic ---
+  const exportMusicVideoBtn = document.getElementById('exportMusicVideoBtn');
+  exportMusicVideoBtn.onclick = function() {
+    // Try to get the current src of the master output video
+    let videoUrl = masterOutputVideo.src;
+    if (!videoUrl || videoUrl === window.location.href) {
+      exportStatus.textContent = "No exported video available to download yet!";
+      exportMusicVideoBtn.disabled = true;
+      setTimeout(() => {
+        exportMusicVideoBtn.disabled = false;
+        exportStatus.textContent = "";
+      }, 1600);
+      return;
+    }
+    // Download the video as "fastcut_music_video.webm"
+    const a = document.createElement('a');
+    a.href = videoUrl;
+    a.download = "fastcut_music_video.webm";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    exportStatus.textContent = "Music video exported and downloaded!";
+    exportMusicVideoBtn.disabled = true;
+    setTimeout(() => {
+      exportMusicVideoBtn.disabled = false;
+      exportStatus.textContent = "";
+    }, 1800);
+  };
 });
