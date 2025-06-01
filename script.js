@@ -146,11 +146,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const btn = document.getElementById(`fastcutBtn-${i}`);
     fastcutBtns.push(btn);
     btn.onclick = () => {
+      if (!isSwitching) return;
       setActiveTrack(i);
       if (isSwitching) {
         recordSwitch(Date.now() - switchingStartTime, i);
       }
     };
+    btn.disabled = true; // Initially disabled
   }
   function setActiveTrack(idx) {
     activeTrack = idx;
@@ -210,6 +212,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const masterOutputVideo = document.getElementById('masterOutputVideo');
   const exportStatus = document.getElementById('exportStatus');
   const mixCanvas = document.getElementById('mixCanvas');
+  const switchingError = document.getElementById('switchingError');
 
   let isSwitching = false;
   let mixing = false, mediaRecorder = null, masterChunks = [];
@@ -218,18 +221,14 @@ document.addEventListener('DOMContentLoaded', function() {
   let switchingStartTime = 0;
   let switchingTimeline = [];
 
-  // Activate the built-in browser volume UI (speaker icon bottom right)
-  // Unmute, so the control is not "crossed out" and is interactive
-  masterOutputVideo.muted = false;
-
-  // Ensure that user interaction unlocks audio output in browsers with autoplay restrictions
-  masterOutputVideo.addEventListener('play', () => {
-    masterOutputVideo.muted = false;
-  });
+  // Always allow start button (for testing) but show error if takes missing.
+  startSwitchingBtn.disabled = false;
+  stopSwitchingBtn.disabled = true;
 
   function checkAllTakesUploaded() {
-    const allUploaded = uploadedVideos.every(v => !!v);
-    startSwitchingBtn.disabled = !allUploaded;
+    // Optional: Enable startSwitchingBtn only when all uploaded
+    // let allUploaded = uploadedVideos.every(v => !!v);
+    // startSwitchingBtn.disabled = !allUploaded;
     setupSwitcherTracks();
   }
 
@@ -249,6 +248,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // --- Key logic update: combine audio and video stream for recording! ---
   startSwitchingBtn.onclick = () => {
+    switchingError.textContent = '';
+    // Check if all takes are uploaded
+    const allUploaded = uploadedVideos.every(v => !!v);
+    if (!allUploaded) {
+      switchingError.textContent = "Please upload all 6 video takes before starting switching!";
+      return;
+    }
     exportStatus.textContent = "";
     for (let i = 0; i < NUM_TRACKS; i++) {
       const v = document.getElementById(`video-${i}`);
@@ -384,9 +390,7 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 
   // On load, disable all switching controls until videos are uploaded
-  startSwitchingBtn.disabled = true;
-  stopSwitchingBtn.disabled = true;
-  fastcutBtns.forEach(btn => btn.disabled = true);
+  // Buttons are enabled/disabled in logic above.
 
   // Ensure main output video is unmuted for built-in speaker icon on page load
   masterOutputVideo.muted = false;
