@@ -1,17 +1,3 @@
-// --- Firebase Config (REPLACE with your actual Firebase config!) ---
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
-
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const storage = firebase.storage();
-
 // --- Animate Members Counter ---
 function animateMembersCounter() {
   const el = document.getElementById('membersCountNumber');
@@ -25,30 +11,57 @@ function animateMembersCounter() {
 }
 animateMembersCounter();
 
-// --- GIG AD SLOTS LOGIC (Firebase persistent, multi-user) ---
+// --- GIG AD SLOTS LOGIC WITH PERSISTENCE ---
 const MAIN_AD_SLOTS = 6;
 const SIDEBAR_AD_SLOTS = 2;
 const SPREAD_AD_BELOW_MASTER = 2;
 const FOOTER_AD_SLOTS = 2;
 const GIG_EMPTY_THUMB = `<div class="gig-empty-thumb" title="No ad yet">🎸</div>`;
-const DEMO_USER = "anonymous";
+const DEMO_USER = "potential_client";
 
-let gigAdSlots = [];
-for (let i = 0; i < MAIN_AD_SLOTS; i++) {
-  gigAdSlots.push({
-    slot: i,
-    videoUrl: null,
-    client: null,
-    locked: false,
-    lockOwner: null,
-    timestamp: null,
-    storagePath: null
-  });
+// --- Persistence helpers ---
+function saveAdState() {
+  const state = {
+    gigAdSlots,
+    sidebarAdSlots,
+    spreadAdSlotsBelow,
+    footerAdSlots
+  };
+  localStorage.setItem("fastcutAdState", JSON.stringify(state));
 }
+function loadAdState() {
+  const state = JSON.parse(localStorage.getItem("fastcutAdState") || "null");
+  if (!state) return false;
+  if (Array.isArray(state.gigAdSlots) && state.gigAdSlots.length === MAIN_AD_SLOTS) {
+    gigAdSlots = state.gigAdSlots;
+    sidebarAdSlots = state.sidebarAdSlots;
+    spreadAdSlotsBelow = state.spreadAdSlotsBelow;
+    footerAdSlots = state.footerAdSlots;
+    return true;
+  }
+  return false;
+}
+
+// The main ad grid slots (homepage)
+let gigAdSlots = Array(MAIN_AD_SLOTS).fill(null).map(() => ({
+  videoUrl: null,
+  client: null,
+  locked: false,
+  lockOwner: null,
+  lockUntil: null,
+  timestamp: null,
+  spread: false,
+  promotedAdIndex: null,
+}));
+// Sidebar, below master, and footer ad slots (spread)
 let sidebarAdSlots = Array(SIDEBAR_AD_SLOTS).fill(null).map(() => ({ spread: false, promotedAdIndex: null }));
 let spreadAdSlotsBelow = Array(SPREAD_AD_BELOW_MASTER).fill(null).map(() => ({ spread: false, promotedAdIndex: null }));
 let footerAdSlots = Array(FOOTER_AD_SLOTS).fill(null).map(() => ({ spread: false, promotedAdIndex: null }));
 
+// --- Load ad state on page load ---
+loadAdState();
+
+// Utility to collect all "spread" slots for convenience
 function getAllSpreadSlots() {
   return [
     { arr: sidebarAdSlots, render: renderSidebarAdSlots },
@@ -57,14 +70,7 @@ function getAllSpreadSlots() {
   ];
 }
 
-async function fetchGigAdSlots() {
-  const snap = await db.collection("gigAdSlots").orderBy("slot").get();
-  snap.forEach(doc => {
-    const data = doc.data();
-    gigAdSlots[data.slot] = { ...gigAdSlots[data.slot], ...data };
-  });
-  renderAllAdSlots();
-}
+// RENDER MAIN HOMEPAGE AD GRID
 function renderGigAdSlots() {
   const grid = document.getElementById("gigAdGrid");
   grid.innerHTML = "";
@@ -72,30 +78,35 @@ function renderGigAdSlots() {
     grid.appendChild(renderSingleAdSlot(slot, i, "main"));
   });
 }
+
+// RENDER SIDEBAR SPREAD SLOTS
 function renderSidebarAdSlots() {
   const sidebar = document.getElementById("sidebarAdSlots");
-  if (!sidebar) return;
   sidebar.innerHTML = "";
   sidebarAdSlots.forEach((slot, i) => {
     sidebar.appendChild(renderSingleAdSlot(getPromotedSlotData(slot), i, "sidebar", slot.spread));
   });
 }
+
+// RENDER BELOW MASTER OUTPUT SPREAD SLOTS
 function renderSpreadAdSlotsBelow() {
   const below = document.getElementById("spreadAdSlotsBelow");
-  if (!below) return;
   below.innerHTML = "";
   spreadAdSlotsBelow.forEach((slot, i) => {
     below.appendChild(renderSingleAdSlot(getPromotedSlotData(slot), i, "spread", slot.spread));
   });
 }
+
+// RENDER FOOTER SPREAD SLOTS
 function renderFooterAdSlots() {
   const footer = document.getElementById("footerAdSlots");
-  if (!footer) return;
   footer.innerHTML = "";
   footerAdSlots.forEach((slot, i) => {
     footer.appendChild(renderSingleAdSlot(getPromotedSlotData(slot), i, "footer", slot.spread));
   });
 }
+
+// Helper to get promoted ad data for a spread slot
 function getPromotedSlotData(slot) {
   if (!slot.spread || slot.promotedAdIndex == null || !gigAdSlots[slot.promotedAdIndex]) {
     return { videoUrl: null, client: null, promoted: false, locked: false };
@@ -106,9 +117,13 @@ function getPromotedSlotData(slot) {
     promoted: true
   };
 }
+
+// Renders a single ad slot div (main, sidebar, below, footer)
 function renderSingleAdSlot(slot, index, location, isSpread = false) {
   const slotDiv = document.createElement("div");
   slotDiv.className = "gig-ad-slot" + (slot.spread || slot.promoted ? " promoted" : "");
+
+  // Video or empty thumb
   if (slot.videoUrl) {
     const v = document.createElement("video");
     v.src = slot.videoUrl;
@@ -116,47 +131,61 @@ function renderSingleAdSlot(slot, index, location, isSpread = false) {
     v.loop = true;
     v.muted = true;
     v.playsInline = true;
+    v.setAttribute("controls", false);
     v.className = "gig-ad-thumb";
     slotDiv.appendChild(v);
   } else {
     slotDiv.innerHTML += GIG_EMPTY_THUMB;
   }
+
+  // Client info
   if (slot.client) {
     const client = document.createElement("div");
     client.className = "gig-ad-client";
     client.textContent = `Ad by: ${slot.client}`;
     slotDiv.appendChild(client);
   }
+
+  // Timestamp
   if (slot.timestamp) {
     const ts = document.createElement("div");
     ts.className = "gig-ad-timestamp";
     ts.textContent = `Updated: ${slot.timestamp}`;
     slotDiv.appendChild(ts);
   }
+
+  // If spread/promoted, do not show upload or lock options
   if (slot.spread || slot.promoted) {
     slotDiv.title = "This ad is promoted by a client and shown here for extra exposure!";
     return slotDiv;
   }
+
+  // Locked state
   if (slot.locked) {
     const lockMsg = document.createElement("div");
     lockMsg.className = "gig-ad-locked-msg";
     lockMsg.textContent = "🔒 Slot is locked!";
     slotDiv.appendChild(lockMsg);
+
     if (slot.lockOwner) {
       const owner = document.createElement("div");
       owner.className = "gig-lock-owner";
       owner.textContent = `Locked by: ${slot.lockOwner}`;
       slotDiv.appendChild(owner);
     }
+    // If current user is the lock owner, show upload (replace) button
     if (slot.lockOwner === DEMO_USER) {
       slotDiv.appendChild(createGigAdUploadBtn(index, true));
     } else {
+      // Not lock owner, disable upload
       const uploadBtn = createGigAdUploadBtn(index, false);
       uploadBtn.disabled = true;
       slotDiv.appendChild(uploadBtn);
     }
   } else {
+    // Not locked: anyone can upload/replace
     slotDiv.appendChild(createGigAdUploadBtn(index, true));
+    // Show "Lock this slot" button
     const lockBtn = document.createElement("button");
     lockBtn.className = "gig-ad-lock-btn";
     lockBtn.textContent = "Lock this slot (Pay)";
@@ -165,6 +194,8 @@ function renderSingleAdSlot(slot, index, location, isSpread = false) {
   }
   return slotDiv;
 }
+
+// Create upload button for ad slot
 function createGigAdUploadBtn(slotIndex, enabled) {
   const label = document.createElement("label");
   label.className = "gig-ad-upload-btn";
@@ -178,54 +209,52 @@ function createGigAdUploadBtn(slotIndex, enabled) {
     if (!enabled) return;
     const file = e.target.files[0];
     if (!file) return;
-    const storagePath = `gigAds/slot_${slotIndex}_${Date.now()}_${file.name}`;
-    const uploadTask = storage.ref(storagePath).put(file);
-    uploadTask.on("state_changed", null,
-      err => alert("Upload failed: " + err),
-      async () => {
-        const videoUrl = await uploadTask.snapshot.ref.getDownloadURL();
-        const timestamp = new Date().toLocaleString();
-        await db.collection("gigAdSlots").doc("slot" + slotIndex).set({
-          slot: slotIndex,
-          videoUrl,
-          client: DEMO_USER,
-          locked: gigAdSlots[slotIndex].locked || false,
-          lockOwner: gigAdSlots[slotIndex].lockOwner || null,
-          timestamp,
-          storagePath
-        });
-        fetchGigAdSlots();
-      }
-    );
+    const url = URL.createObjectURL(file);
+    gigAdSlots[slotIndex].videoUrl = url;
+    gigAdSlots[slotIndex].client = DEMO_USER;
+    gigAdSlots[slotIndex].timestamp = new Date().toLocaleString();
+    saveAdState();
+    renderAllAdSlots();
   };
   label.appendChild(input);
   if (!enabled) label.disabled = true;
   label.onclick = enabled ? () => input.click() : (e) => e.preventDefault();
   return label;
 }
-async function lockGigAdSlot(index) {
+
+// Lock slot: simulate payment and spread ad to other slots
+function lockGigAdSlot(index) {
   if (confirm("To lock this ad slot and promote it across the platform, you must pay. Simulate payment now?")) {
-    await db.collection("gigAdSlots").doc("slot" + index).set({
-      ...gigAdSlots[index],
-      locked: true,
-      lockOwner: DEMO_USER
-    }, { merge: true });
-    fetchGigAdSlots();
+    gigAdSlots[index].locked = true;
+    gigAdSlots[index].lockOwner = DEMO_USER;
+    gigAdSlots[index].lockUntil = null;
+    spreadLockedAd(index);
+    saveAdState();
+    renderAllAdSlots();
     alert("Slot locked and promoted! Your ad will be shown in multiple locations for extra exposure.");
   }
 }
 
-getAllSpreadSlots().forEach(slotGroup => slotGroup.render());
+// Spread the locked ad into bonus slots around the platform
+function spreadLockedAd(adIndex) {
+  getAllSpreadSlots().forEach(slotGroup => {
+    slotGroup.arr.forEach(slot => {
+      slot.spread = true;
+      slot.promotedAdIndex = adIndex;
+    });
+    slotGroup.render();
+  });
+  saveAdState();
+}
+
+// Render all ad slot locations
 function renderAllAdSlots() {
   renderGigAdSlots();
   renderSidebarAdSlots();
   renderSpreadAdSlotsBelow();
   renderFooterAdSlots();
 }
-
-// Live Firestore sync
-db.collection("gigAdSlots").onSnapshot(fetchGigAdSlots);
-fetchGigAdSlots();
+renderAllAdSlots();
 
 // --- Audio Track Input (accepts most popular formats) ---
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
@@ -249,12 +278,16 @@ document.getElementById('songInput').onchange = e => {
   }
 };
 
-// --- Main Video Recorder Logic ---
+// --- Main Video Recording Logic ---
 const mainRecorderPreview = document.getElementById('mainRecorderPreview');
 const mainRecorderRecordBtn = document.getElementById('mainRecorderRecordBtn');
 const mainRecorderStopBtn = document.getElementById('mainRecorderStopBtn');
 const mainRecorderDownloadBtn = document.getElementById('mainRecorderDownloadBtn');
 const mainRecorderStatus = document.getElementById('mainRecorderStatus');
+
+document.querySelector('.main-recorder-section h3').textContent = "after each take is recorded,click 'download' to save it to your computer-and don't forget to name your take";
+document.querySelector('.take-instructions span').textContent = "after each take is recorded,click 'download' to save it to your computer—and don't forget to name your take";
+document.querySelector('.switcher-upload-section h3').textContent = "easyly upload each take right here";
 
 let mainRecorderStream = null;
 let mainRecorderMediaRecorder = null;
@@ -328,8 +361,9 @@ mainRecorderDownloadBtn.onclick = () => {
   mainRecorderStatus.textContent = "Take downloaded. Repeat or upload it as a take below!";
 };
 
-// --- FastCut Switcher Logic ---
+// --- Rest of FastCut code unchanged (switcher, export, etc.) ---
 document.addEventListener('DOMContentLoaded', function() {
+  // --- FastCut Switcher Logic ---
   const NUM_TRACKS = 6;
   const TRACK_NAMES = [
     "Video Track 1",
@@ -372,7 +406,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   setActiveTrack(0);
 
-  // Upload Section
+  // --- Upload Section ---
   const VIDEO_ACCEPTED = ".mp4,.webm,.mov,.ogg,.mkv,video/*";
   const switcherTracks = document.getElementById("switcherTracks");
   switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => `
