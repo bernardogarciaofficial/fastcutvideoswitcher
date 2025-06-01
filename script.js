@@ -11,7 +11,7 @@ function animateMembersCounter() {
 }
 animateMembersCounter();
 
-// --- GIG AD SLOTS LOGIC WITH PERSISTENCE ---
+// --- GIG AD SLOTS LOGIC WITH PERSISTENCE (base64 video for true persistence) ---
 const MAIN_AD_SLOTS = 6;
 const SIDEBAR_AD_SLOTS = 2;
 const SPREAD_AD_BELOW_MASTER = 2;
@@ -44,7 +44,7 @@ function loadAdState() {
 
 // The main ad grid slots (homepage)
 let gigAdSlots = Array(MAIN_AD_SLOTS).fill(null).map(() => ({
-  videoUrl: null,
+  videoUrl: null, // base64!
   client: null,
   locked: false,
   lockOwner: null,
@@ -126,7 +126,7 @@ function renderSingleAdSlot(slot, index, location, isSpread = false) {
   // Video or empty thumb
   if (slot.videoUrl) {
     const v = document.createElement("video");
-    v.src = slot.videoUrl;
+    v.src = slot.videoUrl; // base64!
     v.autoplay = true;
     v.loop = true;
     v.muted = true;
@@ -195,7 +195,7 @@ function renderSingleAdSlot(slot, index, location, isSpread = false) {
   return slotDiv;
 }
 
-// Create upload button for ad slot
+// Create upload button for ad slot (base64 for true persistence)
 function createGigAdUploadBtn(slotIndex, enabled) {
   const label = document.createElement("label");
   label.className = "gig-ad-upload-btn";
@@ -209,12 +209,17 @@ function createGigAdUploadBtn(slotIndex, enabled) {
     if (!enabled) return;
     const file = e.target.files[0];
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    gigAdSlots[slotIndex].videoUrl = url;
-    gigAdSlots[slotIndex].client = DEMO_USER;
-    gigAdSlots[slotIndex].timestamp = new Date().toLocaleString();
-    saveAdState();
-    renderAllAdSlots();
+
+    // Read file as DataURL (base64)
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      gigAdSlots[slotIndex].videoUrl = evt.target.result; // base64 string!
+      gigAdSlots[slotIndex].client = DEMO_USER;
+      gigAdSlots[slotIndex].timestamp = new Date().toLocaleString();
+      saveAdState();
+      renderAllAdSlots();
+    };
+    reader.readAsDataURL(file);
   };
   label.appendChild(input);
   if (!enabled) label.disabled = true;
