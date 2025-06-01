@@ -11,7 +11,7 @@ function animateMembersCounter() {
 }
 animateMembersCounter();
 
-// --- GIG AD SLOTS LOGIC WITH SPREAD ---
+// --- GIG AD SLOTS LOGIC WITH SPREAD + PERSISTENCE (localStorage) ---
 const MAIN_AD_SLOTS = 6;
 const SIDEBAR_AD_SLOTS = 2;
 const SPREAD_AD_BELOW_MASTER = 2;
@@ -19,39 +19,56 @@ const FOOTER_AD_SLOTS = 2;
 const GIG_EMPTY_THUMB = `<div class="gig-empty-thumb" title="No ad yet">🎸</div>`;
 const DEMO_USER = "potential_client"; // Simulate logged in user
 
-// The main ad grid slots (homepage)
-let gigAdSlots = Array(MAIN_AD_SLOTS).fill(null).map(() => ({
-  videoUrl: null,
-  client: null,
-  locked: false,
-  lockOwner: null,
-  lockUntil: null,
-  timestamp: null,
-  spread: false, // is this slot a "spread" slot for a locked ad?
-  promotedAdIndex: null, // for spread: which ad index is this displaying?
-}));
+// Storage keys
+const STORAGE_KEYS = {
+  main: "fastcut_gigAdSlots",
+  sidebar: "fastcut_sidebarAdSlots",
+  below: "fastcut_spreadAdSlotsBelow",
+  footer: "fastcut_footerAdSlots"
+};
 
-// Sidebar, below master, and footer ad slots (used for spreading locked ads)
-let sidebarAdSlots = Array(SIDEBAR_AD_SLOTS).fill(null).map(() => ({
-  spread: false,
-  promotedAdIndex: null,
-}));
-let spreadAdSlotsBelow = Array(SPREAD_AD_BELOW_MASTER).fill(null).map(() => ({
-  spread: false,
-  promotedAdIndex: null,
-}));
-let footerAdSlots = Array(FOOTER_AD_SLOTS).fill(null).map(() => ({
-  spread: false,
-  promotedAdIndex: null,
-}));
+// Load ad slots from localStorage or create new
+function loadAdSlots(key, def) {
+  try {
+    const data = localStorage.getItem(key);
+    if (data) return JSON.parse(data);
+  } catch (e) {}
+  // fallback: fresh array
+  return Array(def).fill(null).map(() => ({
+    videoUrl: null,
+    client: null,
+    locked: false,
+    lockOwner: null,
+    lockUntil: null,
+    timestamp: null,
+    spread: false,
+    promotedAdIndex: null
+  }));
+}
+let gigAdSlots = loadAdSlots(STORAGE_KEYS.main, MAIN_AD_SLOTS);
+let sidebarAdSlots = loadAdSlots(STORAGE_KEYS.sidebar, SIDEBAR_AD_SLOTS);
+let spreadAdSlotsBelow = loadAdSlots(STORAGE_KEYS.below, SPREAD_AD_BELOW_MASTER);
+let footerAdSlots = loadAdSlots(STORAGE_KEYS.footer, FOOTER_AD_SLOTS);
 
 // Utility to collect all "spread" slots for convenience
 function getAllSpreadSlots() {
   return [
-    { arr: sidebarAdSlots, render: renderSidebarAdSlots },
-    { arr: spreadAdSlotsBelow, render: renderSpreadAdSlotsBelow },
-    { arr: footerAdSlots, render: renderFooterAdSlots }
+    { arr: sidebarAdSlots, render: renderSidebarAdSlots, key: STORAGE_KEYS.sidebar },
+    { arr: spreadAdSlotsBelow, render: renderSpreadAdSlotsBelow, key: STORAGE_KEYS.below },
+    { arr: footerAdSlots, render: renderFooterAdSlots, key: STORAGE_KEYS.footer }
   ];
+}
+
+// Save all ad slots to localStorage
+function saveAllAdSlots() {
+  try {
+    localStorage.setItem(STORAGE_KEYS.main, JSON.stringify(gigAdSlots));
+    localStorage.setItem(STORAGE_KEYS.sidebar, JSON.stringify(sidebarAdSlots));
+    localStorage.setItem(STORAGE_KEYS.below, JSON.stringify(spreadAdSlotsBelow));
+    localStorage.setItem(STORAGE_KEYS.footer, JSON.stringify(footerAdSlots));
+  } catch (e) {
+    // LocalStorage full or not available, ignore for now (demo)
+  }
 }
 
 // RENDER MAIN HOMEPAGE AD GRID
@@ -200,6 +217,7 @@ function createGigAdUploadBtn(slotIndex, enabled) {
     gigAdSlots[slotIndex].videoUrl = url;
     gigAdSlots[slotIndex].client = DEMO_USER;
     gigAdSlots[slotIndex].timestamp = new Date().toLocaleString();
+    saveAllAdSlots();
     renderAllAdSlots();
   };
   label.appendChild(input);
@@ -215,6 +233,7 @@ function lockGigAdSlot(index) {
     gigAdSlots[index].lockOwner = DEMO_USER;
     gigAdSlots[index].lockUntil = null; // Add time-based expiry if desired
     spreadLockedAd(index);
+    saveAllAdSlots();
     renderAllAdSlots();
     alert("Slot locked and promoted! Your ad will be shown in multiple locations for extra exposure.");
   }
@@ -230,6 +249,7 @@ function spreadLockedAd(adIndex) {
     });
     slotGroup.render();
   });
+  saveAllAdSlots();
 }
 
 // When an ad is unlocked or replaced, un-spread it (not shown in this demo, but you can implement!)
@@ -243,6 +263,7 @@ function clearSpreadFromAd(adIndex) {
     });
     slotGroup.render();
   });
+  saveAllAdSlots();
 }
 
 // Render all ad slot locations
@@ -252,7 +273,6 @@ function renderAllAdSlots() {
   renderSpreadAdSlotsBelow();
   renderFooterAdSlots();
 }
-
 renderAllAdSlots();
 
 // --- Audio Track Input (accepts most popular formats) ---
