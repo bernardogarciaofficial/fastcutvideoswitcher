@@ -61,7 +61,7 @@
   <!-- Step 3: Live Switch and Record -->
   <div class="switcher-control-section">
     <div class="switcher-live-controls">
-      <button id="startSwitchingBtn" class="live-switch-btn record-btn" disabled>⏺️ Start Switching</button>
+      <button id="startSwitchingBtn" class="live-switch-btn record-btn">⏺️ Start Switching</button>
       <button id="stopSwitchingBtn" class="live-switch-btn stop-btn" disabled>⏹️ Stop Switching</button>
     </div>
     <div id="fastcutSwitcher" class="fastcut-switcher-row"></div>
@@ -69,6 +69,7 @@
       <span>
         <b>How it works:</b> Once all takes are uploaded, click <b>Start Switching</b>, then switch cameras live by pressing the camera buttons below. When you're done, click <b>Stop Switching</b> to generate your master video!
       </span>
+      <div id="switchingError" style="color:#e53935; font-weight:bold; margin-top:10px;"></div>
     </div>
   </div>
 
