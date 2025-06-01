@@ -11,13 +11,36 @@ function animateMembersCounter() {
 }
 animateMembersCounter();
 
-// --- GIG AD SLOTS LOGIC WITH SPREAD ---
+// --- GIG AD SLOTS LOGIC WITH PERSISTENCE ---
 const MAIN_AD_SLOTS = 6;
 const SIDEBAR_AD_SLOTS = 2;
 const SPREAD_AD_BELOW_MASTER = 2;
 const FOOTER_AD_SLOTS = 2;
 const GIG_EMPTY_THUMB = `<div class="gig-empty-thumb" title="No ad yet">🎸</div>`;
-const DEMO_USER = "potential_client"; // Simulate logged in user
+const DEMO_USER = "potential_client";
+
+// --- Persistence helpers ---
+function saveAdState() {
+  const state = {
+    gigAdSlots,
+    sidebarAdSlots,
+    spreadAdSlotsBelow,
+    footerAdSlots
+  };
+  localStorage.setItem("fastcutAdState", JSON.stringify(state));
+}
+function loadAdState() {
+  const state = JSON.parse(localStorage.getItem("fastcutAdState") || "null");
+  if (!state) return false;
+  if (Array.isArray(state.gigAdSlots) && state.gigAdSlots.length === MAIN_AD_SLOTS) {
+    gigAdSlots = state.gigAdSlots;
+    sidebarAdSlots = state.sidebarAdSlots;
+    spreadAdSlotsBelow = state.spreadAdSlotsBelow;
+    footerAdSlots = state.footerAdSlots;
+    return true;
+  }
+  return false;
+}
 
 // The main ad grid slots (homepage)
 let gigAdSlots = Array(MAIN_AD_SLOTS).fill(null).map(() => ({
@@ -27,23 +50,16 @@ let gigAdSlots = Array(MAIN_AD_SLOTS).fill(null).map(() => ({
   lockOwner: null,
   lockUntil: null,
   timestamp: null,
-  spread: false, // is this slot a "spread" slot for a locked ad?
-  promotedAdIndex: null, // for spread: which ad index is this displaying?
+  spread: false,
+  promotedAdIndex: null,
 }));
+// Sidebar, below master, and footer ad slots (spread)
+let sidebarAdSlots = Array(SIDEBAR_AD_SLOTS).fill(null).map(() => ({ spread: false, promotedAdIndex: null }));
+let spreadAdSlotsBelow = Array(SPREAD_AD_BELOW_MASTER).fill(null).map(() => ({ spread: false, promotedAdIndex: null }));
+let footerAdSlots = Array(FOOTER_AD_SLOTS).fill(null).map(() => ({ spread: false, promotedAdIndex: null }));
 
-// Sidebar, below master, and footer ad slots (used for spreading locked ads)
-let sidebarAdSlots = Array(SIDEBAR_AD_SLOTS).fill(null).map(() => ({
-  spread: false,
-  promotedAdIndex: null,
-}));
-let spreadAdSlotsBelow = Array(SPREAD_AD_BELOW_MASTER).fill(null).map(() => ({
-  spread: false,
-  promotedAdIndex: null,
-}));
-let footerAdSlots = Array(FOOTER_AD_SLOTS).fill(null).map(() => ({
-  spread: false,
-  promotedAdIndex: null,
-}));
+// --- Load ad state on page load ---
+loadAdState();
 
 // Utility to collect all "spread" slots for convenience
 function getAllSpreadSlots() {
@@ -93,10 +109,8 @@ function renderFooterAdSlots() {
 // Helper to get promoted ad data for a spread slot
 function getPromotedSlotData(slot) {
   if (!slot.spread || slot.promotedAdIndex == null || !gigAdSlots[slot.promotedAdIndex]) {
-    // Return empty slot
     return { videoUrl: null, client: null, promoted: false, locked: false };
   }
-  // Copy data from original locked slot
   return {
     ...gigAdSlots[slot.promotedAdIndex],
     spread: true,
@@ -196,10 +210,10 @@ function createGigAdUploadBtn(slotIndex, enabled) {
     const file = e.target.files[0];
     if (!file) return;
     const url = URL.createObjectURL(file);
-    // Update slot
     gigAdSlots[slotIndex].videoUrl = url;
     gigAdSlots[slotIndex].client = DEMO_USER;
     gigAdSlots[slotIndex].timestamp = new Date().toLocaleString();
+    saveAdState();
     renderAllAdSlots();
   };
   label.appendChild(input);
@@ -213,8 +227,9 @@ function lockGigAdSlot(index) {
   if (confirm("To lock this ad slot and promote it across the platform, you must pay. Simulate payment now?")) {
     gigAdSlots[index].locked = true;
     gigAdSlots[index].lockOwner = DEMO_USER;
-    gigAdSlots[index].lockUntil = null; // Add time-based expiry if desired
+    gigAdSlots[index].lockUntil = null;
     spreadLockedAd(index);
+    saveAdState();
     renderAllAdSlots();
     alert("Slot locked and promoted! Your ad will be shown in multiple locations for extra exposure.");
   }
@@ -222,7 +237,6 @@ function lockGigAdSlot(index) {
 
 // Spread the locked ad into bonus slots around the platform
 function spreadLockedAd(adIndex) {
-  // Find all available spread slots (sidebar, below, footer) and fill with this ad
   getAllSpreadSlots().forEach(slotGroup => {
     slotGroup.arr.forEach(slot => {
       slot.spread = true;
@@ -230,19 +244,7 @@ function spreadLockedAd(adIndex) {
     });
     slotGroup.render();
   });
-}
-
-// When an ad is unlocked or replaced, un-spread it (not shown in this demo, but you can implement!)
-function clearSpreadFromAd(adIndex) {
-  getAllSpreadSlots().forEach(slotGroup => {
-    slotGroup.arr.forEach(slot => {
-      if (slot.promotedAdIndex === adIndex) {
-        slot.spread = false;
-        slot.promotedAdIndex = null;
-      }
-    });
-    slotGroup.render();
-  });
+  saveAdState();
 }
 
 // Render all ad slot locations
@@ -252,7 +254,6 @@ function renderAllAdSlots() {
   renderSpreadAdSlotsBelow();
   renderFooterAdSlots();
 }
-
 renderAllAdSlots();
 
 // --- Audio Track Input (accepts most popular formats) ---
@@ -316,11 +317,9 @@ mainRecorderRecordBtn.onclick = async () => {
   mainRecorderPreview.muted = true;
   mainRecorderPreview.controls = false;
 
-  // Start music in sync
   audio.currentTime = 0;
   audio.play();
 
-  // Record video + audio
   mainRecorderMediaRecorder = new MediaRecorder(mainRecorderStream, { mimeType: "video/webm" });
   mainRecorderMediaRecorder.ondataavailable = e => { if (e.data.size > 0) mainRecorderChunks.push(e.data); };
   mainRecorderMediaRecorder.onstop = () => {
@@ -363,7 +362,6 @@ mainRecorderDownloadBtn.onclick = () => {
 };
 
 // --- Rest of FastCut code unchanged (switcher, export, etc.) ---
-
 document.addEventListener('DOMContentLoaded', function() {
   // --- FastCut Switcher Logic ---
   const NUM_TRACKS = 6;
@@ -507,7 +505,7 @@ document.addEventListener('DOMContentLoaded', function() {
     isSwitching = true;
     startSwitchingBtn.disabled = true;
     stopSwitchingBtn.disabled = false;
-    fastcutBtns.forEach(btn => btn.disabled = true);
+    fastcutBtns.forEach(btn => btn.disabled = false);
 
     const ctx = mixCanvas.getContext('2d');
     ctx.fillStyle = "#111";
