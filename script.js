@@ -1,4 +1,4 @@
-// --- Firebase Initialization ---
+// NOTE: Replace with your actual Firebase config!
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY_HERE",
   authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
@@ -63,57 +63,45 @@ function getAllSpreadSlots() {
   ];
 }
 
-// ---- FIREBASE INTEGRATION ----
 async function saveAllAdSlotsToFirebase() {
   await db.collection("ads").doc("main").set({ slots: gigAdSlots });
   await db.collection("ads").doc("sidebar").set({ slots: sidebarAdSlots });
   await db.collection("ads").doc("below").set({ slots: spreadAdSlotsBelow });
   await db.collection("ads").doc("footer").set({ slots: footerAdSlots });
 }
-
 async function loadAllAdSlotsFromFirebase() {
   const mainDoc = await db.collection("ads").doc("main").get();
   if (mainDoc.exists && mainDoc.data().slots) gigAdSlots = mainDoc.data().slots;
-
   const sidebarDoc = await db.collection("ads").doc("sidebar").get();
   if (sidebarDoc.exists && sidebarDoc.data().slots) sidebarAdSlots = sidebarDoc.data().slots;
-
   const belowDoc = await db.collection("ads").doc("below").get();
   if (belowDoc.exists && belowDoc.data().slots) spreadAdSlotsBelow = belowDoc.data().slots;
-
   const footerDoc = await db.collection("ads").doc("footer").get();
   if (footerDoc.exists && footerDoc.data().slots) footerAdSlots = footerDoc.data().slots;
-
   renderAllAdSlots();
 }
-
 function subscribeToAdSlots() {
   db.collection("ads").doc("main").onSnapshot(doc => {
     if (doc.exists && doc.data().slots) {
-      gigAdSlots = doc.data().slots;
-      renderGigAdSlots();
+      gigAdSlots = doc.data().slots; renderGigAdSlots();
     }
   });
   db.collection("ads").doc("sidebar").onSnapshot(doc => {
     if (doc.exists && doc.data().slots) {
-      sidebarAdSlots = doc.data().slots;
-      renderSidebarAdSlots();
+      sidebarAdSlots = doc.data().slots; renderSidebarAdSlots();
     }
   });
   db.collection("ads").doc("below").onSnapshot(doc => {
     if (doc.exists && doc.data().slots) {
-      spreadAdSlotsBelow = doc.data().slots;
-      renderSpreadAdSlotsBelow();
+      spreadAdSlotsBelow = doc.data().slots; renderSpreadAdSlotsBelow();
     }
   });
   db.collection("ads").doc("footer").onSnapshot(doc => {
     if (doc.exists && doc.data().slots) {
-      footerAdSlots = doc.data().slots;
-      renderFooterAdSlots();
+      footerAdSlots = doc.data().slots; renderFooterAdSlots();
     }
   });
 }
-
 function renderGigAdSlots() {
   const grid = document.getElementById("gigAdGrid");
   grid.innerHTML = "";
@@ -178,28 +166,22 @@ function renderSingleAdSlot(slot, index, location, isSpread = false) {
     slotDiv.innerHTML += GIG_EMPTY_THUMB;
   }
 
-  // Client info
   if (slot.client) {
     const client = document.createElement("div");
     client.className = "gig-ad-client";
     client.textContent = `Ad by: ${slot.client}`;
     slotDiv.appendChild(client);
   }
-  // Timestamp
   if (slot.timestamp) {
     const ts = document.createElement("div");
     ts.className = "gig-ad-timestamp";
     ts.textContent = `Updated: ${slot.timestamp}`;
     slotDiv.appendChild(ts);
   }
-
-  // If spread/promoted, do not show upload or lock options
   if (slot.spread || slot.promoted) {
     slotDiv.title = "This ad is promoted by a client and shown here for extra exposure!";
     return slotDiv;
   }
-
-  // Locked state
   if (slot.locked) {
     const lockMsg = document.createElement("div");
     lockMsg.className = "gig-ad-locked-msg";
@@ -215,7 +197,6 @@ function renderSingleAdSlot(slot, index, location, isSpread = false) {
     if (slot.lockOwner === DEMO_USER) {
       slotDiv.appendChild(createGigAdUploadBtn(index, true));
     } else {
-      // Not lock owner, disable upload
       const uploadBtn = createGigAdUploadBtn(index, false);
       uploadBtn.disabled = true;
       slotDiv.appendChild(uploadBtn);
@@ -230,8 +211,6 @@ function renderSingleAdSlot(slot, index, location, isSpread = false) {
   }
   return slotDiv;
 }
-
-// --- NEW: Upload video to Firebase Storage before saving slot ---
 function createGigAdUploadBtn(slotIndex, enabled) {
   const label = document.createElement("label");
   label.className = "gig-ad-upload-btn";
@@ -247,7 +226,6 @@ function createGigAdUploadBtn(slotIndex, enabled) {
     if (!file) return;
     label.innerHTML = "Uploading...";
     label.style.opacity = 0.7;
-    // Upload file to Firebase Storage
     try {
       const storageRef = storage.ref(`ad_videos/slot${slotIndex}_${Date.now()}_${file.name}`);
       const snapshot = await storageRef.put(file);
@@ -268,7 +246,6 @@ function createGigAdUploadBtn(slotIndex, enabled) {
   label.onclick = enabled ? () => input.click() : (e) => e.preventDefault();
   return label;
 }
-
 async function lockGigAdSlot(index) {
   if (confirm("To lock this ad slot and promote it across the platform, you must pay. Simulate payment now?")) {
     gigAdSlots[index].locked = true;
@@ -307,7 +284,6 @@ function renderAllAdSlots() {
   renderFooterAdSlots();
 }
 
-// --- INITIALIZE AD SYSTEM ON PAGE LOAD ---
 window.addEventListener('DOMContentLoaded', async function() {
   await loadAllAdSlotsFromFirebase();
   subscribeToAdSlots();
@@ -321,7 +297,6 @@ document.getElementById('songInput').setAttribute('accept', AUDIO_ACCEPTED);
 const audio = document.getElementById('audio');
 const audioStatus = document.getElementById('audioStatus');
 let masterAudioFile = null;
-
 document.getElementById('songInput').onchange = e => {
   const file = e.target.files[0];
   masterAudioFile = file;
@@ -336,16 +311,12 @@ document.getElementById('songInput').onchange = e => {
   }
 };
 
-// --- Main Video Recording Logic (untouched) ---
+// --- Main Video Recording Logic ---
 const mainRecorderPreview = document.getElementById('mainRecorderPreview');
 const mainRecorderRecordBtn = document.getElementById('mainRecorderRecordBtn');
 const mainRecorderStopBtn = document.getElementById('mainRecorderStopBtn');
 const mainRecorderDownloadBtn = document.getElementById('mainRecorderDownloadBtn');
 const mainRecorderStatus = document.getElementById('mainRecorderStatus');
-
-document.querySelector('.main-recorder-section h3').textContent = "after each take is recorded,click 'download' to save it to your computer-and don't forget to name your take";
-document.querySelector('.take-instructions span').textContent = "after each take is recorded,click 'download' to save it to your computer—and don't forget to name your take";
-document.querySelector('.switcher-upload-section h3').textContent = "easyly upload each take right here";
 
 let mainRecorderStream = null;
 let mainRecorderMediaRecorder = null;
@@ -407,7 +378,6 @@ mainRecorderStopBtn.onclick = () => {
   audio.pause();
   audio.currentTime = 0;
 };
-
 mainRecorderDownloadBtn.onclick = () => {
   if (!mainRecorderBlobURL) return;
   const a = document.createElement('a');
@@ -421,7 +391,6 @@ mainRecorderDownloadBtn.onclick = () => {
 
 // --- FastCut Music Video Switcher / Export Logic ---
 function fastCutInit() {
-  // --- FastCut Switcher Logic ---
   const NUM_TRACKS = 6;
   const TRACK_NAMES = [
     "Video Track 1",
