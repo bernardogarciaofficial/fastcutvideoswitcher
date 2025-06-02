@@ -1,5 +1,4 @@
 // --- Firebase Initialization ---
-// Replace these values with your real Firebase config!
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY_HERE",
   authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
@@ -65,7 +64,6 @@ function getAllSpreadSlots() {
 }
 
 // ---- FIREBASE INTEGRATION ----
-
 async function saveAllAdSlotsToFirebase() {
   await db.collection("ads").doc("main").set({ slots: gigAdSlots });
   await db.collection("ads").doc("sidebar").set({ slots: sidebarAdSlots });
@@ -159,7 +157,7 @@ function renderSingleAdSlot(slot, index, location, isSpread = false) {
   slotDiv.className = "gig-ad-slot" + (slot.spread || slot.promoted ? " promoted" : "");
 
   // Video or empty thumb
-  if (slot.videoUrl) {
+  if (slot.videoUrl && typeof slot.videoUrl === "string" && (slot.videoUrl.startsWith("https://") || slot.videoUrl.startsWith("http://"))) {
     const v = document.createElement("video");
     v.src = slot.videoUrl;
     v.autoplay = true;
@@ -168,6 +166,13 @@ function renderSingleAdSlot(slot, index, location, isSpread = false) {
     v.playsInline = true;
     v.setAttribute("controls", false);
     v.className = "gig-ad-thumb";
+    v.onerror = () => {
+      v.style.display = "none";
+      const fallback = document.createElement("div");
+      fallback.className = "gig-empty-thumb";
+      fallback.innerText = "🎸";
+      slotDiv.prepend(fallback);
+    };
     slotDiv.appendChild(v);
   } else {
     slotDiv.innerHTML += GIG_EMPTY_THUMB;
@@ -306,6 +311,7 @@ function renderAllAdSlots() {
 window.addEventListener('DOMContentLoaded', async function() {
   await loadAllAdSlotsFromFirebase();
   subscribeToAdSlots();
+  fastCutInit();
 });
 
 // --- Audio Track Input (accepts most popular formats) ---
@@ -413,8 +419,8 @@ mainRecorderDownloadBtn.onclick = () => {
   mainRecorderStatus.textContent = "Take downloaded. Repeat or upload it as a take below!";
 };
 
-// --- Rest of FastCut code unchanged (switcher, export, etc.) ---
-document.addEventListener('DOMContentLoaded', function() {
+// --- FastCut Music Video Switcher / Export Logic ---
+function fastCutInit() {
   // --- FastCut Switcher Logic ---
   const NUM_TRACKS = 6;
   const TRACK_NAMES = [
@@ -514,6 +520,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function checkAllTakesUploaded() {
     setupSwitcherTracks();
+    const allUploaded = uploadedVideos.every(v => !!v);
+    fastcutBtns.forEach(btn => btn.disabled = !allUploaded);
+    startSwitchingBtn.disabled = !allUploaded;
   }
 
   function setupSwitcherTracks() {
@@ -557,7 +566,7 @@ document.addEventListener('DOMContentLoaded', function() {
     isSwitching = true;
     startSwitchingBtn.disabled = true;
     stopSwitchingBtn.disabled = false;
-    fastcutBtns.forEach(btn => btn.disabled = true);
+    fastcutBtns.forEach(btn => btn.disabled = false);
 
     const ctx = mixCanvas.getContext('2d');
     ctx.fillStyle = "#111";
@@ -690,4 +699,4 @@ document.addEventListener('DOMContentLoaded', function() {
       exportStatus.textContent = "";
     }, 1800);
   };
-});
+}
