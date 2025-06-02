@@ -1,11 +1,12 @@
-// NOTE: Replace with your actual Firebase config!
+// Your actual Firebase config
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY_HERE",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyBUqDO2yJdpXkZjbt3dWjTcjT2ZojpXOYo",
+  authDomain: "fastcut-music-video-switcher.firebaseapp.com",
+  projectId: "fastcut-music-video-switcher",
+  storageBucket: "fastcut-music-video-switcher.firebasestorage.app",
+  messagingSenderId: "965905432625",
+  appId: "1:965905432625:web:ae8d92cf20d36118471510",
+  measurementId: "G-3DKDEMQCBR"
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
