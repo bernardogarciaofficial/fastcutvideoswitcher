@@ -1,5 +1,4 @@
 // FASTCUT MUSIC VIDEO SWITCHER - MODERN SCRIPT (with Firebase)
-// v2 - Improved structure, comments, and reliability
 
 // --- FIREBASE CONFIG ---
 const firebaseConfig = {
@@ -76,7 +75,14 @@ function subscribeToAdSlots() {
 function renderGigAdSlots() {
   const grid = document.getElementById("gigAdGrid");
   grid.innerHTML = "";
-  gigAdSlots.forEach((slot, i) => grid.appendChild(renderSingleAdSlot(slot, i, "main")));
+  let anyAd = false;
+  gigAdSlots.forEach((slot, i) => {
+    if (slot.videoUrl && /^https?:\/\//.test(slot.videoUrl)) anyAd = true;
+    grid.appendChild(renderSingleAdSlot(slot, i, "main"));
+  });
+  // Show demo note if NO ads exist
+  const demoNote = document.getElementById("gigAdDemoNote");
+  if (demoNote) demoNote.style.display = anyAd ? "none" : "block";
 }
 function renderSidebarAdSlots() {
   const sidebar = document.getElementById("sidebarAdSlots");
