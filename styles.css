@@ -101,6 +101,41 @@ html, body {
   100% { transform: scale(1) translateY(0); opacity: 1; }
 }
 
+/* --- CUSTOMER AD SECTION HIGHLIGHT --- */
+.highlight-ad-section {
+  border: 3px solid #43e5c6 !important;
+  background: linear-gradient(105deg, #ffe57f30 0%, #22263c 90%);
+  box-shadow: 0 8px 36px #43e5c644;
+  margin-top: 1.5rem !important;
+  margin-bottom: 2.7rem;
+  animation: pop-in 1s cubic-bezier(.42,1.4,.55,1.01);
+}
+.gig-ad-howto {
+  background: #23263c;
+  color: #ffe57f;
+  font-size: 1.13em;
+  font-weight: 500;
+  border-radius: 8px;
+  margin: 0 auto 1.1rem auto;
+  padding: 0.7em 1em;
+  max-width: 540px;
+  box-shadow: 0 2px 6px #ffe57f33;
+  text-shadow: 0 1px 4px #0008;
+}
+.gig-ad-demo-note {
+  margin-top: 1.2rem;
+  color: #ffe57f;
+  font-size: 1.1em;
+  background: #e5393520;
+  border-radius: 7px;
+  padding: 0.7em 1em;
+  box-shadow: 0 1px 6px #e5393540;
+  text-align: center;
+  max-width: 450px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 /* --- AD SLOTS SECTION --- */
 .gig-ad-section {
   width: 98vw;
