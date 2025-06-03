@@ -44,12 +44,13 @@
         <li><b>Upload</b> a looping promo video (MP4/WebM, 5–30 seconds, horizontal).</li>
         <li>Anyone can <b>replace</b> your ad by uploading to the same slot—unless you <b>lock</b> it below for exclusivity!</li>
         <li>Locked ads are <b>promoted</b> across the homepage, sidebar, and video export screens for maximum exposure.</li>
+        <li>Tip: Use a short, catchy video with your gig info and contact/QR code for best results.</li>
       </ol>
       <span style="color:#b8e2ff;">Tip: Use a short, catchy video with your gig info and contact/QR code for best results.</span>
     </div>
     <div class="gig-ad-grid" id="gigAdGrid"></div>
     <div class="gig-ad-demo-note" id="gigAdDemoNote" style="display:none;">
-      <b>No ads yet!</b> Be the first to promote your gig by uploading your own video below.
+      <b>Demo:</b> No ads uploaded yet. Be the first to upload your gig ad!
     </div>
   </section>
 
@@ -60,15 +61,15 @@
   </aside>
 
   <!-- Step 1: Audio Upload -->
-  <div class="audio-track-block">
-    <label for="songInput"><b><span class="music-icon">🎵</span> Main Music Track:</b></label>
+  <section class="audio-track-block">
+    <label for="songInput" style="font-weight:600;">🎵 Main Music Track:</label>
     <input type="file" id="songInput" accept=".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*">
     <span id="audioStatus"></span>
-    <audio id="audio" controls style="display:none"></audio>
-  </div>
+    <audio id="audio" style="display:none;" controls></audio>
+  </section>
 
   <!-- Main Video Recording Screen -->
-  <div class="main-recorder-section">
+  <section class="main-recorder-section">
     <h3>After each take is recorded, click 'download' to save it to your computer—and don't forget to name your take</h3>
     <video id="mainRecorderPreview" width="600" height="340" autoplay muted></video>
     <div class="main-recorder-controls">
@@ -80,26 +81,34 @@
     <div class="take-instructions">
       <span>After each take is recorded, click 'download' to save it to your computer—and don't forget to name your take</span>
     </div>
-  </div>
+  </section>
 
   <!-- Step 2: Upload Takes for 6-Track Switching -->
-  <div class="switcher-upload-section">
+  <section class="switcher-upload-section">
     <h3>Easily upload each take right here</h3>
     <div id="switcherTracks" class="switcher-track-grid-row"></div>
-  </div>
+  </section>
 
   <!-- Step 3: Live Switch and Record -->
   <div class="switcher-control-section">
+    <div class="fastcut-switcher-row" id="fastcutSwitcher"></div>
     <div class="switcher-live-controls">
       <button id="startSwitchingBtn" class="live-switch-btn record-btn">⏺️ Start Switching</button>
       <button id="stopSwitchingBtn" class="live-switch-btn stop-btn" disabled>⏹️ Stop Switching</button>
     </div>
-    <div id="fastcutSwitcher" class="fastcut-switcher-row"></div>
+    <div class="switching-instructions">
+      <b>How it works:</b> Once all takes are uploaded, click Start Switching, then switch cameras live by pressing the camera buttons below. When you're done, click Stop Switching to generate your master video!
+    </div>
+    <div id="switchingError" style="color:#e53935;font-weight:bold;"></div>
   </div>
 
-  <!-- Step 4: FastCut Switcher/Export -->
-  <div class="master-output-section">
+  <!-- BELOW MASTER OUTPUT AD SLOTS -->
+  <div id="spreadAdSlotsBelow"></div>
+
+  <!-- MASTER OUTPUT VIDEO -->
+  <section class="master-output-section">
     <h3 class="output-title">Master Output Video <span class="filmstrip">🎞️</span></h3>
+    <canvas id="mixCanvas" width="720" height="405" style="display:none;"></canvas>
     <video
       id="masterOutputVideo"
       width="720"
@@ -111,31 +120,25 @@
       Your browser does not support the video tag.
     </video>
     <button id="exportMusicVideoBtn" class="export-music-btn">Export Music Video</button>
-    <div id="exportStatus" class="export-status"></div>
-    <div id="spreadAdSlotsBelow"></div>
-    <div id="syncInstructions" class="sync-instructions">
-      <strong>How to Fix Audio/Video Sync in Your Editor:</strong>
-      <ol>
-        <li>Import your exported FastCut video into your video editor.</li>
-        <li>Right-click the video clip and choose <b>"Unlink"</b> or <b>"Detach Audio"</b>.</li>
-        <li>Select the audio track and move it forward by about <b>5–6 frames</b> (about 0.2 seconds), or until the music matches the video action.</li>
-      </ol>
-      <span class="sync-note">Tip: In most editors, you can nudge the audio by single frames using the arrow keys.</span>
-    </div>
-  </div>
-
-  <div class="switching-instructions" style="margin-top:-12px;">
-    <span>
-      <b>How it works:</b> Once all takes are uploaded, click <b>Start Switching</b>, then switch cameras live by pressing the camera buttons below. When you're done, click <b>Stop Switching</b> to generate your master video!
-    </span>
-    <div id="switchingError" style="color:#e53935; font-weight:bold; margin-top:10px;"></div>
-  </div>
-
-  <canvas id="mixCanvas" width="720" height="405" style="display:none"></canvas>
+    <span class="export-status" id="exportStatus"></span>
+  </section>
 
   <!-- FOOTER AD SLOTS -->
+  <div id="footerAdSlots"></div>
+
+  <!-- SYNC INSTRUCTIONS -->
+  <div class="sync-instructions">
+    <b>How to Fix Audio/Video Sync in Your Editor:</b>
+    <ol>
+      <li>Import your exported FastCut video into your video editor.</li>
+      <li>Right-click the video clip and choose "Unlink" or "Detach Audio".</li>
+      <li>Select the audio track and move it forward by about 5–6 frames (about 0.2 seconds), or until the music matches the video action.</li>
+      <li>Tip: In most editors, you can nudge the audio by single frames using the arrow keys.</li>
+    </ol>
+  </div>
+
+  <!-- FOOTER -->
   <footer class="hollywood-footer">
-    <div id="footerAdSlots"></div>
     <span class="clapperboard-icon">🎬</span>
     <span>FastCut by <b>bernardogarciaofficial</b> | <span class="camera-icon">🎥</span></span>
     <span class="footer-email">bernardogarciagarcia441@gmail.com</span>
