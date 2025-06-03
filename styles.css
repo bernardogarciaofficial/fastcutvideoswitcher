@@ -1,4 +1,4 @@
-/* FASTCUT MUSIC VIDEO SWITCHER - FULL MODERN STYLESHEET */
+/* FASTCUT MUSIC VIDEO SWITCHER - MODERN STYLESHEET */
 
 /* --- BASE + LAYOUT --- */
 html, body {
@@ -14,7 +14,6 @@ html, body {
   overflow-x: hidden;
 }
 
-/* Decorative background */
 .theme-bg {
   position: fixed;
   inset: 0;
@@ -27,33 +26,6 @@ html, body {
 @keyframes bg-move {
   0% { background-position: 0% 40%; }
   100% { background-position: 100% 70%; }
-}
-
-/* --- LIGHTS EFFECT --- */
-.set-lights {
-  position: fixed;
-  top: 0; left: 0; width: 100vw; height: 0;
-  z-index: -1;
-  pointer-events: none;
-}
-.spotlight {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(30px);
-  opacity: 0.30;
-  pointer-events: none;
-}
-.spotlight-left {
-  width: 280px; height: 280px; left: -60px; top: 40px;
-  background: #ffe57f;
-}
-.spotlight-right {
-  width: 200px; height: 200px; right: 0; top: 20px;
-  background: #43e5c6;
-}
-.spotlight-top {
-  width: 160px; height: 160px; left: 45vw; top: -40px;
-  background: #e53935;
 }
 
 /* --- HEADER --- */
@@ -364,7 +336,7 @@ html, body {
   padding: 10px 3px 12px 3px;
 }
 
-/* --- AUDIO, MASTER OUTPUT, SWITCHER, RECORDER, FOOTER, ETC. --- */
+/* --- AUDIO, MASTER OUTPUT, SWITCHER, RECORDER --- */
 .audio-track-block, .master-output-section, .switcher-upload-section {
   background: linear-gradient(120deg, #22263a 70%, #33211f 100%);
   border-radius: 16px;
