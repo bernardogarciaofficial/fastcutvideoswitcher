@@ -1,4 +1,4 @@
-/* FASTCUT MUSIC VIDEO SWITCHER - MODERN STYLESHEET */
+/* FASTCUT MUSIC VIDEO SWITCHER - FULL MODERN STYLESHEET */
 
 /* --- BASE + LAYOUT --- */
 html, body {
@@ -14,6 +14,7 @@ html, body {
   overflow-x: hidden;
 }
 
+/* Decorative background */
 .theme-bg {
   position: fixed;
   inset: 0;
@@ -26,6 +27,33 @@ html, body {
 @keyframes bg-move {
   0% { background-position: 0% 40%; }
   100% { background-position: 100% 70%; }
+}
+
+/* --- LIGHTS EFFECT --- */
+.set-lights {
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.spotlight {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(30px);
+  opacity: 0.30;
+  pointer-events: none;
+}
+.spotlight-left {
+  width: 280px; height: 280px; left: -60px; top: 40px;
+  background: #ffe57f;
+}
+.spotlight-right {
+  width: 200px; height: 200px; right: 0; top: 20px;
+  background: #43e5c6;
+}
+.spotlight-top {
+  width: 160px; height: 160px; left: 45vw; top: -40px;
+  background: #e53935;
 }
 
 /* --- HEADER --- */
@@ -121,6 +149,11 @@ html, body {
   max-width: 540px;
   box-shadow: 0 2px 6px #ffe57f33;
   text-shadow: 0 1px 4px #0008;
+}
+.gig-ad-howto ol {
+  margin-top: 7px;
+  margin-bottom: 7px;
+  padding-left: 1.1em;
 }
 .gig-ad-demo-note {
   margin-top: 1.2rem;
@@ -331,7 +364,7 @@ html, body {
   padding: 10px 3px 12px 3px;
 }
 
-/* --- AUDIO, MASTER OUTPUT, SWITCHER, RECORDER --- */
+/* --- AUDIO, MASTER OUTPUT, SWITCHER, RECORDER, FOOTER, ETC. --- */
 .audio-track-block, .master-output-section, .switcher-upload-section {
   background: linear-gradient(120deg, #22263a 70%, #33211f 100%);
   border-radius: 16px;
