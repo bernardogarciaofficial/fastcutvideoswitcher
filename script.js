@@ -1,20 +1,17 @@
-// FASTCUT MUSIC VIDEO SWITCHER - MODERN SCRIPT (with Firebase)
-
-// --- FIREBASE CONFIG ---
+// NOTE: Replace with your actual Firebase config!
 const firebaseConfig = {
-  apiKey: "AIzaSyBUqDO2yJdpXkZjbt3dWjTcjT2ZojpXOYo",
-  authDomain: "fastcut-music-video-switcher.firebaseapp.com",
-  projectId: "fastcut-music-video-switcher",
-  storageBucket: "fastcut-music-video-switcher.appspot.com",
-  messagingSenderId: "965905432625",
-  appId: "1:965905432625:web:ae8d92cf20d36118471510",
-  measurementId: "G-3DKDEMQCBR"
+  apiKey: "YOUR_API_KEY_HERE",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const storage = firebase.storage();
 
-// --- MEMBERS COUNTER ANIMATION ---
+// --- Animate Members Counter ---
 function animateMembersCounter() {
   const el = document.getElementById('membersCountNumber');
   let n = 15347, up = true;
@@ -27,12 +24,36 @@ function animateMembersCounter() {
 }
 animateMembersCounter();
 
-// --- GIG AD LOGIC ---
-const MAIN_AD_SLOTS = 6, SIDEBAR_AD_SLOTS = 2, SPREAD_AD_BELOW_MASTER = 2, FOOTER_AD_SLOTS = 2, DEMO_USER = "potential_client";
-let gigAdSlots = Array(MAIN_AD_SLOTS).fill(null).map(() => ({ videoUrl: null, client: null, locked: false, lockOwner: null, lockUntil: null, timestamp: null, spread: false, promotedAdIndex: null }));
-let sidebarAdSlots = Array(SIDEBAR_AD_SLOTS).fill(null).map(() => ({ spread: false, promotedAdIndex: null }));
-let spreadAdSlotsBelow = Array(SPREAD_AD_BELOW_MASTER).fill(null).map(() => ({ spread: false, promotedAdIndex: null }));
-let footerAdSlots = Array(FOOTER_AD_SLOTS).fill(null).map(() => ({ spread: false, promotedAdIndex: null }));
+// --- GIG AD SLOTS LOGIC WITH SPREAD + FIREBASE STORAGE ---
+const MAIN_AD_SLOTS = 6;
+const SIDEBAR_AD_SLOTS = 2;
+const SPREAD_AD_BELOW_MASTER = 2;
+const FOOTER_AD_SLOTS = 2;
+const GIG_EMPTY_THUMB = `<div class="gig-empty-thumb" title="No ad yet">🎸</div>`;
+const DEMO_USER = "potential_client"; // Simulate logged in user
+
+let gigAdSlots = Array(MAIN_AD_SLOTS).fill(null).map(() => ({
+  videoUrl: null,
+  client: null,
+  locked: false,
+  lockOwner: null,
+  lockUntil: null,
+  timestamp: null,
+  spread: false,
+  promotedAdIndex: null
+}));
+let sidebarAdSlots = Array(SIDEBAR_AD_SLOTS).fill(null).map(() => ({
+  spread: false,
+  promotedAdIndex: null,
+}));
+let spreadAdSlotsBelow = Array(SPREAD_AD_BELOW_MASTER).fill(null).map(() => ({
+  spread: false,
+  promotedAdIndex: null,
+}));
+let footerAdSlots = Array(FOOTER_AD_SLOTS).fill(null).map(() => ({
+  spread: false,
+  promotedAdIndex: null,
+}));
 
 function getAllSpreadSlots() {
   return [
@@ -41,6 +62,7 @@ function getAllSpreadSlots() {
     { arr: footerAdSlots, render: renderFooterAdSlots, key: "footer" }
   ];
 }
+
 async function saveAllAdSlotsToFirebase() {
   await db.collection("ads").doc("main").set({ slots: gigAdSlots });
   await db.collection("ads").doc("sidebar").set({ slots: sidebarAdSlots });
@@ -60,70 +82,90 @@ async function loadAllAdSlotsFromFirebase() {
 }
 function subscribeToAdSlots() {
   db.collection("ads").doc("main").onSnapshot(doc => {
-    if (doc.exists && doc.data().slots) { gigAdSlots = doc.data().slots; renderGigAdSlots(); }
+    if (doc.exists && doc.data().slots) {
+      gigAdSlots = doc.data().slots; renderGigAdSlots();
+    }
   });
   db.collection("ads").doc("sidebar").onSnapshot(doc => {
-    if (doc.exists && doc.data().slots) { sidebarAdSlots = doc.data().slots; renderSidebarAdSlots(); }
+    if (doc.exists && doc.data().slots) {
+      sidebarAdSlots = doc.data().slots; renderSidebarAdSlots();
+    }
   });
   db.collection("ads").doc("below").onSnapshot(doc => {
-    if (doc.exists && doc.data().slots) { spreadAdSlotsBelow = doc.data().slots; renderSpreadAdSlotsBelow(); }
+    if (doc.exists && doc.data().slots) {
+      spreadAdSlotsBelow = doc.data().slots; renderSpreadAdSlotsBelow();
+    }
   });
   db.collection("ads").doc("footer").onSnapshot(doc => {
-    if (doc.exists && doc.data().slots) { footerAdSlots = doc.data().slots; renderFooterAdSlots(); }
+    if (doc.exists && doc.data().slots) {
+      footerAdSlots = doc.data().slots; renderFooterAdSlots();
+    }
   });
 }
 function renderGigAdSlots() {
   const grid = document.getElementById("gigAdGrid");
   grid.innerHTML = "";
-  let anyAd = false;
   gigAdSlots.forEach((slot, i) => {
-    if (slot.videoUrl && /^https?:\/\//.test(slot.videoUrl)) anyAd = true;
     grid.appendChild(renderSingleAdSlot(slot, i, "main"));
   });
-  // Show demo note if NO ads exist
-  const demoNote = document.getElementById("gigAdDemoNote");
-  if (demoNote) demoNote.style.display = anyAd ? "none" : "block";
 }
 function renderSidebarAdSlots() {
   const sidebar = document.getElementById("sidebarAdSlots");
   sidebar.innerHTML = "";
-  sidebarAdSlots.forEach((slot, i) => sidebar.appendChild(renderSingleAdSlot(getPromotedSlotData(slot), i, "sidebar", slot.spread)));
+  sidebarAdSlots.forEach((slot, i) => {
+    sidebar.appendChild(renderSingleAdSlot(getPromotedSlotData(slot), i, "sidebar", slot.spread));
+  });
 }
 function renderSpreadAdSlotsBelow() {
   const below = document.getElementById("spreadAdSlotsBelow");
   below.innerHTML = "";
-  spreadAdSlotsBelow.forEach((slot, i) => below.appendChild(renderSingleAdSlot(getPromotedSlotData(slot), i, "spread", slot.spread)));
+  spreadAdSlotsBelow.forEach((slot, i) => {
+    below.appendChild(renderSingleAdSlot(getPromotedSlotData(slot), i, "spread", slot.spread));
+  });
 }
 function renderFooterAdSlots() {
   const footer = document.getElementById("footerAdSlots");
   footer.innerHTML = "";
-  footerAdSlots.forEach((slot, i) => footer.appendChild(renderSingleAdSlot(getPromotedSlotData(slot), i, "footer", slot.spread)));
+  footerAdSlots.forEach((slot, i) => {
+    footer.appendChild(renderSingleAdSlot(getPromotedSlotData(slot), i, "footer", slot.spread));
+  });
 }
 function getPromotedSlotData(slot) {
-  if (!slot.spread || slot.promotedAdIndex == null || !gigAdSlots[slot.promotedAdIndex]) return { videoUrl: null, client: null, promoted: false, locked: false };
-  return { ...gigAdSlots[slot.promotedAdIndex], spread: true, promoted: true };
+  if (!slot.spread || slot.promotedAdIndex == null || !gigAdSlots[slot.promotedAdIndex]) {
+    return { videoUrl: null, client: null, promoted: false, locked: false };
+  }
+  return {
+    ...gigAdSlots[slot.promotedAdIndex],
+    spread: true,
+    promoted: true
+  };
 }
 function renderSingleAdSlot(slot, index, location, isSpread = false) {
   const slotDiv = document.createElement("div");
   slotDiv.className = "gig-ad-slot" + (slot.spread || slot.promoted ? " promoted" : "");
+
   // Video or empty thumb
-  if (slot.videoUrl && typeof slot.videoUrl === "string" && /^https?:\/\//.test(slot.videoUrl)) {
+  if (slot.videoUrl && typeof slot.videoUrl === "string" && (slot.videoUrl.startsWith("https://") || slot.videoUrl.startsWith("http://"))) {
     const v = document.createElement("video");
     v.src = slot.videoUrl;
-    v.autoplay = true; v.loop = true; v.muted = true; v.playsInline = true;
+    v.autoplay = true;
+    v.loop = true;
+    v.muted = true;
+    v.playsInline = true;
     v.setAttribute("controls", false);
     v.className = "gig-ad-thumb";
     v.onerror = () => {
       v.style.display = "none";
-      const fb = document.createElement("div");
-      fb.className = "gig-empty-thumb";
-      fb.innerText = "🎸";
-      slotDiv.prepend(fb);
+      const fallback = document.createElement("div");
+      fallback.className = "gig-empty-thumb";
+      fallback.innerText = "🎸";
+      slotDiv.prepend(fallback);
     };
     slotDiv.appendChild(v);
   } else {
-    slotDiv.innerHTML += `<div class="gig-empty-thumb" title="No ad yet">🎸</div>`;
+    slotDiv.innerHTML += GIG_EMPTY_THUMB;
   }
+
   if (slot.client) {
     const client = document.createElement("div");
     client.className = "gig-ad-client";
@@ -145,6 +187,7 @@ function renderSingleAdSlot(slot, index, location, isSpread = false) {
     lockMsg.className = "gig-ad-locked-msg";
     lockMsg.textContent = "🔒 Slot is locked!";
     slotDiv.appendChild(lockMsg);
+
     if (slot.lockOwner) {
       const owner = document.createElement("div");
       owner.className = "gig-lock-owner";
@@ -223,21 +266,34 @@ function spreadLockedAd(adIndex) {
     slotGroup.render();
   });
 }
+function clearSpreadFromAd(adIndex) {
+  getAllSpreadSlots().forEach(slotGroup => {
+    slotGroup.arr.forEach(slot => {
+      if (slot.promotedAdIndex === adIndex) {
+        slot.spread = false;
+        slot.promotedAdIndex = null;
+      }
+    });
+    slotGroup.render();
+  });
+}
 function renderAllAdSlots() {
   renderGigAdSlots();
   renderSidebarAdSlots();
   renderSpreadAdSlotsBelow();
   renderFooterAdSlots();
 }
+
 window.addEventListener('DOMContentLoaded', async function() {
   await loadAllAdSlotsFromFirebase();
   subscribeToAdSlots();
   fastCutInit();
 });
 
-// --- AUDIO TRACK INPUT ---
+// --- Audio Track Input (accepts most popular formats) ---
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
 document.getElementById('songInput').setAttribute('accept', AUDIO_ACCEPTED);
+
 const audio = document.getElementById('audio');
 const audioStatus = document.getElementById('audioStatus');
 let masterAudioFile = null;
@@ -255,13 +311,17 @@ document.getElementById('songInput').onchange = e => {
   }
 };
 
-// --- MAIN VIDEO RECORDER ---
+// --- Main Video Recording Logic ---
 const mainRecorderPreview = document.getElementById('mainRecorderPreview');
 const mainRecorderRecordBtn = document.getElementById('mainRecorderRecordBtn');
 const mainRecorderStopBtn = document.getElementById('mainRecorderStopBtn');
 const mainRecorderDownloadBtn = document.getElementById('mainRecorderDownloadBtn');
 const mainRecorderStatus = document.getElementById('mainRecorderStatus');
-let mainRecorderStream = null, mainRecorderMediaRecorder = null, mainRecorderChunks = [], mainRecorderBlobURL = null;
+
+let mainRecorderStream = null;
+let mainRecorderMediaRecorder = null;
+let mainRecorderChunks = [];
+let mainRecorderBlobURL = null;
 
 mainRecorderRecordBtn.onclick = async () => {
   if (!masterAudioFile) {
@@ -272,6 +332,7 @@ mainRecorderRecordBtn.onclick = async () => {
   mainRecorderStopBtn.disabled = false;
   mainRecorderDownloadBtn.disabled = true;
   mainRecorderStatus.textContent = "Recording...";
+
   mainRecorderChunks = [];
   try {
     mainRecorderStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -284,8 +345,10 @@ mainRecorderRecordBtn.onclick = async () => {
   mainRecorderPreview.srcObject = mainRecorderStream;
   mainRecorderPreview.muted = true;
   mainRecorderPreview.controls = false;
+
   audio.currentTime = 0;
   audio.play();
+
   mainRecorderMediaRecorder = new MediaRecorder(mainRecorderStream, { mimeType: "video/webm" });
   mainRecorderMediaRecorder.ondataavailable = e => { if (e.data.size > 0) mainRecorderChunks.push(e.data); };
   mainRecorderMediaRecorder.onstop = () => {
@@ -305,8 +368,11 @@ mainRecorderRecordBtn.onclick = async () => {
   };
   mainRecorderMediaRecorder.start();
 };
+
 mainRecorderStopBtn.onclick = () => {
-  if (mainRecorderMediaRecorder && mainRecorderMediaRecorder.state !== "inactive") mainRecorderMediaRecorder.stop();
+  if (mainRecorderMediaRecorder && mainRecorderMediaRecorder.state !== "inactive") {
+    mainRecorderMediaRecorder.stop();
+  }
   mainRecorderRecordBtn.disabled = false;
   mainRecorderStopBtn.disabled = true;
   audio.pause();
@@ -323,14 +389,22 @@ mainRecorderDownloadBtn.onclick = () => {
   mainRecorderStatus.textContent = "Take downloaded. Repeat or upload it as a take below!";
 };
 
-// --- FASTCUT SWITCHER / EXPORT LOGIC ---
+// --- FastCut Music Video Switcher / Export Logic ---
 function fastCutInit() {
   const NUM_TRACKS = 6;
-  const TRACK_NAMES = ["Video Track 1","Video Track 2","Video Track 3","Video Track 4","Video Track 5","Video Track 6"];
+  const TRACK_NAMES = [
+    "Video Track 1",
+    "Video Track 2",
+    "Video Track 3",
+    "Video Track 4",
+    "Video Track 5",
+    "Video Track 6"
+  ];
   const fastcutSwitcher = document.getElementById('fastcutSwitcher');
   fastcutSwitcher.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) =>
     `<button class="fastcut-btn" id="fastcutBtn-${i}">${TRACK_NAMES[i]}</button>`
   ).join('');
+
   let activeTrack = 0;
   const fastcutBtns = [];
   for (let i = 0; i < NUM_TRACKS; i++) {
@@ -339,19 +413,27 @@ function fastCutInit() {
     btn.onclick = () => {
       if (!isSwitching) return;
       setActiveTrack(i);
-      if (isSwitching) recordSwitch(Date.now() - switchingStartTime, i);
+      if (isSwitching) {
+        recordSwitch(Date.now() - switchingStartTime, i);
+      }
     };
     btn.disabled = true;
   }
   function setActiveTrack(idx) {
     activeTrack = idx;
     const tracks = document.querySelectorAll('.switcher-track');
-    if (tracks.length === NUM_TRACKS) tracks.forEach((el, j) => el.classList.toggle('active', j === idx));
-    fastcutBtns.forEach((btn, j) => btn.classList.toggle('active', j === idx));
+    if (tracks.length === NUM_TRACKS) {
+      tracks.forEach((el, j) =>
+        el.classList.toggle('active', j === idx)
+      );
+    }
+    fastcutBtns.forEach((btn, j) =>
+      btn.classList.toggle('active', j === idx)
+    );
   }
   setActiveTrack(0);
 
-  // --- UPLOAD SECTION ---
+  // --- Upload Section ---
   const VIDEO_ACCEPTED = ".mp4,.webm,.mov,.ogg,.mkv,video/*";
   const switcherTracks = document.getElementById("switcherTracks");
   switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => `
@@ -365,7 +447,9 @@ function fastCutInit() {
       </div>
     </div>
   `).join("");
+
   const uploadedVideos = Array(NUM_TRACKS).fill(null);
+
   for (let i = 0; i < NUM_TRACKS; i++) {
     const uploadBtn = document.getElementById(`uploadVideoBtn-${i}`);
     const uploadInput = document.getElementById(`uploadVideoInput-${i}`);
@@ -381,18 +465,25 @@ function fastCutInit() {
       video.load();
       uploadBtn.textContent = "🎬 Uploaded!";
       uploadedVideos[i] = url;
-      setTimeout(() => uploadBtn.textContent = "🎬 Upload Take", 2200);
+      setTimeout(() => uploadBtn.textContent = "🎬 Upload Take", 3000);
       checkAllTakesUploaded();
     };
   }
+
   const startSwitchingBtn = document.getElementById('startSwitchingBtn');
   const stopSwitchingBtn = document.getElementById('stopSwitchingBtn');
   const masterOutputVideo = document.getElementById('masterOutputVideo');
   const exportStatus = document.getElementById('exportStatus');
   const mixCanvas = document.getElementById('mixCanvas');
   const switchingError = document.getElementById('switchingError');
-  let isSwitching = false, mixing = false, mediaRecorder = null, masterChunks = [];
-  let drawRequestId = null, livePlaybackUrl = null, switchingStartTime = 0, switchingTimeline = [];
+
+  let isSwitching = false;
+  let mixing = false, mediaRecorder = null, masterChunks = [];
+  let drawRequestId = null;
+  let livePlaybackUrl = null;
+  let switchingStartTime = 0;
+  let switchingTimeline = [];
+
   startSwitchingBtn.disabled = false;
   stopSwitchingBtn.disabled = true;
 
@@ -402,6 +493,7 @@ function fastCutInit() {
     fastcutBtns.forEach(btn => btn.disabled = !allUploaded);
     startSwitchingBtn.disabled = !allUploaded;
   }
+
   function setupSwitcherTracks() {
     for (let i = 0; i < NUM_TRACKS; i++) {
       const v = document.getElementById(`video-${i}`);
@@ -409,11 +501,13 @@ function fastCutInit() {
       v.currentTime = 0;
     }
   }
+
   function recordSwitch(timeMs, trackIdx) {
     if (switchingTimeline.length === 0 && timeMs > 100) return;
     if (switchingTimeline.length > 0 && switchingTimeline[switchingTimeline.length-1].track === trackIdx) return;
     switchingTimeline.push({ time: timeMs, track: trackIdx });
   }
+
   startSwitchingBtn.onclick = () => {
     switchingError.textContent = '';
     const allUploaded = uploadedVideos.every(v => !!v);
@@ -435,6 +529,7 @@ function fastCutInit() {
     }
     audio.currentTime = 0;
     audio.play();
+
     switchingTimeline = [{ time: 0, track: activeTrack }];
     switchingStartTime = Date.now();
     isSwitching = true;
@@ -448,21 +543,32 @@ function fastCutInit() {
 
     const videoStream = mixCanvas.captureStream(30);
     let audioStream = null;
-    if (audio.captureStream) audioStream = audio.captureStream();
-    else if (audio.mozCaptureStream) audioStream = audio.mozCaptureStream();
+    if (audio.captureStream) {
+      audioStream = audio.captureStream();
+    } else if (audio.mozCaptureStream) {
+      audioStream = audio.mozCaptureStream();
+    }
+
     let combinedStream;
     if (audioStream) {
-      combinedStream = new MediaStream([...videoStream.getVideoTracks(), ...audioStream.getAudioTracks()]);
+      combinedStream = new MediaStream([
+        ...videoStream.getVideoTracks(),
+        ...audioStream.getAudioTracks()
+      ]);
     } else {
       combinedStream = videoStream;
       exportStatus.textContent = "Warning: Audio captureStream not supported in your browser. Output will be silent.";
     }
+
     masterChunks = [];
     mediaRecorder = new MediaRecorder(combinedStream, { mimeType: "video/webm" });
     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) masterChunks.push(e.data); };
     mediaRecorder.onstop = () => {
       masterOutputVideo.srcObject = null;
-      if(livePlaybackUrl) { URL.revokeObjectURL(livePlaybackUrl); livePlaybackUrl = null; }
+      if(livePlaybackUrl) {
+        URL.revokeObjectURL(livePlaybackUrl);
+        livePlaybackUrl = null;
+      }
       const blob = new Blob(masterChunks, { type: "video/webm" });
       const url = URL.createObjectURL(blob);
       masterOutputVideo.src = url;
@@ -473,7 +579,9 @@ function fastCutInit() {
       const a = document.createElement('a');
       a.href = url;
       a.download = `fastcut_music_video.webm`;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     };
 
     mixing = true;
@@ -481,19 +589,24 @@ function fastCutInit() {
     const refVideo = document.getElementById('video-0');
     if (refVideo && !isNaN(refVideo.duration)) duration = refVideo.duration;
     else duration = 180;
+
     masterOutputVideo.srcObject = combinedStream;
     masterOutputVideo.muted = true;
     masterOutputVideo.play();
     audio.currentTime = 0;
     audio.play();
     mediaRecorder.start();
+
     function draw() {
       if (!mixing) return;
       let elapsed = Date.now() - switchingStartTime;
       let track = switchingTimeline[0].track;
       for (let i = 0; i < switchingTimeline.length; i++) {
-        if (switchingTimeline[i].time <= elapsed) track = switchingTimeline[i].track;
-        else break;
+        if (switchingTimeline[i].time <= elapsed) {
+          track = switchingTimeline[i].track;
+        } else {
+          break;
+        }
       }
       const v = document.getElementById(`video-${track}`);
       if (v && !v.paused && !v.ended) {
@@ -506,10 +619,13 @@ function fastCutInit() {
         ctx.fillStyle = "#111";
         ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
       }
-      if ((Date.now() - switchingStartTime)/1000 < duration && mixing && isSwitching) drawRequestId = requestAnimationFrame(draw);
+      if ((Date.now() - switchingStartTime)/1000 < duration && mixing && isSwitching) {
+        drawRequestId = requestAnimationFrame(draw);
+      }
     }
     draw();
   };
+
   stopSwitchingBtn.onclick = () => {
     if (!isSwitching) return;
     mixing = false;
@@ -517,12 +633,16 @@ function fastCutInit() {
     startSwitchingBtn.disabled = false;
     stopSwitchingBtn.disabled = true;
     audio.pause();
-    if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      mediaRecorder.stop();
+    }
     if (drawRequestId !== null) cancelAnimationFrame(drawRequestId);
     drawRequestId = null;
     exportStatus.textContent = "Rendering and export complete! Download below.";
   };
+
   masterOutputVideo.muted = false;
+
   const exportMusicVideoBtn = document.getElementById('exportMusicVideoBtn');
   exportMusicVideoBtn.onclick = function() {
     let videoUrl = masterOutputVideo.src;
@@ -530,8 +650,9 @@ function fastCutInit() {
       exportStatus.textContent = "No exported video available to download yet!";
       exportMusicVideoBtn.disabled = true;
       setTimeout(() => {
-        exportMusicVideoBtn.disabled = false; exportStatus.textContent = "";
-      }, 1400);
+        exportMusicVideoBtn.disabled = false;
+        exportStatus.textContent = "";
+      }, 1600);
       return;
     }
     const a = document.createElement('a');
@@ -542,6 +663,9 @@ function fastCutInit() {
     document.body.removeChild(a);
     exportStatus.textContent = "Music video exported and downloaded!";
     exportMusicVideoBtn.disabled = true;
-    setTimeout(() => { exportMusicVideoBtn.disabled = false; exportStatus.textContent = ""; }, 1500);
+    setTimeout(() => {
+      exportMusicVideoBtn.disabled = false;
+      exportStatus.textContent = "";
+    }, 1800);
   };
 }
