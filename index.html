@@ -1,18 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>🎬 FastCut Music Video Switcher</title>
-  <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Orbitron:700|Montserrat:400,700&display=swap">
-</head>
-<body>
-  <div class="theme-bg"></div>
-  <div class="set-lights">
-    <div class="spotlight spotlight-left"></div>
-    <div class="spotlight spotlight-right"></div>
+ <div class="spotlight spotlight-right"></div>Add commentMore actions
     <div class="spotlight spotlight-top"></div>
   </div>
+
   <header class="hollywood-header">
     <span class="camera-icon">🎥</span>
     <h2>FastCut Music Video Switcher</h2>
@@ -22,22 +11,35 @@
       <span class="counter-icon">🧑‍🤝‍🧑</span>
       <span id="membersCountNumber">15,347</span> members online
     </div>
+    <div class="lights-action">LIGHTS, CAMERA, ACTION <span class="dot">.</span></div>
   </header>
 
   <div class="instant-edit-banner">
     get your music video filmed and edited instantly—no more long waits or video editing delay
   </div>
+  <section class="instant-edit-banner">
+    Instantly record, upload, and switch between video takes synced to your song.<br>
+    <span id="membersCountNumber">15,347</span> musicians have joined the FastCut revolution!
+  </section>
 
   <!-- MAIN AD SLOTS BLOCK (Homepage, grid) -->
+  <!-- GIG AD SECTION -->
   <section class="gig-ad-section">
     <h2 class="gig-ad-title">Advertise Your Gig!</h2>
     <p class="gig-ad-desc">Upload a looping ad video for your gig below. Anyone can replace your ad by uploading to the same slot—unless you lock it in by paying for exclusivity! If you lock your ad, it will be promoted across the platform for extra exposure.</p>
+    <p class="gig-ad-desc">
+      Upload a looping ad video for your gig below. Anyone can replace your ad by uploading to the same slot—unless you lock it in by paying for exclusivity! If you lock your ad, it will be promoted across the platform for extra exposure.<br>
+      <small><em>Ad videos are visible and playable for everyone, everywhere, until replaced.</em></small>
+    </p>
     <div class="gig-ad-grid" id="gigAdGrid"></div>
   </section>
 
   <!-- SIDEBAR AD BLOCK -->
   <aside class="sidebar-ads">
     <div class="sidebar-ad-title">🎵 Featured Gigs</div>
+  <!-- SIDEBAR ADS -->
+  <aside class="sidebar-ads" id="sidebarAds">
+    <div class="sidebar-ad-title">Promoted Gigs</div>
     <div id="sidebarAdSlots"></div>
   </aside>
 
@@ -45,36 +47,61 @@
   <div class="audio-track-block">
     <label for="songInput"><b><span class="music-icon">🎵</span> Main Music Track:</b></label>
     <input type="file" id="songInput" accept=".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*">
+  <!-- AUDIO TRACK UPLOAD -->
+  <section class="audio-track-block">
+    <h3><span class="music-icon">🎵</span> Upload Your Backing Track</h3>
+    <input type="file" id="songInput">
     <span id="audioStatus"></span>
     <audio id="audio" controls style="display:none"></audio>
   </div>
+    <audio id="audio" controls style="margin:10px auto;display:none;"></audio>
+  </section>
 
   <!-- Main Video Recording Screen (NEW) -->
   <div class="main-recorder-section">
+  <!-- MAIN VIDEO RECORDER -->
+  <section class="main-recorder-section">
     <h3>after each take is recorded,click 'download' to save it to your computer-and don't forget to name your take</h3>
     <video id="mainRecorderPreview" width="600" height="340" autoplay muted></video>
+    <video id="mainRecorderPreview" width="330" height="220"></video>
     <div class="main-recorder-controls">
       <button id="mainRecorderRecordBtn" class="main-recorder-btn custom-record-btn">⏺️ Record</button>
       <button id="mainRecorderStopBtn" class="main-recorder-btn custom-stop-btn" disabled>⏹️ Stop</button>
       <button id="mainRecorderDownloadBtn" class="main-recorder-btn custom-download-btn" disabled>⬇️ Download</button>
       <span id="mainRecorderStatus" class="main-recorder-status"></span>
+      <button id="mainRecorderRecordBtn" class="main-recorder-btn custom-record-btn">Record</button>
+      <button id="mainRecorderStopBtn" class="main-recorder-btn custom-stop-btn" disabled>Stop</button>
+      <button id="mainRecorderDownloadBtn" class="main-recorder-btn custom-download-btn" disabled>Download</button>
+      <span class="main-recorder-status" id="mainRecorderStatus"></span>
     </div>
     <div class="take-instructions">
       <span>after each take is recorded,click 'download' to save it to your computer—and don't forget to name your take</span>
     </div>
   </div>
+    <div class="take-instructions"><span>after each take is recorded,click 'download' to save it to your computer—and don't forget to name your take</span></div>
+  </section>
 
   <!-- Step 2: Upload Takes for 6-Track Switching -->
   <div class="switcher-upload-section">
+  <!-- SWITCHER TAKES UPLOAD -->
+  <section class="switcher-upload-section">
     <h3>easyly upload each take right here</h3>
     <div id="switcherTracks" class="switcher-track-grid-row"></div>
   </div>
+    <div class="switcher-track-grid-row" id="switcherTracks"></div>
+  </section>
 
   <!-- Step 3: Live Switch and Record -->
   <div class="switcher-control-section">
+  <!-- SWITCHER CONTROL -->
+  <section class="switcher-control-section">
+    <div class="fastcut-switcher-row" id="fastcutSwitcher"></div>
     <div class="switcher-live-controls">
       <button id="startSwitchingBtn" class="live-switch-btn record-btn">⏺️ Start Switching</button>
       <button id="stopSwitchingBtn" class="live-switch-btn stop-btn" disabled>⏹️ Stop Switching</button>
+      <button id="startSwitchingBtn" class="live-switch-btn record-btn"><span>●</span> Start Live Switch</button>
+      <button id="stopSwitchingBtn" class="live-switch-btn stop-btn" disabled>■ Stop & Export</button>
+      <span class="export-status" id="exportStatus"></span>
     </div>
     <div id="fastcutSwitcher" class="fastcut-switcher-row"></div>
   </div>
@@ -103,6 +130,9 @@
         <li>Select the audio track and move it forward by about <b>5–6 frames</b> (about 0.2 seconds), or until the music matches the video action.</li>
       </ol>
       <span class="sync-note">Tip: In most editors, you can nudge the audio by single frames using the arrow keys.</span>
+    <div class="switching-instructions">
+      Click a track button above to switch shots live as your music video plays.<br>
+      When finished, export your master video below!
     </div>
   </div>
 
@@ -112,16 +142,38 @@
     </span>
     <div id="switchingError" style="color:#e53935; font-weight:bold; margin-top:10px;"></div>
   </div>
+    <div id="switchingError" style="color:#e53935;font-weight:bold;"></div>
+  </section>
 
   <canvas id="mixCanvas" width="720" height="405" style="display:none"></canvas>
+  <!-- MASTER OUTPUT SECTION -->
+  <section class="master-output-section">
+    <h3 class="output-title"><span class="filmstrip">🎞️</span> Your Master Music Video</h3>
+    <video id="masterOutputVideo" width="520" height="310" controls style="margin:10px auto;display:block;"></video>
+    <canvas id="mixCanvas" width="520" height="310" style="display: none;"></canvas>
+    <button class="export-music-btn" id="exportMusicVideoBtn">⬇️ Download Exported Video</button>
+    <span class="export-status" id="exportStatus"></span>
+    <div id="spreadAdSlotsBelow"></div>
+  </section>
 
   <!-- FOOTER AD SLOTS -->
   <footer class="hollywood-footer">
+  <!-- FOOTER ADS -->
+  <footer>
     <div id="footerAdSlots"></div>
     <span class="clapperboard-icon">🎬</span>
     <span>FastCut by <b>bernardogarciaofficial</b> | <span class="camera-icon">🎥</span></span>
     <span class="footer-email">bernardogarciagarcia441@gmail.com</span>
+    <div class="hollywood-footer">
+      FastCut Music Video Switcher &copy; 2025
+      <div class="footer-email">support@fastcut.app</div>
+    </div>
   </footer>
+
+  <!-- Firebase libraries -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
