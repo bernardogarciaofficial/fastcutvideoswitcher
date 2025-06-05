@@ -5,6 +5,9 @@
   <title>🎬 FastCut Music Video Switcher</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Orbitron:700|Montserrat:400,700&display=swap">
+  <!-- Firebase SDKs for Firestore (Ad System Only) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
   <div class="theme-bg"></div>
@@ -33,6 +36,7 @@
     <h2 class="gig-ad-title">Advertise Your Gig!</h2>
     <p class="gig-ad-desc">Upload a looping ad video for your gig below. Anyone can replace your ad by uploading to the same slot—unless you lock it in by paying for exclusivity! If you lock your ad, it will be promoted across the platform for extra exposure.</p>
     <div class="gig-ad-grid" id="gigAdGrid"></div>
+    <div id="adStatus" class="ad-status"></div>
   </section>
 
   <!-- SIDEBAR AD BLOCK -->
