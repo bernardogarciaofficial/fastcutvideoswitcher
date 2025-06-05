@@ -1,3 +1,17 @@
+// --- Firebase Config (REPLACE with your actual Firebase config!) ---
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const storage = firebase.storage();
+
 // --- Animate Members Counter ---
 function animateMembersCounter() {
   const el = document.getElementById('membersCountNumber');
@@ -11,122 +25,48 @@ function animateMembersCounter() {
 }
 animateMembersCounter();
 
-// --- GIG AD SLOTS LOGIC WITH SPREAD + PERSISTENCE (localStorage) ---
+// --- GIG AD SLOTS LOGIC (Multi-slot support) ---
 const MAIN_AD_SLOTS = 6;
-const SIDEBAR_AD_SLOTS = 2;
-const SPREAD_AD_BELOW_MASTER = 2;
-const FOOTER_AD_SLOTS = 2;
 const GIG_EMPTY_THUMB = `<div class="gig-empty-thumb" title="No ad yet">🎸</div>`;
-const DEMO_USER = "potential_client"; // Simulate logged in user
+const DEMO_USER = "anonymous";
 
-// Storage keys
-const STORAGE_KEYS = {
-  main: "fastcut_gigAdSlots",
-  sidebar: "fastcut_sidebarAdSlots",
-  below: "fastcut_spreadAdSlotsBelow",
-  footer: "fastcut_footerAdSlots"
-};
+// Slot state
+let gigAdSlots = Array.from({length: MAIN_AD_SLOTS}, (_, i) => ({
+  slot: i,
+  videoUrl: null,
+  client: null,
+  locked: false,
+  lockOwner: null,
+  timestamp: null,
+  storagePath: null
+}));
 
-// Load ad slots from localStorage or create new
-function loadAdSlots(key, def) {
-  try {
-    const data = localStorage.getItem(key);
-    if (data) return JSON.parse(data);
-  } catch (e) {}
-  // fallback: fresh array
-  return Array(def).fill(null).map(() => ({
-    videoUrl: null,
-    client: null,
-    locked: false,
-    lockOwner: null,
-    lockUntil: null,
-    timestamp: null,
-    spread: false,
-    promotedAdIndex: null
-  }));
-}
-let gigAdSlots = loadAdSlots(STORAGE_KEYS.main, MAIN_AD_SLOTS);
-let sidebarAdSlots = loadAdSlots(STORAGE_KEYS.sidebar, SIDEBAR_AD_SLOTS);
-let spreadAdSlotsBelow = loadAdSlots(STORAGE_KEYS.below, SPREAD_AD_BELOW_MASTER);
-let footerAdSlots = loadAdSlots(STORAGE_KEYS.footer, FOOTER_AD_SLOTS);
-
-// Utility to collect all "spread" slots for convenience
-function getAllSpreadSlots() {
-  return [
-    { arr: sidebarAdSlots, render: renderSidebarAdSlots, key: STORAGE_KEYS.sidebar },
-    { arr: spreadAdSlotsBelow, render: renderSpreadAdSlotsBelow, key: STORAGE_KEYS.below },
-    { arr: footerAdSlots, render: renderFooterAdSlots, key: STORAGE_KEYS.footer }
-  ];
+// Fetch and render all gig ad slots from Firestore
+async function fetchGigAdSlots() {
+  const snap = await db.collection("gigAdSlots").get();
+  snap.forEach(doc => {
+    const data = doc.data();
+    if (typeof data.slot === "number" && data.slot >= 0 && data.slot < MAIN_AD_SLOTS) {
+      gigAdSlots[data.slot] = { ...gigAdSlots[data.slot], ...data };
+    }
+  });
+  renderGigAdSlots();
 }
 
-// Save all ad slots to localStorage
-function saveAllAdSlots() {
-  try {
-    localStorage.setItem(STORAGE_KEYS.main, JSON.stringify(gigAdSlots));
-    localStorage.setItem(STORAGE_KEYS.sidebar, JSON.stringify(sidebarAdSlots));
-    localStorage.setItem(STORAGE_KEYS.below, JSON.stringify(spreadAdSlotsBelow));
-    localStorage.setItem(STORAGE_KEYS.footer, JSON.stringify(footerAdSlots));
-  } catch (e) {
-    // LocalStorage full or not available, ignore for now (demo)
-  }
-}
-
-// RENDER MAIN HOMEPAGE AD GRID
+// Render all slots
 function renderGigAdSlots() {
   const grid = document.getElementById("gigAdGrid");
   grid.innerHTML = "";
   gigAdSlots.forEach((slot, i) => {
-    grid.appendChild(renderSingleAdSlot(slot, i, "main"));
+    grid.appendChild(renderSingleAdSlot(slot, i));
   });
 }
 
-// RENDER SIDEBAR SPREAD SLOTS
-function renderSidebarAdSlots() {
-  const sidebar = document.getElementById("sidebarAdSlots");
-  sidebar.innerHTML = "";
-  sidebarAdSlots.forEach((slot, i) => {
-    sidebar.appendChild(renderSingleAdSlot(getPromotedSlotData(slot), i, "sidebar", slot.spread));
-  });
-}
-
-// RENDER BELOW MASTER OUTPUT SPREAD SLOTS
-function renderSpreadAdSlotsBelow() {
-  const below = document.getElementById("spreadAdSlotsBelow");
-  below.innerHTML = "";
-  spreadAdSlotsBelow.forEach((slot, i) => {
-    below.appendChild(renderSingleAdSlot(getPromotedSlotData(slot), i, "spread", slot.spread));
-  });
-}
-
-// RENDER FOOTER SPREAD SLOTS
-function renderFooterAdSlots() {
-  const footer = document.getElementById("footerAdSlots");
-  footer.innerHTML = "";
-  footerAdSlots.forEach((slot, i) => {
-    footer.appendChild(renderSingleAdSlot(getPromotedSlotData(slot), i, "footer", slot.spread));
-  });
-}
-
-// Helper to get promoted ad data for a spread slot
-function getPromotedSlotData(slot) {
-  if (!slot.spread || slot.promotedAdIndex == null || !gigAdSlots[slot.promotedAdIndex]) {
-    // Return empty slot
-    return { videoUrl: null, client: null, promoted: false, locked: false };
-  }
-  // Copy data from original locked slot
-  return {
-    ...gigAdSlots[slot.promotedAdIndex],
-    spread: true,
-    promoted: true
-  };
-}
-
-// Renders a single ad slot div (main, sidebar, below, footer)
-function renderSingleAdSlot(slot, index, location, isSpread = false) {
+// Render a single ad slot
+function renderSingleAdSlot(slot, slotIndex) {
   const slotDiv = document.createElement("div");
-  slotDiv.className = "gig-ad-slot" + (slot.spread || slot.promoted ? " promoted" : "");
-
-  // Video or empty thumb
+  slotDiv.className = "gig-ad-slot";
+  // Video or empty
   if (slot.videoUrl) {
     const v = document.createElement("video");
     v.src = slot.videoUrl;
@@ -134,21 +74,18 @@ function renderSingleAdSlot(slot, index, location, isSpread = false) {
     v.loop = true;
     v.muted = true;
     v.playsInline = true;
-    v.setAttribute("controls", false);
     v.className = "gig-ad-thumb";
     slotDiv.appendChild(v);
   } else {
     slotDiv.innerHTML += GIG_EMPTY_THUMB;
   }
-
-  // Client info
+  // Client name
   if (slot.client) {
     const client = document.createElement("div");
     client.className = "gig-ad-client";
     client.textContent = `Ad by: ${slot.client}`;
     slotDiv.appendChild(client);
   }
-
   // Timestamp
   if (slot.timestamp) {
     const ts = document.createElement("div");
@@ -156,13 +93,6 @@ function renderSingleAdSlot(slot, index, location, isSpread = false) {
     ts.textContent = `Updated: ${slot.timestamp}`;
     slotDiv.appendChild(ts);
   }
-
-  // If spread/promoted, do not show upload or lock options
-  if (slot.spread || slot.promoted) {
-    slotDiv.title = "This ad is promoted by a client and shown here for extra exposure!";
-    return slotDiv;
-  }
-
   // Locked state
   if (slot.locked) {
     const lockMsg = document.createElement("div");
@@ -176,29 +106,28 @@ function renderSingleAdSlot(slot, index, location, isSpread = false) {
       owner.textContent = `Locked by: ${slot.lockOwner}`;
       slotDiv.appendChild(owner);
     }
-    // If current user is the lock owner, show upload (replace) button
+    // Only owner can upload
     if (slot.lockOwner === DEMO_USER) {
-      slotDiv.appendChild(createGigAdUploadBtn(index, true));
+      slotDiv.appendChild(createGigAdUploadBtn(slotIndex, true));
     } else {
-      // Not lock owner, disable upload
-      const uploadBtn = createGigAdUploadBtn(index, false);
+      const uploadBtn = createGigAdUploadBtn(slotIndex, false);
       uploadBtn.disabled = true;
       slotDiv.appendChild(uploadBtn);
     }
   } else {
-    // Not locked: anyone can upload/replace
-    slotDiv.appendChild(createGigAdUploadBtn(index, true));
+    // Not locked: anyone can upload
+    slotDiv.appendChild(createGigAdUploadBtn(slotIndex, true));
     // Show "Lock this slot" button
     const lockBtn = document.createElement("button");
     lockBtn.className = "gig-ad-lock-btn";
     lockBtn.textContent = "Lock this slot (Pay)";
-    lockBtn.onclick = () => lockGigAdSlot(index);
+    lockBtn.onclick = () => lockGigAdSlot(slotIndex);
     slotDiv.appendChild(lockBtn);
   }
   return slotDiv;
 }
 
-// Create upload button for ad slot
+// Upload button for a slot
 function createGigAdUploadBtn(slotIndex, enabled) {
   const label = document.createElement("label");
   label.className = "gig-ad-upload-btn";
@@ -212,13 +141,25 @@ function createGigAdUploadBtn(slotIndex, enabled) {
     if (!enabled) return;
     const file = e.target.files[0];
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    // Update slot
-    gigAdSlots[slotIndex].videoUrl = url;
-    gigAdSlots[slotIndex].client = DEMO_USER;
-    gigAdSlots[slotIndex].timestamp = new Date().toLocaleString();
-    saveAllAdSlots();
-    renderAllAdSlots();
+    const storagePath = `gigAds/slot_${slotIndex}_${Date.now()}_${file.name}`;
+    const uploadTask = storage.ref(storagePath).put(file);
+    uploadTask.on("state_changed", null,
+      err => alert("Upload failed: " + err),
+      async () => {
+        const videoUrl = await uploadTask.snapshot.ref.getDownloadURL();
+        const timestamp = new Date().toLocaleString();
+        await db.collection("gigAdSlots").doc("slot" + slotIndex).set({
+          slot: slotIndex,
+          videoUrl,
+          client: DEMO_USER,
+          locked: gigAdSlots[slotIndex].locked || false,
+          lockOwner: gigAdSlots[slotIndex].lockOwner || null,
+          timestamp,
+          storagePath
+        });
+        fetchGigAdSlots();
+      }
+    );
   };
   label.appendChild(input);
   if (!enabled) label.disabled = true;
@@ -226,54 +167,22 @@ function createGigAdUploadBtn(slotIndex, enabled) {
   return label;
 }
 
-// Lock slot: simulate payment and spread ad to other slots
-function lockGigAdSlot(index) {
+// Lock slot
+async function lockGigAdSlot(index) {
   if (confirm("To lock this ad slot and promote it across the platform, you must pay. Simulate payment now?")) {
-    gigAdSlots[index].locked = true;
-    gigAdSlots[index].lockOwner = DEMO_USER;
-    gigAdSlots[index].lockUntil = null; // Add time-based expiry if desired
-    spreadLockedAd(index);
-    saveAllAdSlots();
-    renderAllAdSlots();
+    await db.collection("gigAdSlots").doc("slot" + index).set({
+      ...gigAdSlots[index],
+      locked: true,
+      lockOwner: DEMO_USER
+    }, { merge: true });
+    fetchGigAdSlots();
     alert("Slot locked and promoted! Your ad will be shown in multiple locations for extra exposure.");
   }
 }
 
-// Spread the locked ad into bonus slots around the platform
-function spreadLockedAd(adIndex) {
-  // Find all available spread slots (sidebar, below, footer) and fill with this ad
-  getAllSpreadSlots().forEach(slotGroup => {
-    slotGroup.arr.forEach(slot => {
-      slot.spread = true;
-      slot.promotedAdIndex = adIndex;
-    });
-    slotGroup.render();
-  });
-  saveAllAdSlots();
-}
-
-// When an ad is unlocked or replaced, un-spread it (not shown in this demo, but you can implement!)
-function clearSpreadFromAd(adIndex) {
-  getAllSpreadSlots().forEach(slotGroup => {
-    slotGroup.arr.forEach(slot => {
-      if (slot.promotedAdIndex === adIndex) {
-        slot.spread = false;
-        slot.promotedAdIndex = null;
-      }
-    });
-    slotGroup.render();
-  });
-  saveAllAdSlots();
-}
-
-// Render all ad slot locations
-function renderAllAdSlots() {
-  renderGigAdSlots();
-  renderSidebarAdSlots();
-  renderSpreadAdSlotsBelow();
-  renderFooterAdSlots();
-}
-renderAllAdSlots();
+// Live Firestore sync: listen to changes
+db.collection("gigAdSlots").onSnapshot(fetchGigAdSlots);
+fetchGigAdSlots();
 
 // --- Audio Track Input (accepts most popular formats) ---
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
@@ -297,16 +206,12 @@ document.getElementById('songInput').onchange = e => {
   }
 };
 
-// --- Main Video Recording Logic ---
+// --- Main Video Recorder Logic ---
 const mainRecorderPreview = document.getElementById('mainRecorderPreview');
 const mainRecorderRecordBtn = document.getElementById('mainRecorderRecordBtn');
 const mainRecorderStopBtn = document.getElementById('mainRecorderStopBtn');
 const mainRecorderDownloadBtn = document.getElementById('mainRecorderDownloadBtn');
 const mainRecorderStatus = document.getElementById('mainRecorderStatus');
-
-document.querySelector('.main-recorder-section h3').textContent = "after each take is recorded,click 'download' to save it to your computer-and don't forget to name your take";
-document.querySelector('.take-instructions span').textContent = "after each take is recorded,click 'download' to save it to your computer—and don't forget to name your take";
-document.querySelector('.switcher-upload-section h3').textContent = "easyly upload each take right here";
 
 let mainRecorderStream = null;
 let mainRecorderMediaRecorder = null;
@@ -336,11 +241,9 @@ mainRecorderRecordBtn.onclick = async () => {
   mainRecorderPreview.muted = true;
   mainRecorderPreview.controls = false;
 
-  // Start music in sync
   audio.currentTime = 0;
   audio.play();
 
-  // Record video + audio
   mainRecorderMediaRecorder = new MediaRecorder(mainRecorderStream, { mimeType: "video/webm" });
   mainRecorderMediaRecorder.ondataavailable = e => { if (e.data.size > 0) mainRecorderChunks.push(e.data); };
   mainRecorderMediaRecorder.onstop = () => {
@@ -382,10 +285,8 @@ mainRecorderDownloadBtn.onclick = () => {
   mainRecorderStatus.textContent = "Take downloaded. Repeat or upload it as a take below!";
 };
 
-// --- Rest of FastCut code unchanged (switcher, export, etc.) ---
-
+// --- FastCut Switcher Logic ---
 document.addEventListener('DOMContentLoaded', function() {
-  // --- FastCut Switcher Logic ---
   const NUM_TRACKS = 6;
   const TRACK_NAMES = [
     "Video Track 1",
@@ -428,7 +329,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   setActiveTrack(0);
 
-  // --- Upload Section ---
+  // Upload Section
   const VIDEO_ACCEPTED = ".mp4,.webm,.mov,.ogg,.mkv,video/*";
   const switcherTracks = document.getElementById("switcherTracks");
   switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => `
@@ -527,7 +428,7 @@ document.addEventListener('DOMContentLoaded', function() {
     isSwitching = true;
     startSwitchingBtn.disabled = true;
     stopSwitchingBtn.disabled = false;
-    fastcutBtns.forEach(btn => btn.disabled = true);
+    fastcutBtns.forEach(btn => btn.disabled = false);
 
     const ctx = mixCanvas.getContext('2d');
     ctx.fillStyle = "#111";
