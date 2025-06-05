@@ -1,48 +1,29 @@
-// --- Animate Members Counter ---
-function animateMembersCounter() {
-  const el = document.getElementById('membersCountNumber');
-  let n = 15347, up = true;
-  setInterval(() => {
-    if (Math.random() > 0.5) n += up ? 1 : -1;
-    if (n < 15320) up = true;
-    if (n > 15360) up = false;
-    el.textContent = n.toLocaleString();
-  }, 1200);
-}
-animateMembersCounter();
+// --- FASTCUT MUSIC VIDEO PLATFORM ---
+// (music video logic left unchanged, see below)
+// --- PERSISTENT AD SYSTEM USING FIREBASE (for all users) ---
 
-// --- GIG AD SLOTS LOGIC WITH PERSISTENCE ---
+// 1. FIREBASE CONFIG (replace with your own Firebase project config)
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// 2. AD SLOT CONSTANTS
 const MAIN_AD_SLOTS = 6;
 const SIDEBAR_AD_SLOTS = 2;
 const SPREAD_AD_BELOW_MASTER = 2;
 const FOOTER_AD_SLOTS = 2;
-const GIG_EMPTY_THUMB = `<div class="gig-empty-thumb" title="No ad yet">🎸</div>`;
 const DEMO_USER = "potential_client";
+const GIG_EMPTY_THUMB = `<div class="gig-empty-thumb" title="No ad yet">🎸</div>`;
+const adStatus = document.getElementById('adStatus');
 
-// --- Persistence helpers ---
-function saveAdState() {
-  const state = {
-    gigAdSlots,
-    sidebarAdSlots,
-    spreadAdSlotsBelow,
-    footerAdSlots
-  };
-  localStorage.setItem("fastcutAdState", JSON.stringify(state));
-}
-function loadAdState() {
-  const state = JSON.parse(localStorage.getItem("fastcutAdState") || "null");
-  if (!state) return false;
-  if (Array.isArray(state.gigAdSlots) && state.gigAdSlots.length === MAIN_AD_SLOTS) {
-    gigAdSlots = state.gigAdSlots;
-    sidebarAdSlots = state.sidebarAdSlots;
-    spreadAdSlotsBelow = state.spreadAdSlotsBelow;
-    footerAdSlots = state.footerAdSlots;
-    return true;
-  }
-  return false;
-}
-
-// The main ad grid slots (homepage)
+// 3. AD STATE (holds slot data for all locations)
 let gigAdSlots = Array(MAIN_AD_SLOTS).fill(null).map(() => ({
   videoUrl: null,
   client: null,
@@ -53,15 +34,68 @@ let gigAdSlots = Array(MAIN_AD_SLOTS).fill(null).map(() => ({
   spread: false,
   promotedAdIndex: null,
 }));
-// Sidebar, below master, and footer ad slots (spread)
 let sidebarAdSlots = Array(SIDEBAR_AD_SLOTS).fill(null).map(() => ({ spread: false, promotedAdIndex: null }));
 let spreadAdSlotsBelow = Array(SPREAD_AD_BELOW_MASTER).fill(null).map(() => ({ spread: false, promotedAdIndex: null }));
 let footerAdSlots = Array(FOOTER_AD_SLOTS).fill(null).map(() => ({ spread: false, promotedAdIndex: null }));
 
-// --- Load ad state on page load ---
-loadAdState();
+// 4. LOAD AD STATE FROM FIREBASE
+function fetchAdStateFromBackend() {
+  adStatus.textContent = "Loading ads...";
+  db.collection("fastcutAdSlots").doc("state").get().then((doc) => {
+    if (doc.exists) {
+      const state = doc.data();
+      if (Array.isArray(state.gigAdSlots) && state.gigAdSlots.length === MAIN_AD_SLOTS) {
+        gigAdSlots = state.gigAdSlots;
+        sidebarAdSlots = state.sidebarAdSlots || sidebarAdSlots;
+        spreadAdSlotsBelow = state.spreadAdSlotsBelow || spreadAdSlotsBelow;
+        footerAdSlots = state.footerAdSlots || footerAdSlots;
+        renderAllAdSlots();
+        adStatus.textContent = "Ad slots loaded.";
+      } else {
+        adStatus.textContent = "No ads yet. Be the first to upload!";
+        saveAdStateToBackend(); // create doc if not exists
+      }
+    } else {
+      adStatus.textContent = "No ads yet. Be the first to upload!";
+      saveAdStateToBackend(); // create doc if not exists
+    }
+  }).catch((err) => {
+    adStatus.textContent = "Error loading ads from backend.";
+    console.error(err);
+  });
+}
 
-// Utility to collect all "spread" slots for convenience
+// 5. SAVE AD STATE TO FIREBASE
+function saveAdStateToBackend() {
+  db.collection("fastcutAdSlots").doc("state").set({
+    gigAdSlots,
+    sidebarAdSlots,
+    spreadAdSlotsBelow,
+    footerAdSlots
+  }).then(() => {
+    adStatus.textContent = "Ad state saved!";
+  }).catch((err) => {
+    adStatus.textContent = "Error saving ads.";
+    console.error(err);
+  });
+}
+
+// 6. FIREBASE REALTIME LISTENER (auto-update UI when anyone changes ads)
+db.collection("fastcutAdSlots").doc("state").onSnapshot((doc) => {
+  if (doc.exists) {
+    const state = doc.data();
+    if (Array.isArray(state.gigAdSlots) && state.gigAdSlots.length === MAIN_AD_SLOTS) {
+      gigAdSlots = state.gigAdSlots;
+      sidebarAdSlots = state.sidebarAdSlots || sidebarAdSlots;
+      spreadAdSlotsBelow = state.spreadAdSlotsBelow || spreadAdSlotsBelow;
+      footerAdSlots = state.footerAdSlots || footerAdSlots;
+      renderAllAdSlots();
+      adStatus.textContent = "Ad slots updated.";
+    }
+  }
+});
+
+// 7. UTILITIES (unchanged except save/load now use backend)
 function getAllSpreadSlots() {
   return [
     { arr: sidebarAdSlots, render: renderSidebarAdSlots },
@@ -70,7 +104,7 @@ function getAllSpreadSlots() {
   ];
 }
 
-// RENDER MAIN HOMEPAGE AD GRID
+// 8. RENDERING (unchanged)
 function renderGigAdSlots() {
   const grid = document.getElementById("gigAdGrid");
   grid.innerHTML = "";
@@ -78,8 +112,6 @@ function renderGigAdSlots() {
     grid.appendChild(renderSingleAdSlot(slot, i, "main"));
   });
 }
-
-// RENDER SIDEBAR SPREAD SLOTS
 function renderSidebarAdSlots() {
   const sidebar = document.getElementById("sidebarAdSlots");
   sidebar.innerHTML = "";
@@ -87,8 +119,6 @@ function renderSidebarAdSlots() {
     sidebar.appendChild(renderSingleAdSlot(getPromotedSlotData(slot), i, "sidebar", slot.spread));
   });
 }
-
-// RENDER BELOW MASTER OUTPUT SPREAD SLOTS
 function renderSpreadAdSlotsBelow() {
   const below = document.getElementById("spreadAdSlotsBelow");
   below.innerHTML = "";
@@ -96,8 +126,6 @@ function renderSpreadAdSlotsBelow() {
     below.appendChild(renderSingleAdSlot(getPromotedSlotData(slot), i, "spread", slot.spread));
   });
 }
-
-// RENDER FOOTER SPREAD SLOTS
 function renderFooterAdSlots() {
   const footer = document.getElementById("footerAdSlots");
   footer.innerHTML = "";
@@ -105,8 +133,6 @@ function renderFooterAdSlots() {
     footer.appendChild(renderSingleAdSlot(getPromotedSlotData(slot), i, "footer", slot.spread));
   });
 }
-
-// Helper to get promoted ad data for a spread slot
 function getPromotedSlotData(slot) {
   if (!slot.spread || slot.promotedAdIndex == null || !gigAdSlots[slot.promotedAdIndex]) {
     return { videoUrl: null, client: null, promoted: false, locked: false };
@@ -117,8 +143,6 @@ function getPromotedSlotData(slot) {
     promoted: true
   };
 }
-
-// Renders a single ad slot div (main, sidebar, below, footer)
 function renderSingleAdSlot(slot, index, location, isSpread = false) {
   const slotDiv = document.createElement("div");
   slotDiv.className = "gig-ad-slot" + (slot.spread || slot.promoted ? " promoted" : "");
@@ -195,7 +219,7 @@ function renderSingleAdSlot(slot, index, location, isSpread = false) {
   return slotDiv;
 }
 
-// Create upload button for ad slot
+// 9. UPLOAD BUTTON AD LOGIC (now saves to backend)
 function createGigAdUploadBtn(slotIndex, enabled) {
   const label = document.createElement("label");
   label.className = "gig-ad-upload-btn";
@@ -209,12 +233,16 @@ function createGigAdUploadBtn(slotIndex, enabled) {
     if (!enabled) return;
     const file = e.target.files[0];
     if (!file) return;
+    // Video URL storage: for a real backend, you'd upload to Firebase Storage/S3 and save the link.
+    // For demo, store a blob URL (visible only to uploader).
+    // TODO: Replace this with a real upload if you want persistent video assets!
     const url = URL.createObjectURL(file);
     gigAdSlots[slotIndex].videoUrl = url;
     gigAdSlots[slotIndex].client = DEMO_USER;
     gigAdSlots[slotIndex].timestamp = new Date().toLocaleString();
-    saveAdState();
+    saveAdStateToBackend();
     renderAllAdSlots();
+    adStatus.textContent = "Ad uploaded! (For real persistence, connect to cloud storage.)";
   };
   label.appendChild(input);
   if (!enabled) label.disabled = true;
@@ -222,20 +250,18 @@ function createGigAdUploadBtn(slotIndex, enabled) {
   return label;
 }
 
-// Lock slot: simulate payment and spread ad to other slots
+// 10. LOCK SLOT (simulate payment, spread ad, save to backend)
 function lockGigAdSlot(index) {
   if (confirm("To lock this ad slot and promote it across the platform, you must pay. Simulate payment now?")) {
     gigAdSlots[index].locked = true;
     gigAdSlots[index].lockOwner = DEMO_USER;
     gigAdSlots[index].lockUntil = null;
     spreadLockedAd(index);
-    saveAdState();
+    saveAdStateToBackend();
     renderAllAdSlots();
     alert("Slot locked and promoted! Your ad will be shown in multiple locations for extra exposure.");
   }
 }
-
-// Spread the locked ad into bonus slots around the platform
 function spreadLockedAd(adIndex) {
   getAllSpreadSlots().forEach(slotGroup => {
     slotGroup.arr.forEach(slot => {
@@ -244,17 +270,33 @@ function spreadLockedAd(adIndex) {
     });
     slotGroup.render();
   });
-  saveAdState();
 }
 
-// Render all ad slot locations
+// 11. RENDER ALL AD SLOTS
 function renderAllAdSlots() {
   renderGigAdSlots();
   renderSidebarAdSlots();
   renderSpreadAdSlotsBelow();
   renderFooterAdSlots();
 }
-renderAllAdSlots();
+
+// 12. INITIALIZE AD SYSTEM
+fetchAdStateFromBackend();
+
+// --- FASTCUT MUSIC VIDEO LOGIC ---
+// (All music video functionality below is UNCHANGED and remains local!)
+// --- Animate Members Counter ---
+function animateMembersCounter() {
+  const el = document.getElementById('membersCountNumber');
+  let n = 15347, up = true;
+  setInterval(() => {
+    if (Math.random() > 0.5) n += up ? 1 : -1;
+    if (n < 15320) up = true;
+    if (n > 15360) up = false;
+    el.textContent = n.toLocaleString();
+  }, 1200);
+}
+animateMembersCounter();
 
 // --- Audio Track Input (accepts most popular formats) ---
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
@@ -363,7 +405,6 @@ mainRecorderDownloadBtn.onclick = () => {
 
 // --- Rest of FastCut code unchanged (switcher, export, etc.) ---
 document.addEventListener('DOMContentLoaded', function() {
-  // --- FastCut Switcher Logic ---
   const NUM_TRACKS = 6;
   const TRACK_NAMES = [
     "Video Track 1",
