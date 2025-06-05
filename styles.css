@@ -812,3 +812,13 @@ body {
     gap: 5px;
   }
 }
+
+/* New: Simple ad status message styling */
+.ad-status {
+  margin-top: 12px;
+  color: #43e5c6;
+  font-weight: bold;
+  font-size: 1.07em;
+  min-height: 24px;
+  text-shadow: 0 1px 2px #0a0a0a44;
+}
