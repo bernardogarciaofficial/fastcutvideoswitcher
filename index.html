@@ -5,12 +5,6 @@
   <title>🎬 FastCut Music Video Switcher</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Orbitron:700|Montserrat:400,700&display=swap">
-  <!-- Firebase App (core) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <!-- Firebase Firestore -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <!-- Firebase Storage -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 </head>
 <body>
   <div class="theme-bg"></div>
@@ -34,23 +28,11 @@
     get your music video filmed and edited instantly—no more long waits or video editing delay
   </div>
 
-  <!-- AD THUMBNAILS: MAIN BLOCK -->
-  <section class="gig-ad-section highlight-ad-section">
-    <h2 class="gig-ad-title">🎥 Advertise Your Gig!</h2>
-    <div class="gig-ad-howto">
-      <b>Get your gig in front of thousands of musicians and fans instantly!</b><br><br>
-      <b>How to advertise:</b>
-      <ol>
-        <li><b>Upload</b> a looping promo video (MP4/WebM, 5–30 seconds, horizontal).</li>
-        <li>Anyone can <b>replace</b> your ad by uploading to the same slot—unless you <b>lock</b> it below for exclusivity!</li>
-        <li>Locked ads are <b>promoted</b> across the homepage, sidebar, and video export screens for maximum exposure.</li>
-      </ol>
-      <span style="color:#b8e2ff;">Tip: Use a short, catchy video with your gig info and contact/QR code for best results.</span>
-    </div>
+  <!-- MAIN AD SLOTS BLOCK (Homepage, grid) -->
+  <section class="gig-ad-section">
+    <h2 class="gig-ad-title">Advertise Your Gig!</h2>
+    <p class="gig-ad-desc">Upload a looping ad video for your gig below. Anyone can replace your ad by uploading to the same slot—unless you lock it in by paying for exclusivity! If you lock your ad, it will be promoted across the platform for extra exposure.</p>
     <div class="gig-ad-grid" id="gigAdGrid"></div>
-    <div class="gig-ad-demo-note" id="gigAdDemoNote" style="display:none;">
-      <b>No ads yet!</b> Be the first to promote your gig by uploading your own video below.
-    </div>
   </section>
 
   <!-- SIDEBAR AD BLOCK -->
@@ -67,9 +49,9 @@
     <audio id="audio" controls style="display:none"></audio>
   </div>
 
-  <!-- Main Video Recording Screen -->
+  <!-- Main Video Recording Screen (NEW) -->
   <div class="main-recorder-section">
-    <h3>After each take is recorded, click 'download' to save it to your computer—and don't forget to name your take</h3>
+    <h3>after each take is recorded,click 'download' to save it to your computer-and don't forget to name your take</h3>
     <video id="mainRecorderPreview" width="600" height="340" autoplay muted></video>
     <div class="main-recorder-controls">
       <button id="mainRecorderRecordBtn" class="main-recorder-btn custom-record-btn">⏺️ Record</button>
@@ -78,13 +60,13 @@
       <span id="mainRecorderStatus" class="main-recorder-status"></span>
     </div>
     <div class="take-instructions">
-      <span>After each take is recorded, click 'download' to save it to your computer—and don't forget to name your take</span>
+      <span>after each take is recorded,click 'download' to save it to your computer—and don't forget to name your take</span>
     </div>
   </div>
 
   <!-- Step 2: Upload Takes for 6-Track Switching -->
   <div class="switcher-upload-section">
-    <h3>Easily upload each take right here</h3>
+    <h3>easyly upload each take right here</h3>
     <div id="switcherTracks" class="switcher-track-grid-row"></div>
   </div>
 
