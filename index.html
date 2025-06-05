@@ -5,9 +5,6 @@
   <title>🎬 FastCut Music Video Switcher</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Orbitron:700|Montserrat:400,700&display=swap">
-  <!-- Firebase SDKs for Firestore (Ad System Only) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
   <div class="theme-bg"></div>
@@ -30,20 +27,6 @@
   <div class="instant-edit-banner">
     get your music video filmed and edited instantly—no more long waits or video editing delay
   </div>
-
-  <!-- MAIN AD SLOTS BLOCK (Homepage, grid) -->
-  <section class="gig-ad-section">
-    <h2 class="gig-ad-title">Advertise Your Gig!</h2>
-    <p class="gig-ad-desc">Upload a looping ad video for your gig below. Anyone can replace your ad by uploading to the same slot—unless you lock it in by paying for exclusivity! If you lock your ad, it will be promoted across the platform for extra exposure.</p>
-    <div class="gig-ad-grid" id="gigAdGrid"></div>
-    <div id="adStatus" class="ad-status"></div>
-  </section>
-
-  <!-- SIDEBAR AD BLOCK -->
-  <aside class="sidebar-ads">
-    <div class="sidebar-ad-title">🎵 Featured Gigs</div>
-    <div id="sidebarAdSlots"></div>
-  </aside>
 
   <!-- Step 1: Audio Upload -->
   <div class="audio-track-block">
@@ -98,7 +81,6 @@
     </video>
     <button id="exportMusicVideoBtn" class="export-music-btn">Export Music Video</button>
     <div id="exportStatus" class="export-status"></div>
-    <div id="spreadAdSlotsBelow"></div>
     <div id="syncInstructions" class="sync-instructions">
       <strong>How to Fix Audio/Video Sync in Your Editor:</strong>
       <ol>
@@ -119,9 +101,7 @@
 
   <canvas id="mixCanvas" width="720" height="405" style="display:none"></canvas>
 
-  <!-- FOOTER AD SLOTS -->
   <footer class="hollywood-footer">
-    <div id="footerAdSlots"></div>
     <span class="clapperboard-icon">🎬</span>
     <span>FastCut by <b>bernardogarciaofficial</b> | <span class="camera-icon">🎥</span></span>
     <span class="footer-email">bernardogarciagarcia441@gmail.com</span>
