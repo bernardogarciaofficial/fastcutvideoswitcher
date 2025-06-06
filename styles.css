@@ -1,10 +1,15 @@
-body {
+/* FastCut Music Video Platform - Complete Styles */
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
   background: #191a1d;
   color: #f2f2f7;
   font-family: 'Segoe UI', Arial, sans-serif;
-  margin: 0;
-  padding: 0;
+  min-width: 320px;
 }
+
 header {
   background: #181b22;
   padding: 16px 0;
@@ -17,17 +22,25 @@ h1 {
   color: #f8d74a;
   letter-spacing: 1px;
 }
+#membersCount {
+  color: #ffe9a0;
+  font-size: 1.12rem;
+  margin-top: 11px;
+}
+
 main {
-  max-width: 900px;
+  max-width: 1080px;
   margin: 32px auto;
   padding: 0 16px;
 }
+
 section {
   margin-bottom: 32px;
   border-radius: 12px;
   background: #232434;
   padding: 20px 24px 18px 24px;
   box-shadow: 0 2px 16px #0002;
+  border: 1.5px solid #232434;
 }
 h3 {
   margin-top: 0;
@@ -35,6 +48,7 @@ h3 {
   font-weight: 600;
   font-size: 1.1rem;
 }
+
 #audioStatus, #mainRecorderStatus, #exportStatus, #switchingError, #segmentLockStatus {
   margin-top: 6px;
   min-height: 20px;
@@ -44,6 +58,10 @@ h3 {
 
 .bpm-settings {
   margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
 }
 .bpm-settings label {
   margin-right: 7px;
@@ -56,56 +74,18 @@ h3 {
   outline: none;
   background: #282a30;
   color: #f2f2f7;
-}
-
-#switcherTracks {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-top: 12px;
-}
-.switcher-track {
-  background: #232434;
-  border: 2px solid #35374a;
-  border-radius: 10px;
-  padding: 11px 10px 8px 10px;
-  width: 170px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 12px;
-  transition: border 0.2s;
-}
-.switcher-track.active {
-  border: 2px solid #f8d74a;
-  background: #282a30;
-}
-.switcher-track .track-title {
-  margin-bottom: 5px;
-  font-weight: 600;
-  color: #f8d74a;
   font-size: 1rem;
 }
-.upload-video-btn, .gig-ad-upload-btn {
-  margin: 6px 0;
-  padding: 3px 14px;
-  background: #323b5b;
-  color: #ffe9a0;
+
+/* Main Recorder */
+.main-recorder-section video {
+  margin-bottom: 8px;
   border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  font-size: 0.95rem;
-  transition: background 0.2s;
+  background: #181b22;
+  box-shadow: 0 2px 12px #0003;
 }
-.upload-video-btn:hover, .gig-ad-upload-btn:hover {
-  background: #444e76;
-}
-.upload-video-label {
-  font-size: 0.9rem;
-  color: #f3e7b5;
-}
-input[type="file"] {
-  margin-top: 6px;
+.recorder-controls {
+  margin: 11px 0 3px 0;
 }
 .recorder-controls button,
 .switcher-controls button,
@@ -127,14 +107,131 @@ input[type="file"] {
   color: #888;
   cursor: not-allowed;
 }
-.recorder-controls {
-  margin: 11px 0 3px 0;
-}
 .take-instructions span {
   font-size: 0.95rem;
   color: #ffb54a;
 }
 
+/* Upload/Preview Grid */
+#switcherTracks {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  justify-content: flex-start;
+}
+
+.switcher-track {
+  background: #232434;
+  border: 2px solid #35374a;
+  border-radius: 10px;
+  padding: 11px 10px 8px 10px;
+  width: 170px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 12px;
+  transition: border 0.2s;
+  box-sizing: border-box;
+}
+.switcher-track.active {
+  border: 2px solid #f8d74a;
+  background: #282a30;
+}
+.switcher-track .track-title {
+  margin-bottom: 5px;
+  font-weight: 600;
+  color: #f8d74a;
+  font-size: 1rem;
+}
+.upload-video-btn {
+  margin: 6px 0;
+  padding: 4px 14px;
+  background: #323b5b;
+  color: #ffe9a0;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.97rem;
+  transition: background 0.2s;
+}
+.upload-video-btn:hover {
+  background: #444e76;
+}
+.upload-video-label {
+  font-size: 0.9rem;
+  color: #f3e7b5;
+}
+input[type="file"] {
+  margin-top: 6px;
+}
+
+/* Segmented Editing UI */
+.segmented-edit-section {
+  background: #26273b;
+  border: 2px solid #41426a;
+  margin: 28px 0 18px 0;
+}
+#segmentTimeline {
+  display: flex;
+  gap: 10px;
+  margin: 14px 0 10px 0;
+  flex-wrap: wrap;
+}
+.segment-block {
+  background: #353763;
+  border: 2px solid #444;
+  border-radius: 7px;
+  padding: 7px 9px;
+  min-width: 78px;
+  text-align: center;
+  color: #ffe9a0;
+  font-size: 0.97rem;
+  cursor: pointer;
+  transition: border 0.19s, background 0.19s;
+  position: relative;
+  user-select: none;
+}
+.segment-block.active {
+  border: 2px solid #f8d74a;
+  background: #36396c;
+  font-weight: 700;
+}
+.segment-block.locked {
+  border: 2px solid #53c386;
+  background: #293b2d;
+}
+.segment-block .lock-icon {
+  position: absolute;
+  right: 6px; top: 3px;
+  font-size: 1.1em;
+}
+.segment-controls {
+  margin-bottom: 7px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+#segmentInfo {
+  font-weight: 600;
+  color: #ffe9a0;
+  font-size: 1rem;
+}
+.segment-assign {
+  margin-bottom: 9px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.segment-assign select {
+  min-width: 110px;
+  font-size: 1rem;
+}
+#segmentLockStatus {
+  min-height: 16px;
+}
+
+/* Live Switcher */
 #fastcutSwitcher {
   display: flex;
   gap: 12px;
@@ -160,66 +257,59 @@ input[type="file"] {
   color: #888;
   cursor: not-allowed;
 }
-
-/* Segmented Editing UI */
-.segmented-edit-section {
-  background: #26273b;
-  border: 2px solid #41426a;
-  margin: 28px 0 18px 0;
-}
-#segmentTimeline {
-  display: flex;
-  gap: 10px;
-  margin: 14px 0 10px 0;
-  flex-wrap: wrap;
-}
-.segment-block {
-  background: #353763;
-  border: 2px solid #444;
-  border-radius: 7px;
-  padding: 7px 9px;
-  min-width: 78px;
-  text-align: center;
-  color: #ffe9a0;
-  font-size: 0.97rem;
-  cursor: pointer;
-  transition: border 0.19s;
-  position: relative;
-}
-.segment-block.active {
-  border: 2px solid #f8d74a;
-  background: #36396c;
-  font-weight: 700;
-}
-.segment-block.locked {
-  border: 2px solid #53c386;
-  background: #293b2d;
-}
-.segment-block .lock-icon {
-  position: absolute;
-  right: 6px; top: 3px;
-  font-size: 1.1em;
-}
-.segment-controls {
-  margin-bottom: 7px;
-}
-#segmentInfo {
-  font-weight: 600;
-  color: #ffe9a0;
-  font-size: 1rem;
-}
-.segment-assign {
-  margin-bottom: 7px;
+.switcher-controls {
+  margin-bottom: 8px;
 }
 
-/* Master Output */
+/* Output/Export */
 .master-output-section video {
   margin-bottom: 7px;
   border-radius: 8px;
   background: #000;
+  box-shadow: 0 2px 10px #0005;
 }
-#membersCount {
+.master-output-section button {
+  margin-top: 7px;
+}
+
+footer {
+  text-align: center;
+  padding: 18px 0 7px 0;
+  background: #181b22;
+  border-top: 2px solid #232434;
+}
+.footer-note {
   color: #ffe9a0;
-  font-size: 1.12rem;
-  margin-top: 11px;
+  font-size: 0.98rem;
+  opacity: 0.9;
+}
+
+/* Responsive */
+@media (max-width: 1060px) {
+  main {
+    max-width: 99vw;
+  }
+  #switcherTracks {
+    justify-content: center;
+  }
+}
+@media (max-width: 750px) {
+  .switcher-track {
+    width: 95vw;
+    max-width: 320px;
+  }
+  main {
+    padding: 0 2vw;
+  }
+}
+@media (max-width: 600px) {
+  section {
+    padding: 12px 7vw 10px 7vw;
+  }
+  .main-recorder-section video,
+  .master-output-section video {
+    width: 98vw !important;
+    max-width: 99vw;
+    height: auto;
+  }
 }
