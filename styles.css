@@ -398,6 +398,10 @@ footer {
   font-family: 'Montserrat', Arial, sans-serif;
   text-shadow: 0 1px 10px #fff5, 0 0 8px #ffe87d99;
 }
+.footer-note a {
+  color: #ffe87d;
+  text-decoration: underline;
+}
 
 /* Responsive */
 @media (max-width: 1200px) {
