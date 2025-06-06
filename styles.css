@@ -1,4 +1,3 @@
-/* Use your previous styles.css file, no changes are required for 24-bar segment support. */
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Montserrat:wght@700&display=swap');
 
 body {
@@ -307,10 +306,11 @@ input[type="file"] {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   pointer-events: none;
   background: radial-gradient(ellipse at center, #ffd70038 20%, #23243c00 80%);
 }
+
 .countdown {
   font-size: 5.2rem;
   font-family: 'Orbitron', 'Montserrat', Arial, sans-serif;
@@ -321,6 +321,7 @@ input[type="file"] {
   padding: 22px 60px;
   box-shadow: 0 8px 30px #ffe87d66, 0 2px 30px #fff2b1aa;
   margin-bottom: 44px;
+  margin-top: 60px;
   letter-spacing: 3px;
   border: 2.5px solid #fff2b1;
   animation: countdown-scale 1s linear;
@@ -330,7 +331,12 @@ input[type="file"] {
   0% { transform: scale(1.3); }
   100% { transform: scale(1); }
 }
+
+/* REC indicator in the corner, not over buttons */
 .rec-indicator {
+  position: absolute;
+  top: 18px;
+  right: 24px;
   font-size: 2.7rem;
   font-family: 'Orbitron', 'Montserrat', Arial, sans-serif;
   font-weight: 900;
@@ -344,6 +350,7 @@ input[type="file"] {
   animation: blinkRec 0.89s step-end infinite;
   display: none;
   text-shadow: 0 2px 12px #fff2, 0 0 20px #ff4040;
+  z-index: 100;
 }
 .rec-indicator.blinking {
   display: block;
