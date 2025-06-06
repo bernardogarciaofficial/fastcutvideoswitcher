@@ -1,290 +1,4 @@
-// --- FASTCUT MUSIC VIDEO PLATFORM ---
-// (music video logic left unchanged, see below)
-// --- PERSISTENT AD SYSTEM USING FIREBASE (for all users) ---
-
-// 1. FIREBASE CONFIG (replace with your own Firebase project config)
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-
-// 2. AD SLOT CONSTANTS
-const MAIN_AD_SLOTS = 6;
-const SIDEBAR_AD_SLOTS = 2;
-const SPREAD_AD_BELOW_MASTER = 2;
-const FOOTER_AD_SLOTS = 2;
-const DEMO_USER = "potential_client";
-const GIG_EMPTY_THUMB = `<div class="gig-empty-thumb" title="No ad yet">🎸</div>`;
-const adStatus = document.getElementById('adStatus');
-
-// 3. AD STATE (holds slot data for all locations)
-let gigAdSlots = Array(MAIN_AD_SLOTS).fill(null).map(() => ({
-  videoUrl: null,
-  client: null,
-  locked: false,
-  lockOwner: null,
-  lockUntil: null,
-  timestamp: null,
-  spread: false,
-  promotedAdIndex: null,
-}));
-let sidebarAdSlots = Array(SIDEBAR_AD_SLOTS).fill(null).map(() => ({ spread: false, promotedAdIndex: null }));
-let spreadAdSlotsBelow = Array(SPREAD_AD_BELOW_MASTER).fill(null).map(() => ({ spread: false, promotedAdIndex: null }));
-let footerAdSlots = Array(FOOTER_AD_SLOTS).fill(null).map(() => ({ spread: false, promotedAdIndex: null }));
-
-// 4. LOAD AD STATE FROM FIREBASE
-function fetchAdStateFromBackend() {
-  adStatus.textContent = "Loading ads...";
-  db.collection("fastcutAdSlots").doc("state").get().then((doc) => {
-    if (doc.exists) {
-      const state = doc.data();
-      if (Array.isArray(state.gigAdSlots) && state.gigAdSlots.length === MAIN_AD_SLOTS) {
-        gigAdSlots = state.gigAdSlots;
-        sidebarAdSlots = state.sidebarAdSlots || sidebarAdSlots;
-        spreadAdSlotsBelow = state.spreadAdSlotsBelow || spreadAdSlotsBelow;
-        footerAdSlots = state.footerAdSlots || footerAdSlots;
-        renderAllAdSlots();
-        adStatus.textContent = "Ad slots loaded.";
-      } else {
-        adStatus.textContent = "No ads yet. Be the first to upload!";
-        saveAdStateToBackend(); // create doc if not exists
-      }
-    } else {
-      adStatus.textContent = "No ads yet. Be the first to upload!";
-      saveAdStateToBackend(); // create doc if not exists
-    }
-  }).catch((err) => {
-    adStatus.textContent = "Error loading ads from backend.";
-    console.error(err);
-  });
-}
-
-// 5. SAVE AD STATE TO FIREBASE
-function saveAdStateToBackend() {
-  db.collection("fastcutAdSlots").doc("state").set({
-    gigAdSlots,
-    sidebarAdSlots,
-    spreadAdSlotsBelow,
-    footerAdSlots
-  }).then(() => {
-    adStatus.textContent = "Ad state saved!";
-  }).catch((err) => {
-    adStatus.textContent = "Error saving ads.";
-    console.error(err);
-  });
-}
-
-// 6. FIREBASE REALTIME LISTENER (auto-update UI when anyone changes ads)
-db.collection("fastcutAdSlots").doc("state").onSnapshot((doc) => {
-  if (doc.exists) {
-    const state = doc.data();
-    if (Array.isArray(state.gigAdSlots) && state.gigAdSlots.length === MAIN_AD_SLOTS) {
-      gigAdSlots = state.gigAdSlots;
-      sidebarAdSlots = state.sidebarAdSlots || sidebarAdSlots;
-      spreadAdSlotsBelow = state.spreadAdSlotsBelow || spreadAdSlotsBelow;
-      footerAdSlots = state.footerAdSlots || footerAdSlots;
-      renderAllAdSlots();
-      adStatus.textContent = "Ad slots updated.";
-    }
-  }
-});
-
-// 7. UTILITIES (unchanged except save/load now use backend)
-function getAllSpreadSlots() {
-  return [
-    { arr: sidebarAdSlots, render: renderSidebarAdSlots },
-    { arr: spreadAdSlotsBelow, render: renderSpreadAdSlotsBelow },
-    { arr: footerAdSlots, render: renderFooterAdSlots }
-  ];
-}
-
-// 8. RENDERING (unchanged)
-function renderGigAdSlots() {
-  const grid = document.getElementById("gigAdGrid");
-  grid.innerHTML = "";
-  gigAdSlots.forEach((slot, i) => {
-    grid.appendChild(renderSingleAdSlot(slot, i, "main"));
-  });
-}
-function renderSidebarAdSlots() {
-  const sidebar = document.getElementById("sidebarAdSlots");
-  sidebar.innerHTML = "";
-  sidebarAdSlots.forEach((slot, i) => {
-    sidebar.appendChild(renderSingleAdSlot(getPromotedSlotData(slot), i, "sidebar", slot.spread));
-  });
-}
-function renderSpreadAdSlotsBelow() {
-  const below = document.getElementById("spreadAdSlotsBelow");
-  below.innerHTML = "";
-  spreadAdSlotsBelow.forEach((slot, i) => {
-    below.appendChild(renderSingleAdSlot(getPromotedSlotData(slot), i, "spread", slot.spread));
-  });
-}
-function renderFooterAdSlots() {
-  const footer = document.getElementById("footerAdSlots");
-  footer.innerHTML = "";
-  footerAdSlots.forEach((slot, i) => {
-    footer.appendChild(renderSingleAdSlot(getPromotedSlotData(slot), i, "footer", slot.spread));
-  });
-}
-function getPromotedSlotData(slot) {
-  if (!slot.spread || slot.promotedAdIndex == null || !gigAdSlots[slot.promotedAdIndex]) {
-    return { videoUrl: null, client: null, promoted: false, locked: false };
-  }
-  return {
-    ...gigAdSlots[slot.promotedAdIndex],
-    spread: true,
-    promoted: true
-  };
-}
-function renderSingleAdSlot(slot, index, location, isSpread = false) {
-  const slotDiv = document.createElement("div");
-  slotDiv.className = "gig-ad-slot" + (slot.spread || slot.promoted ? " promoted" : "");
-
-  // Video or empty thumb
-  if (slot.videoUrl) {
-    const v = document.createElement("video");
-    v.src = slot.videoUrl;
-    v.autoplay = true;
-    v.loop = true;
-    v.muted = true;
-    v.playsInline = true;
-    v.setAttribute("controls", false);
-    v.className = "gig-ad-thumb";
-    slotDiv.appendChild(v);
-  } else {
-    slotDiv.innerHTML += GIG_EMPTY_THUMB;
-  }
-
-  // Client info
-  if (slot.client) {
-    const client = document.createElement("div");
-    client.className = "gig-ad-client";
-    client.textContent = `Ad by: ${slot.client}`;
-    slotDiv.appendChild(client);
-  }
-
-  // Timestamp
-  if (slot.timestamp) {
-    const ts = document.createElement("div");
-    ts.className = "gig-ad-timestamp";
-    ts.textContent = `Updated: ${slot.timestamp}`;
-    slotDiv.appendChild(ts);
-  }
-
-  // If spread/promoted, do not show upload or lock options
-  if (slot.spread || slot.promoted) {
-    slotDiv.title = "This ad is promoted by a client and shown here for extra exposure!";
-    return slotDiv;
-  }
-
-  // Locked state
-  if (slot.locked) {
-    const lockMsg = document.createElement("div");
-    lockMsg.className = "gig-ad-locked-msg";
-    lockMsg.textContent = "🔒 Slot is locked!";
-    slotDiv.appendChild(lockMsg);
-
-    if (slot.lockOwner) {
-      const owner = document.createElement("div");
-      owner.className = "gig-lock-owner";
-      owner.textContent = `Locked by: ${slot.lockOwner}`;
-      slotDiv.appendChild(owner);
-    }
-    // If current user is the lock owner, show upload (replace) button
-    if (slot.lockOwner === DEMO_USER) {
-      slotDiv.appendChild(createGigAdUploadBtn(index, true));
-    } else {
-      // Not lock owner, disable upload
-      const uploadBtn = createGigAdUploadBtn(index, false);
-      uploadBtn.disabled = true;
-      slotDiv.appendChild(uploadBtn);
-    }
-  } else {
-    // Not locked: anyone can upload/replace
-    slotDiv.appendChild(createGigAdUploadBtn(index, true));
-    // Show "Lock this slot" button
-    const lockBtn = document.createElement("button");
-    lockBtn.className = "gig-ad-lock-btn";
-    lockBtn.textContent = "Lock this slot (Pay)";
-    lockBtn.onclick = () => lockGigAdSlot(index);
-    slotDiv.appendChild(lockBtn);
-  }
-  return slotDiv;
-}
-
-// 9. UPLOAD BUTTON AD LOGIC (now saves to backend)
-function createGigAdUploadBtn(slotIndex, enabled) {
-  const label = document.createElement("label");
-  label.className = "gig-ad-upload-btn";
-  label.style.cursor = enabled ? "pointer" : "not-allowed";
-  label.innerHTML = "Upload Ad Video";
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = ".mp4,.webm,.mov,.ogg,.mkv,video/*";
-  input.style.display = "none";
-  input.onchange = e => {
-    if (!enabled) return;
-    const file = e.target.files[0];
-    if (!file) return;
-    // Video URL storage: for a real backend, you'd upload to Firebase Storage/S3 and save the link.
-    // For demo, store a blob URL (visible only to uploader).
-    // TODO: Replace this with a real upload if you want persistent video assets!
-    const url = URL.createObjectURL(file);
-    gigAdSlots[slotIndex].videoUrl = url;
-    gigAdSlots[slotIndex].client = DEMO_USER;
-    gigAdSlots[slotIndex].timestamp = new Date().toLocaleString();
-    saveAdStateToBackend();
-    renderAllAdSlots();
-    adStatus.textContent = "Ad uploaded! (For real persistence, connect to cloud storage.)";
-  };
-  label.appendChild(input);
-  if (!enabled) label.disabled = true;
-  label.onclick = enabled ? () => input.click() : (e) => e.preventDefault();
-  return label;
-}
-
-// 10. LOCK SLOT (simulate payment, spread ad, save to backend)
-function lockGigAdSlot(index) {
-  if (confirm("To lock this ad slot and promote it across the platform, you must pay. Simulate payment now?")) {
-    gigAdSlots[index].locked = true;
-    gigAdSlots[index].lockOwner = DEMO_USER;
-    gigAdSlots[index].lockUntil = null;
-    spreadLockedAd(index);
-    saveAdStateToBackend();
-    renderAllAdSlots();
-    alert("Slot locked and promoted! Your ad will be shown in multiple locations for extra exposure.");
-  }
-}
-function spreadLockedAd(adIndex) {
-  getAllSpreadSlots().forEach(slotGroup => {
-    slotGroup.arr.forEach(slot => {
-      slot.spread = true;
-      slot.promotedAdIndex = adIndex;
-    });
-    slotGroup.render();
-  });
-}
-
-// 11. RENDER ALL AD SLOTS
-function renderAllAdSlots() {
-  renderGigAdSlots();
-  renderSidebarAdSlots();
-  renderSpreadAdSlotsBelow();
-  renderFooterAdSlots();
-}
-
-// 12. INITIALIZE AD SYSTEM
-fetchAdStateFromBackend();
-
-// --- FASTCUT MUSIC VIDEO LOGIC ---
-// (All music video functionality below is UNCHANGED and remains local!)
+// --- FASTCUT MUSIC VIDEO PLATFORM (NO AD SYSTEM) ---
 // --- Animate Members Counter ---
 function animateMembersCounter() {
   const el = document.getElementById('membersCountNumber');
@@ -320,16 +34,12 @@ document.getElementById('songInput').onchange = e => {
   }
 };
 
-// --- Main Video Recording Logic ---
+// --- Main Webcam Video Recording Logic (master take) ---
 const mainRecorderPreview = document.getElementById('mainRecorderPreview');
 const mainRecorderRecordBtn = document.getElementById('mainRecorderRecordBtn');
 const mainRecorderStopBtn = document.getElementById('mainRecorderStopBtn');
 const mainRecorderDownloadBtn = document.getElementById('mainRecorderDownloadBtn');
 const mainRecorderStatus = document.getElementById('mainRecorderStatus');
-
-document.querySelector('.main-recorder-section h3').textContent = "after each take is recorded,click 'download' to save it to your computer-and don't forget to name your take";
-document.querySelector('.take-instructions span').textContent = "after each take is recorded,click 'download' to save it to your computer—and don't forget to name your take";
-document.querySelector('.switcher-upload-section h3').textContent = "easyly upload each take right here";
 
 let mainRecorderStream = null;
 let mainRecorderMediaRecorder = null;
@@ -403,7 +113,7 @@ mainRecorderDownloadBtn.onclick = () => {
   mainRecorderStatus.textContent = "Take downloaded. Repeat or upload it as a take below!";
 };
 
-// --- Rest of FastCut code unchanged (switcher, export, etc.) ---
+// --- FastCut 6-Track Upload/Preview Section & Main Switcher Logic ---
 document.addEventListener('DOMContentLoaded', function() {
   const NUM_TRACKS = 6;
   const TRACK_NAMES = [
@@ -414,6 +124,57 @@ document.addEventListener('DOMContentLoaded', function() {
     "Video Track 5",
     "Video Track 6"
   ];
+
+  // --- 6-track Upload/Preview Grid ---
+  const switcherTracks = document.getElementById("switcherTracks");
+  switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => `
+    <div class="switcher-track" id="switcher-track-${i}">
+      <div class="track-title">${TRACK_NAMES[i]}</div>
+      <video id="video-${i}" width="140" height="90" controls muted></video>
+      <div>
+        <label class="upload-video-label" for="uploadVideoInput-${i}">Upload Take</label>
+        <input type="file" id="uploadVideoInput-${i}" class="upload-video-input" accept=".mp4,.webm,.mov,.ogg,.mkv,video/*" style="display:none;">
+        <button class="upload-video-btn" id="uploadVideoBtn-${i}">🎬 Upload Take</button>
+      </div>
+      <button class="download-track-btn" id="downloadTrackBtn-${i}" style="display:none;margin-top:6px;">⬇️ Download Take</button>
+    </div>
+  `).join("");
+
+  const uploadedVideos = Array(NUM_TRACKS).fill(null);
+  const uploadedVideoFiles = Array(NUM_TRACKS).fill(null);
+
+  for (let i = 0; i < NUM_TRACKS; i++) {
+    const uploadBtn = document.getElementById(`uploadVideoBtn-${i}`);
+    const uploadInput = document.getElementById(`uploadVideoInput-${i}`);
+    const video = document.getElementById(`video-${i}`);
+    const downloadBtn = document.getElementById(`downloadTrackBtn-${i}`);
+    uploadBtn.onclick = () => uploadInput.click();
+    uploadInput.onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      video.src = url;
+      video.controls = true;
+      video.muted = false;
+      video.load();
+      uploadBtn.textContent = "🎬 Uploaded!";
+      uploadedVideos[i] = url;
+      uploadedVideoFiles[i] = file;
+      downloadBtn.style.display = "inline-block";
+      setTimeout(() => uploadBtn.textContent = "🎬 Upload Take", 3000);
+    };
+    downloadBtn.onclick = () => {
+      if (!uploadedVideoFiles[i]) return;
+      const a = document.createElement('a');
+      a.href = uploadedVideos[i];
+      a.download = `fastcut_take${i+1}_${Date.now()}.webm`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    };
+  }
+
+  // --- Switcher Buttons ---
   const fastcutSwitcher = document.getElementById('fastcutSwitcher');
   fastcutSwitcher.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) =>
     `<button class="fastcut-btn" id="fastcutBtn-${i}">${TRACK_NAMES[i]}</button>`
@@ -447,50 +208,13 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   setActiveTrack(0);
 
-  // --- Upload Section ---
-  const VIDEO_ACCEPTED = ".mp4,.webm,.mov,.ogg,.mkv,video/*";
-  const switcherTracks = document.getElementById("switcherTracks");
-  switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => `
-    <div class="switcher-track" id="switcher-track-${i}">
-      <div class="track-title">${TRACK_NAMES[i]}</div>
-      <video id="video-${i}" width="140" height="90" controls muted></video>
-      <div>
-        <label class="upload-video-label" for="uploadVideoInput-${i}">Upload Take</label>
-        <input type="file" id="uploadVideoInput-${i}" class="upload-video-input" accept="${VIDEO_ACCEPTED}" style="display:none;">
-        <button class="upload-video-btn" id="uploadVideoBtn-${i}">🎬 Upload Take</button>
-      </div>
-    </div>
-  `).join("");
-
-  const uploadedVideos = Array(NUM_TRACKS).fill(null);
-
-  for (let i = 0; i < NUM_TRACKS; i++) {
-    const uploadBtn = document.getElementById(`uploadVideoBtn-${i}`);
-    const uploadInput = document.getElementById(`uploadVideoInput-${i}`);
-    const video = document.getElementById(`video-${i}`);
-    uploadBtn.onclick = () => uploadInput.click();
-    uploadInput.onchange = e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const url = URL.createObjectURL(file);
-      video.src = url;
-      video.controls = true;
-      video.muted = false;
-      video.load();
-      uploadBtn.textContent = "🎬 Uploaded!";
-      uploadedVideos[i] = url;
-      setTimeout(() => uploadBtn.textContent = "🎬 Upload Take", 3000);
-      checkAllTakesUploaded();
-    };
-  }
-
+  // --- Switcher/Export Logic ---
   const startSwitchingBtn = document.getElementById('startSwitchingBtn');
   const stopSwitchingBtn = document.getElementById('stopSwitchingBtn');
   const masterOutputVideo = document.getElementById('masterOutputVideo');
   const exportStatus = document.getElementById('exportStatus');
   const mixCanvas = document.getElementById('mixCanvas');
   const switchingError = document.getElementById('switchingError');
-
   let isSwitching = false;
   let mixing = false, mediaRecorder = null, masterChunks = [];
   let drawRequestId = null;
@@ -500,18 +224,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
   startSwitchingBtn.disabled = false;
   stopSwitchingBtn.disabled = true;
-
-  function checkAllTakesUploaded() {
-    setupSwitcherTracks();
-  }
-
-  function setupSwitcherTracks() {
-    for (let i = 0; i < NUM_TRACKS; i++) {
-      const v = document.getElementById(`video-${i}`);
-      v.pause();
-      v.currentTime = 0;
-    }
-  }
 
   function recordSwitch(timeMs, trackIdx) {
     if (switchingTimeline.length === 0 && timeMs > 100) return;
@@ -620,15 +332,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
       const v = document.getElementById(`video-${track}`);
+      const ctx = mixCanvas.getContext('2d');
+      ctx.fillStyle = "#111";
+      ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
       if (v && !v.paused && !v.ended) {
-        const ctx = mixCanvas.getContext('2d');
-        ctx.fillStyle = "#111";
-        ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
         ctx.drawImage(v, 0, 0, mixCanvas.width, mixCanvas.height);
-      } else {
-        const ctx = mixCanvas.getContext('2d');
-        ctx.fillStyle = "#111";
-        ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
       }
       if ((Date.now() - switchingStartTime)/1000 < duration && mixing && isSwitching) {
         drawRequestId = requestAnimationFrame(draw);
