@@ -1,4 +1,4 @@
-// --- FASTCUT LIVE 8-BAR SEGMENT SWITCHING ---
+// --- FASTCUT LIVE 16-BAR SEGMENT SWITCHING ---
 
 function animateMembersCounter() {
   const el = document.getElementById('membersCountNumber');
@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
   }
 
-  // 8-Bar Live Segment Edit Logic
+  // 16-Bar Live Segment Edit Logic
   const bpmInput = document.getElementById('bpmInput');
   const timeSigInput = document.getElementById('timeSigInput');
   const segmentTimeline = document.getElementById('segmentTimeline');
@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', function() {
     return 60 / bpm * parseInt(timeSigInput.value || 4, 10);
   }
   function getSegmentLengthSec() {
-    return getBarLengthSec() * 8;
+    return getBarLengthSec() * 16;
   }
   function getAudioDuration() {
     return isFinite(audio.duration) && audio.duration > 0
@@ -147,7 +147,7 @@ document.addEventListener('DOMContentLoaded', function() {
       block.className = 'segment-block' +
         (idx === currentSegment ? ' active' : '') +
         (isSegmentLocked[idx] ? ' locked' : '');
-      block.textContent = `Bars ${1 + idx * 8}–${Math.min((idx + 1) * 8, Math.ceil(getAudioDuration() / getBarLengthSec()))}`;
+      block.textContent = `Bars ${1 + idx * 16}–${Math.min((idx + 1) * 16, Math.ceil(getAudioDuration() / getBarLengthSec()))}`;
       if (isSegmentLocked[idx]) {
         const lockIcon = document.createElement('span');
         lockIcon.className = 'lock-icon';
@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function updateSegmentUI() {
-    segmentInfo.textContent = `Segment ${currentSegment + 1} of ${segmentCount} (Bars ${1 + currentSegment * 8}–${Math.min((currentSegment + 1) * 8, Math.ceil(getAudioDuration() / getBarLengthSec()))})`;
+    segmentInfo.textContent = `Segment ${currentSegment + 1} of ${segmentCount} (Bars ${1 + currentSegment * 16}–${Math.min((currentSegment + 1) * 16, Math.ceil(getAudioDuration() / getBarLengthSec()))})`;
     segmentLockStatus.textContent = isSegmentLocked[currentSegment] ? 'Locked – cannot edit unless unlocked.' : '';
     prevSegmentBtn.disabled = currentSegment === 0;
     nextSegmentBtn.disabled = currentSegment === segmentCount - 1 || !isSegmentLocked[currentSegment];
@@ -254,7 +254,7 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
       ctx.fillStyle = "#111";
       ctx.fillRect(0, 0, segmentMixCanvas.width, segmentMixCanvas.height);
-      ctx.fillStyle = "#ffe9a0";
+      ctx.fillStyle = "#ffe87d";
       ctx.font = "24px sans-serif";
       ctx.fillText("Load & play a video", 40, 140);
     }
