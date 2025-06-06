@@ -1,4 +1,4 @@
-// --- FASTCUT LIVE 16-BAR SEGMENT SWITCHING ---
+// --- FASTCUT LIVE 24-BAR SEGMENT SWITCHING WITH FADE TRANSITION ---
 
 function animateMembersCounter() {
   const el = document.getElementById('membersCountNumber');
@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
   }
 
-  // 16-Bar Live Segment Edit Logic
+  // 24-Bar Live Segment Edit Logic
   const bpmInput = document.getElementById('bpmInput');
   const timeSigInput = document.getElementById('timeSigInput');
   const segmentTimeline = document.getElementById('segmentTimeline');
@@ -110,12 +110,18 @@ document.addEventListener('DOMContentLoaded', function() {
   let segmentRecordingStart = 0;
   let segmentRecordingBlobUrl = null;
 
+  // Fade logic variables
+  let fadeDuration = 180; // ms
+  let fadeStartTime = null;
+  let isFading = false;
+  let previousTrack = null;
+
   function getBarLengthSec() {
     const bpm = parseFloat(bpmInput.value) || 120;
     return 60 / bpm * parseInt(timeSigInput.value || 4, 10);
   }
   function getSegmentLengthSec() {
-    return getBarLengthSec() * 16;
+    return getBarLengthSec() * 24; // CHANGED FROM 16 to 24!
   }
   function getAudioDuration() {
     return isFinite(audio.duration) && audio.duration > 0
@@ -147,7 +153,7 @@ document.addEventListener('DOMContentLoaded', function() {
       block.className = 'segment-block' +
         (idx === currentSegment ? ' active' : '') +
         (isSegmentLocked[idx] ? ' locked' : '');
-      block.textContent = `Bars ${1 + idx * 16}–${Math.min((idx + 1) * 16, Math.ceil(getAudioDuration() / getBarLengthSec()))}`;
+      block.textContent = `Bars ${1 + idx * 24}–${Math.min((idx + 1) * 24, Math.ceil(getAudioDuration() / getBarLengthSec()))}`;
       if (isSegmentLocked[idx]) {
         const lockIcon = document.createElement('span');
         lockIcon.className = 'lock-icon';
@@ -171,7 +177,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function updateSegmentUI() {
-    segmentInfo.textContent = `Segment ${currentSegment + 1} of ${segmentCount} (Bars ${1 + currentSegment * 16}–${Math.min((currentSegment + 1) * 16, Math.ceil(getAudioDuration() / getBarLengthSec()))})`;
+    segmentInfo.textContent = `Segment ${currentSegment + 1} of ${segmentCount} (Bars ${1 + currentSegment * 24}–${Math.min((currentSegment + 1) * 24, Math.ceil(getAudioDuration() / getBarLengthSec()))})`;
     segmentLockStatus.textContent = isSegmentLocked[currentSegment] ? 'Locked – cannot edit unless unlocked.' : '';
     prevSegmentBtn.disabled = currentSegment === 0;
     nextSegmentBtn.disabled = currentSegment === segmentCount - 1 || !isSegmentLocked[currentSegment];
@@ -218,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function() {
       btn.textContent = `Cam ${i+1}`;
       btn.disabled = isSegmentLocked[currentSegment];
       btn.onclick = () => {
-        setSegmentActiveTrack(i);
+        switchToTrack(i);
         if (isSegmentRecording) {
           recordSegmentSwitch(Date.now() - segmentRecordingStart, i);
         } else {
@@ -231,6 +237,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function setSegmentActiveTrack(idx) {
     segmentActiveTrack = idx;
+    renderSegmentSwitcherBtns();
+  }
+
+  function switchToTrack(newTrackIndex) {
+    if (segmentActiveTrack !== newTrackIndex) {
+      previousTrack = segmentActiveTrack;
+      segmentActiveTrack = newTrackIndex;
+      isFading = true;
+      fadeStartTime = performance.now();
+    }
     renderSegmentSwitcherBtns();
   }
 
@@ -353,23 +369,46 @@ document.addEventListener('DOMContentLoaded', function() {
         updateSegmentUI();
       };
       segmentMediaRecorder.start();
+
+      // Fade logic for live switching
       function draw() {
         if (!isSegmentRecording) return;
         let elapsed = (audio.currentTime - segmentData[currentSegment].start) * 1000;
         let track = segmentSwitchTimeline[0].track;
         for (let i = 0; i < segmentSwitchTimeline.length; i++) {
           if (segmentSwitchTimeline[i].time <= elapsed) {
+            if (track !== segmentSwitchTimeline[i].track) {
+              switchToTrack(segmentSwitchTimeline[i].track); // triggers fade
+            }
             track = segmentSwitchTimeline[i].track;
           } else {
             break;
           }
         }
-        const v = document.getElementById(`video-${track}`);
-        ctx.fillStyle = "#111";
-        ctx.fillRect(0, 0, segmentMixCanvas.width, segmentMixCanvas.height);
-        if (v && !v.paused && !v.ended) {
-          ctx.drawImage(v, 0, 0, segmentMixCanvas.width, segmentMixCanvas.height);
+        // Fade logic
+        const ctx = segmentMixCanvas.getContext('2d');
+        if (isFading && previousTrack !== null) {
+          const now = performance.now();
+          const alpha = Math.min((now - fadeStartTime) / fadeDuration, 1);
+          // Draw previous track frame with (1-alpha)
+          ctx.globalAlpha = 1 - alpha;
+          drawVideoFrame(previousTrack, ctx);
+          // Draw current track frame with alpha
+          ctx.globalAlpha = alpha;
+          drawVideoFrame(segmentActiveTrack, ctx);
+          ctx.globalAlpha = 1;
+          if (alpha < 1) {
+            segmentDrawRequestId = requestAnimationFrame(draw);
+            return;
+          } else {
+            isFading = false;
+            previousTrack = null;
+          }
         }
+        // Draw current track as normal
+        ctx.globalAlpha = 1;
+        drawVideoFrame(segmentActiveTrack, ctx);
+
         if ((audio.currentTime >= segmentData[currentSegment].end) || !isSegmentRecording) {
           stopSegmentRecording();
           return;
@@ -379,6 +418,13 @@ document.addEventListener('DOMContentLoaded', function() {
       draw();
     });
   };
+
+  function drawVideoFrame(trackIdx, ctx) {
+    const v = document.getElementById(`video-${trackIdx}`);
+    if (v && v.readyState >= 2 && !v.paused && !v.ended) {
+      ctx.drawImage(v, 0, 0, segmentMixCanvas.width, segmentMixCanvas.height);
+    }
+  }
 
   function stopSegmentRecording() {
     if (!isSegmentRecording) return;
