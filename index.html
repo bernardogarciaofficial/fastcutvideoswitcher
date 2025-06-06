@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=480,initial-scale=1.0"/>
   <title>FastCut 24-Bar Segment Live Editor</title>
   <link rel="stylesheet" href="styles.css"/>
 </head>
@@ -29,14 +29,15 @@
       </div>
     </section>
 
-    <!-- Step 2: Video Takes Upload -->
-    <section class="switcher-upload-section">
-      <h3>Step 2: Upload your 6 takes here</h3>
-      <div id="switcherTracks"></div>
+    <!-- Step 2: Film Each Take -->
+    <section id="filmEachTakeSection">
+      <h3>Step 2: Film or Upload Each Take</h3>
+      <div id="filmTakes"></div>
+      <button id="proceedToSegmentEditingBtn" style="margin-top:18px;">Proceed to Segment Editing</button>
     </section>
     
     <!-- Step 3: Segmented Editing -->
-    <section class="segmented-edit-section">
+    <section class="segmented-edit-section" id="segmentEditingSection" style="display:none;">
       <h3>Step 3: Edit by 24-bar segments (Live Switcher)</h3>
       <div id="segmentTimeline"></div>
       <div class="segment-controls">
