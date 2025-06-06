@@ -1,4 +1,4 @@
-// --- FASTCUT LIVE 24-BAR SEGMENT SWITCHING WITH FADE TRANSITION ---
+// --- FASTCUT LIVE 24-BAR SEGMENT SWITCHING WITH FADE TRANSITION & FIXED SWITCHER ---
 
 function animateMembersCounter() {
   const el = document.getElementById('membersCountNumber');
@@ -222,12 +222,15 @@ document.addEventListener('DOMContentLoaded', function() {
       const btn = document.createElement('button');
       btn.className = 'segment-switch-btn' + (i === segmentActiveTrack ? ' active' : '');
       btn.textContent = `Cam ${i+1}`;
-      btn.disabled = isSegmentLocked[currentSegment];
+      // Buttons are only disabled if segment is locked and not recording:
+      btn.disabled = isSegmentLocked[currentSegment] && !isSegmentRecording;
       btn.onclick = () => {
-        switchToTrack(i);
         if (isSegmentRecording) {
-          recordSegmentSwitch(Date.now() - segmentRecordingStart, i);
+          // Record the time and switch (no direct switchToTrack, let draw loop do it)
+          const now = Date.now();
+          recordSegmentSwitch(now - segmentRecordingStart, i);
         } else {
+          switchToTrack(i);
           previewTrackInCanvas(i);
         }
       };
@@ -370,20 +373,20 @@ document.addEventListener('DOMContentLoaded', function() {
       };
       segmentMediaRecorder.start();
 
-      // Fade logic for live switching
       function draw() {
         if (!isSegmentRecording) return;
         let elapsed = (audio.currentTime - segmentData[currentSegment].start) * 1000;
         let track = segmentSwitchTimeline[0].track;
         for (let i = 0; i < segmentSwitchTimeline.length; i++) {
           if (segmentSwitchTimeline[i].time <= elapsed) {
-            if (track !== segmentSwitchTimeline[i].track) {
-              switchToTrack(segmentSwitchTimeline[i].track); // triggers fade
-            }
             track = segmentSwitchTimeline[i].track;
           } else {
             break;
           }
+        }
+        // Let draw loop handle switching for fade effect
+        if (segmentActiveTrack !== track) {
+          switchToTrack(track);
         }
         // Fade logic
         const ctx = segmentMixCanvas.getContext('2d');
