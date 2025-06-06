@@ -1,4 +1,5 @@
-// --- FASTCUT MUSIC VIDEO PLATFORM (NO AD SYSTEM) ---
+// --- FASTCUT MUSIC VIDEO PLATFORM (with 8-bar Segmented Editing) ---
+
 // --- Animate Members Counter ---
 function animateMembersCounter() {
   const el = document.getElementById('membersCountNumber');
@@ -34,7 +35,7 @@ document.getElementById('songInput').onchange = e => {
   }
 };
 
-// --- Main Webcam Video Recording Logic (master take) ---
+// --- Main Video Recording Logic ---
 const mainRecorderPreview = document.getElementById('mainRecorderPreview');
 const mainRecorderRecordBtn = document.getElementById('mainRecorderRecordBtn');
 const mainRecorderStopBtn = document.getElementById('mainRecorderStopBtn');
@@ -124,8 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
     "Video Track 5",
     "Video Track 6"
   ];
-
-  // --- 6-track Upload/Preview Grid ---
+  // Render 6-track upload grid
   const switcherTracks = document.getElementById("switcherTracks");
   switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => `
     <div class="switcher-track" id="switcher-track-${i}">
@@ -136,18 +136,15 @@ document.addEventListener('DOMContentLoaded', function() {
         <input type="file" id="uploadVideoInput-${i}" class="upload-video-input" accept=".mp4,.webm,.mov,.ogg,.mkv,video/*" style="display:none;">
         <button class="upload-video-btn" id="uploadVideoBtn-${i}">🎬 Upload Take</button>
       </div>
-      <button class="download-track-btn" id="downloadTrackBtn-${i}" style="display:none;margin-top:6px;">⬇️ Download Take</button>
     </div>
   `).join("");
 
   const uploadedVideos = Array(NUM_TRACKS).fill(null);
-  const uploadedVideoFiles = Array(NUM_TRACKS).fill(null);
 
   for (let i = 0; i < NUM_TRACKS; i++) {
     const uploadBtn = document.getElementById(`uploadVideoBtn-${i}`);
     const uploadInput = document.getElementById(`uploadVideoInput-${i}`);
     const video = document.getElementById(`video-${i}`);
-    const downloadBtn = document.getElementById(`downloadTrackBtn-${i}`);
     uploadBtn.onclick = () => uploadInput.click();
     uploadInput.onchange = e => {
       const file = e.target.files[0];
@@ -159,22 +156,11 @@ document.addEventListener('DOMContentLoaded', function() {
       video.load();
       uploadBtn.textContent = "🎬 Uploaded!";
       uploadedVideos[i] = url;
-      uploadedVideoFiles[i] = file;
-      downloadBtn.style.display = "inline-block";
       setTimeout(() => uploadBtn.textContent = "🎬 Upload Take", 3000);
-    };
-    downloadBtn.onclick = () => {
-      if (!uploadedVideoFiles[i]) return;
-      const a = document.createElement('a');
-      a.href = uploadedVideos[i];
-      a.download = `fastcut_take${i+1}_${Date.now()}.webm`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
     };
   }
 
-  // --- Switcher Buttons ---
+  // --- Live Switcher Buttons ---
   const fastcutSwitcher = document.getElementById('fastcutSwitcher');
   fastcutSwitcher.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) =>
     `<button class="fastcut-btn" id="fastcutBtn-${i}">${TRACK_NAMES[i]}</button>`
@@ -208,13 +194,139 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   setActiveTrack(0);
 
-  // --- Switcher/Export Logic ---
+  // --- 8-Bars-At-A-Time Segmented Editing Logic ---
+  const bpmInput = document.getElementById('bpmInput');
+  const timeSigInput = document.getElementById('timeSigInput');
+  const segmentTimeline = document.getElementById('segmentTimeline');
+  const prevSegmentBtn = document.getElementById('prevSegmentBtn');
+  const nextSegmentBtn = document.getElementById('nextSegmentBtn');
+  const segmentTakeSelect = document.getElementById('segmentTakeSelect');
+  const lockSegmentBtn = document.getElementById('lockSegmentBtn');
+  const unlockSegmentBtn = document.getElementById('unlockSegmentBtn');
+  const segmentInfo = document.getElementById('segmentInfo');
+  const segmentLockStatus = document.getElementById('segmentLockStatus');
+
+  let segmentData = []; // [{start, end, take, locked}]
+  let currentSegment = 0;
+  let segmentCount = 0;
+  function getBarLengthSec() {
+    const bpm = parseFloat(bpmInput.value) || 120;
+    return 60 / bpm * parseInt(timeSigInput.value || 4, 10);
+  }
+  function getSegmentLengthSec() {
+    return getBarLengthSec() * 8;
+  }
+  function getAudioDuration() {
+    return isFinite(audio.duration) && audio.duration > 0
+      ? audio.duration
+      : 180;
+  }
+  function recalcSegments() {
+    segmentData = [];
+    const totalDuration = getAudioDuration();
+    const segLen = getSegmentLengthSec();
+    segmentCount = Math.ceil(totalDuration / segLen);
+    for (let i = 0; i < segmentCount; i++) {
+      segmentData.push({
+        start: i * segLen,
+        end: Math.min((i + 1) * segLen, totalDuration),
+        take: 0,
+        locked: false
+      });
+    }
+    currentSegment = 0;
+  }
+
+  function renderSegmentTimeline() {
+    segmentTimeline.innerHTML = '';
+    segmentData.forEach((seg, idx) => {
+      const block = document.createElement('div');
+      block.className = 'segment-block' +
+        (idx === currentSegment ? ' active' : '') +
+        (seg.locked ? ' locked' : '');
+      block.textContent = `Bars ${1 + idx * 8}–${Math.min((idx + 1) * 8, Math.ceil(getAudioDuration() / getBarLengthSec()))}`;
+      if (seg.locked) {
+        const lockIcon = document.createElement('span');
+        lockIcon.className = 'lock-icon';
+        lockIcon.textContent = '🔒';
+        block.appendChild(lockIcon);
+      }
+      block.onclick = () => {
+        currentSegment = idx;
+        renderSegmentTimeline();
+        updateSegmentAssignmentUI();
+      };
+      segmentTimeline.appendChild(block);
+    });
+  }
+
+  function updateSegmentAssignmentUI() {
+    if (!segmentData.length) return;
+    segmentInfo.textContent = `Segment ${currentSegment + 1} of ${segmentCount} (Bars ${1 + currentSegment * 8}–${Math.min((currentSegment + 1) * 8, Math.ceil(getAudioDuration() / getBarLengthSec()))})`;
+    segmentTakeSelect.innerHTML = '';
+    for (let i = 0; i < NUM_TRACKS; i++) {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = `Take ${i + 1}`;
+      segmentTakeSelect.appendChild(opt);
+    }
+    segmentTakeSelect.value = segmentData[currentSegment].take;
+    segmentTakeSelect.disabled = segmentData[currentSegment].locked;
+    lockSegmentBtn.style.display = segmentData[currentSegment].locked ? 'none' : '';
+    unlockSegmentBtn.style.display = segmentData[currentSegment].locked ? '' : 'none';
+    segmentLockStatus.textContent = segmentData[currentSegment].locked ? 'Locked – cannot edit unless unlocked.' : '';
+  }
+
+  segmentTakeSelect.onchange = () => {
+    segmentData[currentSegment].take = parseInt(segmentTakeSelect.value, 10);
+  };
+  lockSegmentBtn.onclick = () => {
+    segmentData[currentSegment].locked = true;
+    renderSegmentTimeline();
+    updateSegmentAssignmentUI();
+  };
+  unlockSegmentBtn.onclick = () => {
+    segmentData[currentSegment].locked = false;
+    renderSegmentTimeline();
+    updateSegmentAssignmentUI();
+  };
+  prevSegmentBtn.onclick = () => {
+    if (currentSegment > 0) {
+      currentSegment--;
+      renderSegmentTimeline();
+      updateSegmentAssignmentUI();
+    }
+  };
+  nextSegmentBtn.onclick = () => {
+    if (currentSegment < segmentCount - 1) {
+      currentSegment++;
+      renderSegmentTimeline();
+      updateSegmentAssignmentUI();
+    }
+  };
+  bpmInput.onchange = timeSigInput.onchange = () => {
+    recalcSegments();
+    renderSegmentTimeline();
+    updateSegmentAssignmentUI();
+  };
+  audio.onloadedmetadata = () => {
+    recalcSegments();
+    renderSegmentTimeline();
+    updateSegmentAssignmentUI();
+  };
+  // On initial load
+  recalcSegments();
+  renderSegmentTimeline();
+  updateSegmentAssignmentUI();
+
+  // --- Live Switcher/Export Logic (respects locked segments if any locked) ---
   const startSwitchingBtn = document.getElementById('startSwitchingBtn');
   const stopSwitchingBtn = document.getElementById('stopSwitchingBtn');
   const masterOutputVideo = document.getElementById('masterOutputVideo');
   const exportStatus = document.getElementById('exportStatus');
   const mixCanvas = document.getElementById('mixCanvas');
   const switchingError = document.getElementById('switchingError');
+
   let isSwitching = false;
   let mixing = false, mediaRecorder = null, masterChunks = [];
   let drawRequestId = null;
@@ -229,6 +341,21 @@ document.addEventListener('DOMContentLoaded', function() {
     if (switchingTimeline.length === 0 && timeMs > 100) return;
     if (switchingTimeline.length > 0 && switchingTimeline[switchingTimeline.length-1].track === trackIdx) return;
     switchingTimeline.push({ time: timeMs, track: trackIdx });
+  }
+
+  // Helper: Use segmented timeline if any segments are locked, else use live switching
+  function getExportTimeline() {
+    if (segmentData.some(seg => seg.locked)) {
+      // Build timeline from segments (use locked, else use their current take)
+      let t = [];
+      segmentData.forEach((seg, idx) => {
+        t.push({ time: Math.round(seg.start * 1000), track: seg.take });
+      });
+      return t;
+    } else {
+      // Use switchingTimeline as in live mode
+      return switchingTimeline.length ? switchingTimeline : [{ time: 0, track: activeTrack }];
+    }
   }
 
   startSwitchingBtn.onclick = () => {
@@ -308,11 +435,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     mixing = true;
-    let duration = 0;
-    const refVideo = document.getElementById('video-0');
-    if (refVideo && !isNaN(refVideo.duration)) duration = refVideo.duration;
-    else duration = 180;
-
+    let duration = getAudioDuration();
     masterOutputVideo.srcObject = combinedStream;
     masterOutputVideo.muted = true;
     masterOutputVideo.play();
@@ -320,13 +443,16 @@ document.addEventListener('DOMContentLoaded', function() {
     audio.play();
     mediaRecorder.start();
 
+    // Timeline for draw(): either from segmentData (if any locked) or live
+    const useTimeline = getExportTimeline();
+
     function draw() {
       if (!mixing) return;
-      let elapsed = Date.now() - switchingStartTime;
-      let track = switchingTimeline[0].track;
-      for (let i = 0; i < switchingTimeline.length; i++) {
-        if (switchingTimeline[i].time <= elapsed) {
-          track = switchingTimeline[i].track;
+      let elapsed = (audio.currentTime || 0) * 1000;
+      let track = useTimeline[0].track;
+      for (let i = 0; i < useTimeline.length; i++) {
+        if (useTimeline[i].time <= elapsed) {
+          track = useTimeline[i].track;
         } else {
           break;
         }
@@ -338,7 +464,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (v && !v.paused && !v.ended) {
         ctx.drawImage(v, 0, 0, mixCanvas.width, mixCanvas.height);
       }
-      if ((Date.now() - switchingStartTime)/1000 < duration && mixing && isSwitching) {
+      if ((audio.currentTime < duration) && mixing && isSwitching) {
         drawRequestId = requestAnimationFrame(draw);
       }
     }
