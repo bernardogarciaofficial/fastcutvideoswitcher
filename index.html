@@ -1,111 +1,88 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>🎬 FastCut Music Video Switcher</title>
-  <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Orbitron:700|Montserrat:400,700&display=swap">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FastCut Music Video Platform</title>
+  <link rel="stylesheet" href="styles.css"/>
 </head>
 <body>
-  <div class="theme-bg"></div>
-  <div class="set-lights">
-    <div class="spotlight spotlight-left"></div>
-    <div class="spotlight spotlight-right"></div>
-    <div class="spotlight spotlight-top"></div>
-  </div>
-  <header class="hollywood-header">
-    <span class="camera-icon">🎥</span>
-    <h2>FastCut Music Video Switcher</h2>
-    <span class="clapperboard-icon">🎬</span>
-    <div class="lights-action">LIGHTS <span class="dot">•</span> CAMERA <span class="dot">•</span> ACTION!</div>
-    <div class="members-counter" id="membersCounter">
-      <span class="counter-icon">🧑‍🤝‍🧑</span>
-      <span id="membersCountNumber">15,347</span> members online
-    </div>
+  <header>
+    <h1>FastCut Music Video Platform</h1>
+    <div id="membersCount">Members: <span id="membersCountNumber">0</span></div>
   </header>
+  <main>
+    <section class="audio-upload-section">
+      <h3>Step 1: Upload your audio track</h3>
+      <input type="file" id="songInput"/>
+      <audio id="audio" controls style="display:none;"></audio>
+      <div id="audioStatus"></div>
+      <div class="bpm-settings">
+        <label for="bpmInput">Song BPM:</label>
+        <input type="number" id="bpmInput" min="40" max="240" value="120"/>
+        <label for="timeSigInput">Time Signature:</label>
+        <select id="timeSigInput">
+          <option value="4">4/4</option>
+          <option value="3">3/4</option>
+        </select>
+      </div>
+    </section>
 
-  <div class="instant-edit-banner">
-    get your music video filmed and edited instantly—no more long waits or video editing delay
-  </div>
+    <section class="main-recorder-section">
+      <h3>Step 2: (Optional) Record a master take</h3>
+      <video id="mainRecorderPreview" width="320" height="180" controls style="background:#222;"></video>
+      <div class="recorder-controls">
+        <button id="mainRecorderRecordBtn">Record</button>
+        <button id="mainRecorderStopBtn" disabled>Stop</button>
+        <button id="mainRecorderDownloadBtn" disabled>Download Take</button>
+      </div>
+      <div id="mainRecorderStatus"></div>
+      <div class="take-instructions">
+        <span>After each take is recorded, click 'download' to save it to your computer—and don't forget to name your take!</span>
+      </div>
+    </section>
 
-  <!-- Step 1: Audio Upload -->
-  <div class="audio-track-block">
-    <label for="songInput"><b><span class="music-icon">🎵</span> Main Music Track:</b></label>
-    <input type="file" id="songInput" accept=".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*">
-    <span id="audioStatus"></span>
-    <audio id="audio" controls style="display:none"></audio>
-  </div>
+    <section class="switcher-upload-section">
+      <h3>Step 3: Upload your 6 takes here</h3>
+      <div id="switcherTracks"></div>
+    </section>
+    
+    <section class="segmented-edit-section">
+      <h3>Step 4: Edit by 8-bar segments</h3>
+      <div id="segmentTimeline"></div>
+      <div class="segment-controls">
+        <button id="prevSegmentBtn">⟨ Prev</button>
+        <span id="segmentInfo"></span>
+        <button id="nextSegmentBtn">Next ⟩</button>
+      </div>
+      <div class="segment-assign">
+        <label for="segmentTakeSelect">Select Take for This Segment:</label>
+        <select id="segmentTakeSelect"></select>
+        <button id="lockSegmentBtn">Lock Segment</button>
+        <button id="unlockSegmentBtn" style="display:none;">Unlock Segment</button>
+      </div>
+      <div id="segmentLockStatus"></div>
+    </section>
 
-  <!-- Main Video Recording Screen (NEW) -->
-  <div class="main-recorder-section">
-    <h3>after each take is recorded,click 'download' to save it to your computer-and don't forget to name your take</h3>
-    <video id="mainRecorderPreview" width="600" height="340" autoplay muted></video>
-    <div class="main-recorder-controls">
-      <button id="mainRecorderRecordBtn" class="main-recorder-btn custom-record-btn">⏺️ Record</button>
-      <button id="mainRecorderStopBtn" class="main-recorder-btn custom-stop-btn" disabled>⏹️ Stop</button>
-      <button id="mainRecorderDownloadBtn" class="main-recorder-btn custom-download-btn" disabled>⬇️ Download</button>
-      <span id="mainRecorderStatus" class="main-recorder-status"></span>
-    </div>
-    <div class="take-instructions">
-      <span>after each take is recorded,click 'download' to save it to your computer—and don't forget to name your take</span>
-    </div>
-  </div>
+    <section class="live-switcher-section">
+      <h3>Step 5 (Optional): Live Switcher</h3>
+      <div id="fastcutSwitcher"></div>
+      <div class="switcher-controls">
+        <button id="startSwitchingBtn">Start Switching</button>
+        <button id="stopSwitchingBtn" disabled>Stop Switching</button>
+      </div>
+      <canvas id="mixCanvas" width="480" height="270" style="display:none;"></canvas>
+      <div id="switchingError"></div>
+    </section>
 
-  <!-- Step 2: Upload Takes for 6-Track Switching -->
-  <div class="switcher-upload-section">
-    <h3>easyly upload each take right here</h3>
-    <div id="switcherTracks" class="switcher-track-grid-row"></div>
-  </div>
-
-  <!-- Step 3: Live Switch and Record -->
-  <div class="switcher-control-section">
-    <div class="switcher-live-controls">
-      <button id="startSwitchingBtn" class="live-switch-btn record-btn">⏺️ Start Switching</button>
-      <button id="stopSwitchingBtn" class="live-switch-btn stop-btn" disabled>⏹️ Stop Switching</button>
-    </div>
-    <div id="fastcutSwitcher" class="fastcut-switcher-row"></div>
-  </div>
-
-  <!-- Step 4: FastCut Switcher/Export -->
-  <div class="master-output-section">
-    <h3 class="output-title">Master Output Video <span class="filmstrip">🎞️</span></h3>
-    <video
-      id="masterOutputVideo"
-      width="720"
-      height="405"
-      controls
-      style="background:#181c23; border-radius:16px; border:3px solid #ffe57f; box-shadow:0 4px 24px #000a; display:block; margin:0 auto;"
-      poster="master_output_poster.png"
-    >
-      Your browser does not support the video tag.
-    </video>
-    <button id="exportMusicVideoBtn" class="export-music-btn">Export Music Video</button>
-    <div id="exportStatus" class="export-status"></div>
-    <div id="syncInstructions" class="sync-instructions">
-      <strong>How to Fix Audio/Video Sync in Your Editor:</strong>
-      <ol>
-        <li>Import your exported FastCut video into your video editor.</li>
-        <li>Right-click the video clip and choose <b>"Unlink"</b> or <b>"Detach Audio"</b>.</li>
-        <li>Select the audio track and move it forward by about <b>5–6 frames</b> (about 0.2 seconds), or until the music matches the video action.</li>
-      </ol>
-      <span class="sync-note">Tip: In most editors, you can nudge the audio by single frames using the arrow keys.</span>
-    </div>
-  </div>
-
-  <div class="switching-instructions" style="margin-top:-12px;">
-    <span>
-      <b>How it works:</b> Once all takes are uploaded, click <b>Start Switching</b>, then switch cameras live by pressing the camera buttons below. When you're done, click <b>Stop Switching</b> to generate your master video!
-    </span>
-    <div id="switchingError" style="color:#e53935; font-weight:bold; margin-top:10px;"></div>
-  </div>
-
-  <canvas id="mixCanvas" width="720" height="405" style="display:none"></canvas>
-
-  <footer class="hollywood-footer">
-    <span class="clapperboard-icon">🎬</span>
-    <span>FastCut by <b>bernardogarciaofficial</b> | <span class="camera-icon">🎥</span></span>
-    <span class="footer-email">bernardogarciagarcia441@gmail.com</span>
-  </footer>
-  <script src="script.js"></script>
+    <section class="master-output-section">
+      <h3>Master Output & Export</h3>
+      <video id="masterOutputVideo" width="480" height="270" controls style="background:#111;"></video>
+      <div>
+        <button id="exportMusicVideoBtn">Export & Download Final Video</button>
+      </div>
+      <div id="exportStatus"></div>
+    </section>
+  </main>
 </body>
 </html>
