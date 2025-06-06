@@ -1,4 +1,4 @@
-// --- FASTCUT MUSIC VIDEO PLATFORM (with 8-bar Segmented Editing) ---
+// --- FASTCUT MUSIC VIDEO PLATFORM (with 8-bar Step-by-Step Segmented Editing) ---
 
 // --- Animate Members Counter ---
 function animateMembersCounter() {
@@ -194,7 +194,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   setActiveTrack(0);
 
-  // --- 8-Bars-At-A-Time Segmented Editing Logic ---
+  // --- 8-Bars-At-A-Time Segmented Editing Logic (Strict Step-by-Step) ---
   const bpmInput = document.getElementById('bpmInput');
   const timeSigInput = document.getElementById('timeSigInput');
   const segmentTimeline = document.getElementById('segmentTimeline');
@@ -206,9 +206,10 @@ document.addEventListener('DOMContentLoaded', function() {
   const segmentInfo = document.getElementById('segmentInfo');
   const segmentLockStatus = document.getElementById('segmentLockStatus');
 
-  let segmentData = []; // [{start, end, take, locked}]
+  let segmentData = [];
   let currentSegment = 0;
   let segmentCount = 0;
+
   function getBarLengthSec() {
     const bpm = parseFloat(bpmInput.value) || 120;
     return 60 / bpm * parseInt(timeSigInput.value || 4, 10);
@@ -236,7 +237,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     currentSegment = 0;
   }
-
+  function firstUnlockedSegment() {
+    return segmentData.findIndex(s => !s.locked);
+  }
   function renderSegmentTimeline() {
     segmentTimeline.innerHTML = '';
     segmentData.forEach((seg, idx) => {
@@ -251,15 +254,20 @@ document.addEventListener('DOMContentLoaded', function() {
         lockIcon.textContent = '🔒';
         block.appendChild(lockIcon);
       }
-      block.onclick = () => {
-        currentSegment = idx;
-        renderSegmentTimeline();
-        updateSegmentAssignmentUI();
-      };
+      // Only allow click for current or previous segments
+      if (idx <= firstUnlockedSegment() || seg.locked) {
+        block.onclick = () => {
+          currentSegment = idx;
+          renderSegmentTimeline();
+          updateSegmentAssignmentUI();
+        };
+      } else {
+        block.style.opacity = 0.5;
+        block.style.cursor = "not-allowed";
+      }
       segmentTimeline.appendChild(block);
     });
   }
-
   function updateSegmentAssignmentUI() {
     if (!segmentData.length) return;
     segmentInfo.textContent = `Segment ${currentSegment + 1} of ${segmentCount} (Bars ${1 + currentSegment * 8}–${Math.min((currentSegment + 1) * 8, Math.ceil(getAudioDuration() / getBarLengthSec()))})`;
@@ -271,17 +279,27 @@ document.addEventListener('DOMContentLoaded', function() {
       segmentTakeSelect.appendChild(opt);
     }
     segmentTakeSelect.value = segmentData[currentSegment].take;
-    segmentTakeSelect.disabled = segmentData[currentSegment].locked;
-    lockSegmentBtn.style.display = segmentData[currentSegment].locked ? 'none' : '';
+    // Only allow editing the first unlocked segment (or locked segments, but not others)
+    const unlockedIdx = firstUnlockedSegment();
+    const canEdit = (currentSegment === unlockedIdx && unlockedIdx !== -1) || segmentData[currentSegment].locked;
+    segmentTakeSelect.disabled = !canEdit || segmentData[currentSegment].locked;
+    lockSegmentBtn.style.display = canEdit && !segmentData[currentSegment].locked ? '' : 'none';
     unlockSegmentBtn.style.display = segmentData[currentSegment].locked ? '' : 'none';
+    prevSegmentBtn.disabled = currentSegment <= 0;
+    nextSegmentBtn.disabled = currentSegment >= unlockedIdx && unlockedIdx !== -1;
     segmentLockStatus.textContent = segmentData[currentSegment].locked ? 'Locked – cannot edit unless unlocked.' : '';
   }
-
   segmentTakeSelect.onchange = () => {
     segmentData[currentSegment].take = parseInt(segmentTakeSelect.value, 10);
   };
   lockSegmentBtn.onclick = () => {
     segmentData[currentSegment].locked = true;
+    // Advance to next segment unless it's the last one
+    const nextIdx = currentSegment + 1;
+    renderSegmentTimeline();
+    if (nextIdx < segmentCount && firstUnlockedSegment() === nextIdx) {
+      currentSegment = nextIdx;
+    }
     renderSegmentTimeline();
     updateSegmentAssignmentUI();
   };
@@ -298,7 +316,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   };
   nextSegmentBtn.onclick = () => {
-    if (currentSegment < segmentCount - 1) {
+    const unlockedIdx = firstUnlockedSegment();
+    if (currentSegment < unlockedIdx) {
       currentSegment++;
       renderSegmentTimeline();
       updateSegmentAssignmentUI();
@@ -318,6 +337,29 @@ document.addEventListener('DOMContentLoaded', function() {
   recalcSegments();
   renderSegmentTimeline();
   updateSegmentAssignmentUI();
+
+  // --- Play Segment button logic ---
+  const segmentControlsDiv = document.querySelector('.segment-controls');
+  let playSegmentBtn = document.createElement('button');
+  playSegmentBtn.textContent = 'Play Segment';
+  segmentControlsDiv.appendChild(playSegmentBtn);
+
+  let segmentAudioTimeout = null;
+  playSegmentBtn.onclick = () => {
+    const seg = segmentData[currentSegment];
+    if (!seg) return;
+    audio.currentTime = seg.start;
+    audio.play();
+    if (segmentAudioTimeout) clearTimeout(segmentAudioTimeout);
+    segmentAudioTimeout = setTimeout(() => {
+      audio.pause();
+    }, (seg.end - seg.start) * 1000);
+  };
+  // Pause audio if user navigates away
+  segmentTakeSelect.onfocus = prevSegmentBtn.onfocus = nextSegmentBtn.onfocus = () => {
+    if (segmentAudioTimeout) clearTimeout(segmentAudioTimeout);
+    audio.pause();
+  };
 
   // --- Live Switcher/Export Logic (respects locked segments if any locked) ---
   const startSwitchingBtn = document.getElementById('startSwitchingBtn');
@@ -346,14 +388,12 @@ document.addEventListener('DOMContentLoaded', function() {
   // Helper: Use segmented timeline if any segments are locked, else use live switching
   function getExportTimeline() {
     if (segmentData.some(seg => seg.locked)) {
-      // Build timeline from segments (use locked, else use their current take)
       let t = [];
       segmentData.forEach((seg, idx) => {
         t.push({ time: Math.round(seg.start * 1000), track: seg.take });
       });
       return t;
     } else {
-      // Use switchingTimeline as in live mode
       return switchingTimeline.length ? switchingTimeline : [{ time: 0, track: activeTrack }];
     }
   }
