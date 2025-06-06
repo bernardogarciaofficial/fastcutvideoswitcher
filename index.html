@@ -3,15 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FastCut 8-Bar Segment Live Editor</title>
+  <title>FastCut 16-Bar Segment Live Editor</title>
   <link rel="stylesheet" href="styles.css"/>
 </head>
 <body>
   <header>
-    <h1>FastCut 8-Bar Segment Live Editor</h1>
+    <h1>FastCut 16-Bar Segment Live Editor</h1>
     <div id="membersCount">Members: <span id="membersCountNumber">0</span></div>
   </header>
   <main>
+    <!-- AUDIO UPLOAD & BPM SECTION -->
     <section class="audio-upload-section">
       <h3>Step 1: Upload your audio track</h3>
       <input type="file" id="songInput"/>
@@ -28,13 +29,15 @@
       </div>
     </section>
 
+    <!-- VIDEO TAKES UPLOAD SECTION -->
     <section class="switcher-upload-section">
       <h3>Step 2: Upload your 6 takes here</h3>
       <div id="switcherTracks"></div>
     </section>
     
+    <!-- SEGMENTED EDITING SECTION -->
     <section class="segmented-edit-section">
-      <h3>Step 3: Edit by 8-bar segments (Live Switcher)</h3>
+      <h3>Step 3: Edit by 16-bar segments (Live Switcher)</h3>
       <div id="segmentTimeline"></div>
       <div class="segment-controls">
         <button id="prevSegmentBtn">⟨ Prev</button>
@@ -42,7 +45,7 @@
         <button id="nextSegmentBtn">Next ⟩</button>
       </div>
       <div class="live-segment-switcher">
-        <button id="startSegmentRecordingBtn">Start 8-Bar Switching</button>
+        <button id="startSegmentRecordingBtn">Start 16-Bar Switching</button>
         <button id="lockSegmentBtn" style="display:none;">Lock Segment</button>
         <button id="unlockSegmentBtn" style="display:none;">Unlock Segment</button>
         <button id="previewSegmentBtn" style="display:none;">Preview Segment</button>
@@ -58,6 +61,8 @@
         <div id="recIndicator" class="rec-indicator">● REC</div>
       </div>
     </section>
+
+    <!-- EXPORT SECTION -->
     <section class="master-output-section">
       <h3>Master Output & Export</h3>
       <video id="masterOutputVideo" width="480" height="270" controls style="background:#111;"></video>
@@ -68,7 +73,10 @@
     </section>
   </main>
   <footer>
-    <div class="footer-note">FastCut &copy; 2025. All rights reserved.</div>
+    <div class="footer-note">
+      FastCut &copy; 2025. All rights reserved.<br>
+      Created by Bernardo Garcia (<a href="mailto:bernardogarciagarcia441@gmail.com" style="color:#ffe87d">bernardogarciagarcia441@gmail.com</a>)
+    </div>
   </footer>
   <script src="script.js"></script>
 </body>
