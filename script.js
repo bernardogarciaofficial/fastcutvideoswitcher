@@ -216,23 +216,48 @@ document.addEventListener('DOMContentLoaded', function() {
       const btn = document.createElement('button');
       btn.className = 'segment-switch-btn' + (i === segmentActiveTrack ? ' active' : '');
       btn.textContent = `Cam ${i+1}`;
-      btn.disabled = isSegmentLocked[currentSegment] || !isSegmentRecording;
+      btn.disabled = isSegmentLocked[currentSegment];
       btn.onclick = () => {
-        if (!isSegmentRecording) return;
         setSegmentActiveTrack(i);
-        recordSegmentSwitch(Date.now() - segmentRecordingStart, i);
+        if (isSegmentRecording) {
+          recordSegmentSwitch(Date.now() - segmentRecordingStart, i);
+        } else {
+          previewTrackInCanvas(i);
+        }
       };
       segmentSwitcherBtns.appendChild(btn);
     }
   }
+
   function setSegmentActiveTrack(idx) {
     segmentActiveTrack = idx;
     renderSegmentSwitcherBtns();
   }
+
   function recordSegmentSwitch(timeMs, trackIdx) {
     if (segmentSwitchTimeline.length === 0 && timeMs > 100) return;
     if (segmentSwitchTimeline.length > 0 && segmentSwitchTimeline[segmentSwitchTimeline.length-1].track === trackIdx) return;
     segmentSwitchTimeline.push({ time: timeMs, track: trackIdx });
+  }
+
+  // Live preview when not recording
+  function previewTrackInCanvas(trackIdx) {
+    segmentMixCanvas.style.display = '';
+    const ctx = segmentMixCanvas.getContext('2d');
+    const v = document.getElementById(`video-${trackIdx}`);
+    if (v && v.readyState >= 2) {
+      v.currentTime = Math.max(v.currentTime, segmentData[currentSegment].start);
+      v.pause();
+      ctx.fillStyle = "#111";
+      ctx.fillRect(0, 0, segmentMixCanvas.width, segmentMixCanvas.height);
+      ctx.drawImage(v, 0, 0, segmentMixCanvas.width, segmentMixCanvas.height);
+    } else {
+      ctx.fillStyle = "#111";
+      ctx.fillRect(0, 0, segmentMixCanvas.width, segmentMixCanvas.height);
+      ctx.fillStyle = "#ffe9a0";
+      ctx.font = "24px sans-serif";
+      ctx.fillText("Load & play a video", 40, 140);
+    }
   }
 
   function showCountdownAndRec(cb) {
