@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FastCut Music Video Platform</title>
+  <title>FastCut 8-Bar Segment Live Editor</title>
   <link rel="stylesheet" href="styles.css"/>
 </head>
 <body>
   <header>
-    <h1>FastCut Music Video Platform</h1>
+    <h1>FastCut 8-Bar Segment Live Editor</h1>
     <div id="membersCount">Members: <span id="membersCountNumber">0</span></div>
   </header>
   <main>
@@ -28,53 +28,36 @@
       </div>
     </section>
 
-    <section class="main-recorder-section">
-      <h3>Step 2: (Optional) Record a master take</h3>
-      <video id="mainRecorderPreview" width="320" height="180" controls style="background:#222;"></video>
-      <div class="recorder-controls">
-        <button id="mainRecorderRecordBtn">Record</button>
-        <button id="mainRecorderStopBtn" disabled>Stop</button>
-        <button id="mainRecorderDownloadBtn" disabled>Download Take</button>
-      </div>
-      <div id="mainRecorderStatus"></div>
-      <div class="take-instructions">
-        <span>After each take is recorded, click 'download' to save it to your computer—and don't forget to name your take!</span>
-      </div>
-    </section>
-
     <section class="switcher-upload-section">
-      <h3>Step 3: Upload your 6 takes here</h3>
+      <h3>Step 2: Upload your 6 takes here</h3>
       <div id="switcherTracks"></div>
     </section>
     
     <section class="segmented-edit-section">
-      <h3>Step 4: Edit by 8-bar segments</h3>
+      <h3>Step 3: Edit by 8-bar segments (Live Switcher)</h3>
       <div id="segmentTimeline"></div>
       <div class="segment-controls">
         <button id="prevSegmentBtn">⟨ Prev</button>
         <span id="segmentInfo"></span>
         <button id="nextSegmentBtn">Next ⟩</button>
       </div>
-      <div class="segment-assign">
-        <label for="segmentTakeSelect">Select Take for This Segment:</label>
-        <select id="segmentTakeSelect"></select>
-        <button id="lockSegmentBtn">Lock Segment</button>
+      <div class="live-segment-switcher">
+        <button id="startSegmentRecordingBtn">Start 8-Bar Switching</button>
+        <button id="lockSegmentBtn" style="display:none;">Lock Segment</button>
         <button id="unlockSegmentBtn" style="display:none;">Unlock Segment</button>
+        <button id="previewSegmentBtn" style="display:none;">Preview Segment</button>
       </div>
       <div id="segmentLockStatus"></div>
-    </section>
-
-    <section class="live-switcher-section">
-      <h3>Step 5 (Optional): Live Switcher</h3>
-      <div id="fastcutSwitcher"></div>
-      <div class="switcher-controls">
-        <button id="startSwitchingBtn">Start Switching</button>
-        <button id="stopSwitchingBtn" disabled>Stop Switching</button>
+      <div id="segmentSwitcherUI">
+        <div id="segmentSwitcherBtns"></div>
       </div>
-      <canvas id="mixCanvas" width="480" height="270" style="display:none;"></canvas>
-      <div id="switchingError"></div>
+      <canvas id="segmentMixCanvas" width="480" height="270" style="display:none;"></canvas>
+      <video id="segmentPreviewVideo" width="360" height="202" controls style="display:none; margin-top:8px;"></video>
+      <div id="segmentRecordingOverlay" class="overlay" style="display:none;">
+        <div id="countdown" class="countdown"></div>
+        <div id="recIndicator" class="rec-indicator">● REC</div>
+      </div>
     </section>
-
     <section class="master-output-section">
       <h3>Master Output & Export</h3>
       <video id="masterOutputVideo" width="480" height="270" controls style="background:#111;"></video>
