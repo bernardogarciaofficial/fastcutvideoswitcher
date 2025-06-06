@@ -1,6 +1,5 @@
-// --- FASTCUT MUSIC VIDEO PLATFORM (with 8-bar Step-by-Step Segmented Editing) ---
+// --- FASTCUT LIVE 8-BAR SEGMENT SWITCHING ---
 
-// --- Animate Members Counter ---
 function animateMembersCounter() {
   const el = document.getElementById('membersCountNumber');
   let n = 15347, up = true;
@@ -13,7 +12,6 @@ function animateMembersCounter() {
 }
 animateMembersCounter();
 
-// --- Audio Track Input (accepts most popular formats) ---
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
 document.getElementById('songInput').setAttribute('accept', AUDIO_ACCEPTED);
 
@@ -35,86 +33,6 @@ document.getElementById('songInput').onchange = e => {
   }
 };
 
-// --- Main Video Recording Logic ---
-const mainRecorderPreview = document.getElementById('mainRecorderPreview');
-const mainRecorderRecordBtn = document.getElementById('mainRecorderRecordBtn');
-const mainRecorderStopBtn = document.getElementById('mainRecorderStopBtn');
-const mainRecorderDownloadBtn = document.getElementById('mainRecorderDownloadBtn');
-const mainRecorderStatus = document.getElementById('mainRecorderStatus');
-
-let mainRecorderStream = null;
-let mainRecorderMediaRecorder = null;
-let mainRecorderChunks = [];
-let mainRecorderBlobURL = null;
-
-mainRecorderRecordBtn.onclick = async () => {
-  if (!masterAudioFile) {
-    mainRecorderStatus.textContent = "Please upload an audio track first!";
-    return;
-  }
-  mainRecorderRecordBtn.disabled = true;
-  mainRecorderStopBtn.disabled = false;
-  mainRecorderDownloadBtn.disabled = true;
-  mainRecorderStatus.textContent = "Recording...";
-
-  mainRecorderChunks = [];
-  try {
-    mainRecorderStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-  } catch (err) {
-    mainRecorderStatus.textContent = "Camera or microphone access denied.";
-    mainRecorderRecordBtn.disabled = false;
-    mainRecorderStopBtn.disabled = true;
-    return;
-  }
-  mainRecorderPreview.srcObject = mainRecorderStream;
-  mainRecorderPreview.muted = true;
-  mainRecorderPreview.controls = false;
-
-  audio.currentTime = 0;
-  audio.play();
-
-  mainRecorderMediaRecorder = new MediaRecorder(mainRecorderStream, { mimeType: "video/webm" });
-  mainRecorderMediaRecorder.ondataavailable = e => { if (e.data.size > 0) mainRecorderChunks.push(e.data); };
-  mainRecorderMediaRecorder.onstop = () => {
-    if (mainRecorderPreview.srcObject) {
-      mainRecorderPreview.srcObject.getTracks().forEach(track => track.stop());
-      mainRecorderPreview.srcObject = null;
-    }
-    const blob = new Blob(mainRecorderChunks, { type: "video/webm" });
-    if (mainRecorderBlobURL) URL.revokeObjectURL(mainRecorderBlobURL);
-    mainRecorderBlobURL = URL.createObjectURL(blob);
-    mainRecorderPreview.src = mainRecorderBlobURL;
-    mainRecorderPreview.controls = true;
-    mainRecorderPreview.muted = false;
-    mainRecorderPreview.load();
-    mainRecorderDownloadBtn.disabled = false;
-    mainRecorderStatus.textContent = "Recording complete! Download your take.";
-  };
-  mainRecorderMediaRecorder.start();
-};
-
-mainRecorderStopBtn.onclick = () => {
-  if (mainRecorderMediaRecorder && mainRecorderMediaRecorder.state !== "inactive") {
-    mainRecorderMediaRecorder.stop();
-  }
-  mainRecorderRecordBtn.disabled = false;
-  mainRecorderStopBtn.disabled = true;
-  audio.pause();
-  audio.currentTime = 0;
-};
-
-mainRecorderDownloadBtn.onclick = () => {
-  if (!mainRecorderBlobURL) return;
-  const a = document.createElement('a');
-  a.href = mainRecorderBlobURL;
-  a.download = `fastcut_take_${Date.now()}.webm`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  mainRecorderStatus.textContent = "Take downloaded. Repeat or upload it as a take below!";
-};
-
-// --- FastCut 6-Track Upload/Preview Section & Main Switcher Logic ---
 document.addEventListener('DOMContentLoaded', function() {
   const NUM_TRACKS = 6;
   const TRACK_NAMES = [
@@ -125,7 +43,6 @@ document.addEventListener('DOMContentLoaded', function() {
     "Video Track 5",
     "Video Track 6"
   ];
-  // Render 6-track upload grid
   const switcherTracks = document.getElementById("switcherTracks");
   switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => `
     <div class="switcher-track" id="switcher-track-${i}">
@@ -160,55 +77,38 @@ document.addEventListener('DOMContentLoaded', function() {
     };
   }
 
-  // --- Live Switcher Buttons ---
-  const fastcutSwitcher = document.getElementById('fastcutSwitcher');
-  fastcutSwitcher.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) =>
-    `<button class="fastcut-btn" id="fastcutBtn-${i}">${TRACK_NAMES[i]}</button>`
-  ).join('');
-
-  let activeTrack = 0;
-  const fastcutBtns = [];
-  for (let i = 0; i < NUM_TRACKS; i++) {
-    const btn = document.getElementById(`fastcutBtn-${i}`);
-    fastcutBtns.push(btn);
-    btn.onclick = () => {
-      if (!isSwitching) return;
-      setActiveTrack(i);
-      if (isSwitching) {
-        recordSwitch(Date.now() - switchingStartTime, i);
-      }
-    };
-    btn.disabled = true;
-  }
-  function setActiveTrack(idx) {
-    activeTrack = idx;
-    const tracks = document.querySelectorAll('.switcher-track');
-    if (tracks.length === NUM_TRACKS) {
-      tracks.forEach((el, j) =>
-        el.classList.toggle('active', j === idx)
-      );
-    }
-    fastcutBtns.forEach((btn, j) =>
-      btn.classList.toggle('active', j === idx)
-    );
-  }
-  setActiveTrack(0);
-
-  // --- 8-Bars-At-A-Time Segmented Editing Logic (Strict Step-by-Step) ---
+  // 8-Bar Live Segment Edit Logic
   const bpmInput = document.getElementById('bpmInput');
   const timeSigInput = document.getElementById('timeSigInput');
   const segmentTimeline = document.getElementById('segmentTimeline');
   const prevSegmentBtn = document.getElementById('prevSegmentBtn');
   const nextSegmentBtn = document.getElementById('nextSegmentBtn');
-  const segmentTakeSelect = document.getElementById('segmentTakeSelect');
+  const startSegmentRecordingBtn = document.getElementById('startSegmentRecordingBtn');
   const lockSegmentBtn = document.getElementById('lockSegmentBtn');
   const unlockSegmentBtn = document.getElementById('unlockSegmentBtn');
+  const previewSegmentBtn = document.getElementById('previewSegmentBtn');
   const segmentInfo = document.getElementById('segmentInfo');
   const segmentLockStatus = document.getElementById('segmentLockStatus');
+  const segmentSwitcherBtns = document.getElementById('segmentSwitcherBtns');
+  const segmentMixCanvas = document.getElementById('segmentMixCanvas');
+  const segmentPreviewVideo = document.getElementById('segmentPreviewVideo');
+  const overlay = document.getElementById('segmentRecordingOverlay');
+  const countdownDiv = document.getElementById('countdown');
+  const recIndicator = document.getElementById('recIndicator');
 
   let segmentData = [];
   let currentSegment = 0;
   let segmentCount = 0;
+  let segmentRecordings = [];
+  let isSegmentLocked = [];
+  let segmentSwitchTimeline = [];
+  let segmentActiveTrack = 0;
+  let isSegmentRecording = false;
+  let segmentDrawRequestId = null;
+  let segmentMediaRecorder = null;
+  let segmentChunks = [];
+  let segmentRecordingStart = 0;
+  let segmentRecordingBlobUrl = null;
 
   function getBarLengthSec() {
     const bpm = parseFloat(bpmInput.value) || 120;
@@ -224,42 +124,43 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   function recalcSegments() {
     segmentData = [];
+    segmentRecordings = [];
+    isSegmentLocked = [];
     const totalDuration = getAudioDuration();
     const segLen = getSegmentLengthSec();
     segmentCount = Math.ceil(totalDuration / segLen);
     for (let i = 0; i < segmentCount; i++) {
       segmentData.push({
         start: i * segLen,
-        end: Math.min((i + 1) * segLen, totalDuration),
-        take: 0,
-        locked: false
+        end: Math.min((i + 1) * segLen, totalDuration)
       });
+      segmentRecordings.push(null);
+      isSegmentLocked.push(false);
     }
     currentSegment = 0;
   }
-  function firstUnlockedSegment() {
-    return segmentData.findIndex(s => !s.locked);
-  }
+
   function renderSegmentTimeline() {
     segmentTimeline.innerHTML = '';
     segmentData.forEach((seg, idx) => {
       const block = document.createElement('div');
       block.className = 'segment-block' +
         (idx === currentSegment ? ' active' : '') +
-        (seg.locked ? ' locked' : '');
+        (isSegmentLocked[idx] ? ' locked' : '');
       block.textContent = `Bars ${1 + idx * 8}–${Math.min((idx + 1) * 8, Math.ceil(getAudioDuration() / getBarLengthSec()))}`;
-      if (seg.locked) {
+      if (isSegmentLocked[idx]) {
         const lockIcon = document.createElement('span');
         lockIcon.className = 'lock-icon';
         lockIcon.textContent = '🔒';
         block.appendChild(lockIcon);
       }
-      // Only allow click for current or previous segments
-      if (idx <= firstUnlockedSegment() || seg.locked) {
+      if (idx <= currentSegment) {
         block.onclick = () => {
-          currentSegment = idx;
-          renderSegmentTimeline();
-          updateSegmentAssignmentUI();
+          if (idx === currentSegment || isSegmentLocked[idx]) {
+            currentSegment = idx;
+            renderSegmentTimeline();
+            updateSegmentUI();
+          }
         };
       } else {
         block.style.opacity = 0.5;
@@ -268,289 +169,254 @@ document.addEventListener('DOMContentLoaded', function() {
       segmentTimeline.appendChild(block);
     });
   }
-  function updateSegmentAssignmentUI() {
-    if (!segmentData.length) return;
+
+  function updateSegmentUI() {
     segmentInfo.textContent = `Segment ${currentSegment + 1} of ${segmentCount} (Bars ${1 + currentSegment * 8}–${Math.min((currentSegment + 1) * 8, Math.ceil(getAudioDuration() / getBarLengthSec()))})`;
-    segmentTakeSelect.innerHTML = '';
-    for (let i = 0; i < NUM_TRACKS; i++) {
-      const opt = document.createElement('option');
-      opt.value = i;
-      opt.textContent = `Take ${i + 1}`;
-      segmentTakeSelect.appendChild(opt);
-    }
-    segmentTakeSelect.value = segmentData[currentSegment].take;
-    // Only allow editing the first unlocked segment (or locked segments, but not others)
-    const unlockedIdx = firstUnlockedSegment();
-    const canEdit = (currentSegment === unlockedIdx && unlockedIdx !== -1) || segmentData[currentSegment].locked;
-    segmentTakeSelect.disabled = !canEdit || segmentData[currentSegment].locked;
-    lockSegmentBtn.style.display = canEdit && !segmentData[currentSegment].locked ? '' : 'none';
-    unlockSegmentBtn.style.display = segmentData[currentSegment].locked ? '' : 'none';
-    prevSegmentBtn.disabled = currentSegment <= 0;
-    nextSegmentBtn.disabled = currentSegment >= unlockedIdx && unlockedIdx !== -1;
-    segmentLockStatus.textContent = segmentData[currentSegment].locked ? 'Locked – cannot edit unless unlocked.' : '';
+    segmentLockStatus.textContent = isSegmentLocked[currentSegment] ? 'Locked – cannot edit unless unlocked.' : '';
+    prevSegmentBtn.disabled = currentSegment === 0;
+    nextSegmentBtn.disabled = currentSegment === segmentCount - 1 || !isSegmentLocked[currentSegment];
+    startSegmentRecordingBtn.style.display = isSegmentLocked[currentSegment] ? 'none' : '';
+    lockSegmentBtn.style.display = (!isSegmentLocked[currentSegment] && !!segmentRecordings[currentSegment]) ? '' : 'none';
+    unlockSegmentBtn.style.display = isSegmentLocked[currentSegment] ? '' : 'none';
+    previewSegmentBtn.style.display = !!segmentRecordings[currentSegment] ? '' : 'none';
+    segmentPreviewVideo.style.display = 'none';
+    segmentMixCanvas.style.display = 'none';
+    overlay.style.display = 'none';
+    renderSegmentSwitcherBtns();
   }
-  segmentTakeSelect.onchange = () => {
-    segmentData[currentSegment].take = parseInt(segmentTakeSelect.value, 10);
-  };
-  lockSegmentBtn.onclick = () => {
-    segmentData[currentSegment].locked = true;
-    // Advance to next segment unless it's the last one
-    const nextIdx = currentSegment + 1;
-    renderSegmentTimeline();
-    if (nextIdx < segmentCount && firstUnlockedSegment() === nextIdx) {
-      currentSegment = nextIdx;
-    }
-    renderSegmentTimeline();
-    updateSegmentAssignmentUI();
-  };
-  unlockSegmentBtn.onclick = () => {
-    segmentData[currentSegment].locked = false;
-    renderSegmentTimeline();
-    updateSegmentAssignmentUI();
-  };
+
   prevSegmentBtn.onclick = () => {
     if (currentSegment > 0) {
       currentSegment--;
       renderSegmentTimeline();
-      updateSegmentAssignmentUI();
+      updateSegmentUI();
     }
   };
   nextSegmentBtn.onclick = () => {
-    const unlockedIdx = firstUnlockedSegment();
-    if (currentSegment < unlockedIdx) {
+    if (currentSegment < segmentCount - 1 && isSegmentLocked[currentSegment]) {
       currentSegment++;
       renderSegmentTimeline();
-      updateSegmentAssignmentUI();
+      updateSegmentUI();
     }
   };
   bpmInput.onchange = timeSigInput.onchange = () => {
     recalcSegments();
     renderSegmentTimeline();
-    updateSegmentAssignmentUI();
+    updateSegmentUI();
   };
   audio.onloadedmetadata = () => {
     recalcSegments();
     renderSegmentTimeline();
-    updateSegmentAssignmentUI();
-  };
-  // On initial load
-  recalcSegments();
-  renderSegmentTimeline();
-  updateSegmentAssignmentUI();
-
-  // --- Play Segment button logic ---
-  const segmentControlsDiv = document.querySelector('.segment-controls');
-  let playSegmentBtn = document.createElement('button');
-  playSegmentBtn.textContent = 'Play Segment';
-  segmentControlsDiv.appendChild(playSegmentBtn);
-
-  let segmentAudioTimeout = null;
-  playSegmentBtn.onclick = () => {
-    const seg = segmentData[currentSegment];
-    if (!seg) return;
-    audio.currentTime = seg.start;
-    audio.play();
-    if (segmentAudioTimeout) clearTimeout(segmentAudioTimeout);
-    segmentAudioTimeout = setTimeout(() => {
-      audio.pause();
-    }, (seg.end - seg.start) * 1000);
-  };
-  // Pause audio if user navigates away
-  segmentTakeSelect.onfocus = prevSegmentBtn.onfocus = nextSegmentBtn.onfocus = () => {
-    if (segmentAudioTimeout) clearTimeout(segmentAudioTimeout);
-    audio.pause();
+    updateSegmentUI();
   };
 
-  // --- Live Switcher/Export Logic (respects locked segments if any locked) ---
-  const startSwitchingBtn = document.getElementById('startSwitchingBtn');
-  const stopSwitchingBtn = document.getElementById('stopSwitchingBtn');
-  const masterOutputVideo = document.getElementById('masterOutputVideo');
-  const exportStatus = document.getElementById('exportStatus');
-  const mixCanvas = document.getElementById('mixCanvas');
-  const switchingError = document.getElementById('switchingError');
-
-  let isSwitching = false;
-  let mixing = false, mediaRecorder = null, masterChunks = [];
-  let drawRequestId = null;
-  let livePlaybackUrl = null;
-  let switchingStartTime = 0;
-  let switchingTimeline = [];
-
-  startSwitchingBtn.disabled = false;
-  stopSwitchingBtn.disabled = true;
-
-  function recordSwitch(timeMs, trackIdx) {
-    if (switchingTimeline.length === 0 && timeMs > 100) return;
-    if (switchingTimeline.length > 0 && switchingTimeline[switchingTimeline.length-1].track === trackIdx) return;
-    switchingTimeline.push({ time: timeMs, track: trackIdx });
-  }
-
-  // Helper: Use segmented timeline if any segments are locked, else use live switching
-  function getExportTimeline() {
-    if (segmentData.some(seg => seg.locked)) {
-      let t = [];
-      segmentData.forEach((seg, idx) => {
-        t.push({ time: Math.round(seg.start * 1000), track: seg.take });
-      });
-      return t;
-    } else {
-      return switchingTimeline.length ? switchingTimeline : [{ time: 0, track: activeTrack }];
+  function renderSegmentSwitcherBtns() {
+    segmentSwitcherBtns.innerHTML = '';
+    for (let i = 0; i < NUM_TRACKS; i++) {
+      const btn = document.createElement('button');
+      btn.className = 'segment-switch-btn' + (i === segmentActiveTrack ? ' active' : '');
+      btn.textContent = `Cam ${i+1}`;
+      btn.disabled = isSegmentLocked[currentSegment] || !isSegmentRecording;
+      btn.onclick = () => {
+        if (!isSegmentRecording) return;
+        setSegmentActiveTrack(i);
+        recordSegmentSwitch(Date.now() - segmentRecordingStart, i);
+      };
+      segmentSwitcherBtns.appendChild(btn);
     }
   }
+  function setSegmentActiveTrack(idx) {
+    segmentActiveTrack = idx;
+    renderSegmentSwitcherBtns();
+  }
+  function recordSegmentSwitch(timeMs, trackIdx) {
+    if (segmentSwitchTimeline.length === 0 && timeMs > 100) return;
+    if (segmentSwitchTimeline.length > 0 && segmentSwitchTimeline[segmentSwitchTimeline.length-1].track === trackIdx) return;
+    segmentSwitchTimeline.push({ time: timeMs, track: trackIdx });
+  }
 
-  startSwitchingBtn.onclick = () => {
-    switchingError.textContent = '';
-    const allUploaded = uploadedVideos.every(v => !!v);
-    if (!allUploaded) {
-      switchingError.textContent = "Please upload all 6 video takes before starting switching!";
+  function showCountdownAndRec(cb) {
+    overlay.style.display = '';
+    countdownDiv.style.display = '';
+    recIndicator.classList.remove('blinking');
+    countdownDiv.textContent = '3';
+    let t = 3;
+    let interval = setInterval(() => {
+      t--;
+      if (t > 0) {
+        countdownDiv.textContent = t;
+      } else {
+        countdownDiv.textContent = '';
+        countdownDiv.style.display = 'none';
+        recIndicator.classList.add('blinking');
+        cb();
+        clearInterval(interval);
+      }
+    }, 1000);
+  }
+  function hideOverlay() {
+    overlay.style.display = 'none';
+    countdownDiv.textContent = '';
+    countdownDiv.style.display = '';
+    recIndicator.classList.remove('blinking');
+  }
+
+  startSegmentRecordingBtn.onclick = async () => {
+    if (uploadedVideos.some(v => !v)) {
+      segmentLockStatus.textContent = "Please upload all 6 takes before recording!";
       return;
     }
-    exportStatus.textContent = "";
     for (let i = 0; i < NUM_TRACKS; i++) {
       const v = document.getElementById(`video-${i}`);
-      v.currentTime = 0;
+      v.currentTime = segmentData[currentSegment].start;
       v.pause();
     }
+    isSegmentRecording = false;
+    renderSegmentSwitcherBtns();
+    showCountdownAndRec(() => {
+      isSegmentRecording = true;
+      segmentSwitchTimeline = [{ time: 0, track: segmentActiveTrack }];
+      segmentRecordingStart = Date.now();
+      for (let i = 0; i < NUM_TRACKS; i++) {
+        const v = document.getElementById(`video-${i}`);
+        v.currentTime = segmentData[currentSegment].start;
+        v.muted = true;
+        v.play();
+      }
+      audio.currentTime = segmentData[currentSegment].start;
+      audio.play();
+
+      segmentMixCanvas.style.display = '';
+      const ctx = segmentMixCanvas.getContext('2d');
+      ctx.fillStyle = "#111";
+      ctx.fillRect(0,0,segmentMixCanvas.width,segmentMixCanvas.height);
+
+      const videoStream = segmentMixCanvas.captureStream(30);
+      let audioStream = null;
+      if (audio.captureStream) {
+        audioStream = audio.captureStream();
+      } else if (audio.mozCaptureStream) {
+        audioStream = audio.mozCaptureStream();
+      }
+      let combinedStream;
+      if (audioStream) {
+        combinedStream = new MediaStream([
+          ...videoStream.getVideoTracks(),
+          ...audioStream.getAudioTracks()
+        ]);
+      } else {
+        combinedStream = videoStream;
+      }
+      segmentChunks = [];
+      segmentMediaRecorder = new MediaRecorder(combinedStream, { mimeType: "video/webm" });
+      segmentMediaRecorder.ondataavailable = e => { if (e.data.size > 0) segmentChunks.push(e.data); };
+      segmentMediaRecorder.onstop = () => {
+        if (segmentRecordingBlobUrl) URL.revokeObjectURL(segmentRecordingBlobUrl);
+        const blob = new Blob(segmentChunks, { type: "video/webm" });
+        segmentRecordingBlobUrl = URL.createObjectURL(blob);
+        segmentPreviewVideo.src = segmentRecordingBlobUrl;
+        segmentPreviewVideo.load();
+        segmentRecordings[currentSegment] = {
+          videoBlob: blob,
+          timeline: [...segmentSwitchTimeline]
+        };
+        segmentPreviewVideo.style.display = '';
+        segmentMixCanvas.style.display = 'none';
+        isSegmentRecording = false;
+        hideOverlay();
+        renderSegmentSwitcherBtns();
+        updateSegmentUI();
+      };
+      segmentMediaRecorder.start();
+      function draw() {
+        if (!isSegmentRecording) return;
+        let elapsed = (audio.currentTime - segmentData[currentSegment].start) * 1000;
+        let track = segmentSwitchTimeline[0].track;
+        for (let i = 0; i < segmentSwitchTimeline.length; i++) {
+          if (segmentSwitchTimeline[i].time <= elapsed) {
+            track = segmentSwitchTimeline[i].track;
+          } else {
+            break;
+          }
+        }
+        const v = document.getElementById(`video-${track}`);
+        ctx.fillStyle = "#111";
+        ctx.fillRect(0, 0, segmentMixCanvas.width, segmentMixCanvas.height);
+        if (v && !v.paused && !v.ended) {
+          ctx.drawImage(v, 0, 0, segmentMixCanvas.width, segmentMixCanvas.height);
+        }
+        if ((audio.currentTime >= segmentData[currentSegment].end) || !isSegmentRecording) {
+          stopSegmentRecording();
+          return;
+        }
+        segmentDrawRequestId = requestAnimationFrame(draw);
+      }
+      draw();
+    });
+  };
+
+  function stopSegmentRecording() {
+    if (!isSegmentRecording) return;
+    isSegmentRecording = false;
+    audio.pause();
     for (let i = 0; i < NUM_TRACKS; i++) {
       const v = document.getElementById(`video-${i}`);
-      v.currentTime = 0;
-      v.muted = true;
-      v.play();
+      v.pause();
     }
-    audio.currentTime = 0;
-    audio.play();
-
-    switchingTimeline = [{ time: 0, track: activeTrack }];
-    switchingStartTime = Date.now();
-    isSwitching = true;
-    startSwitchingBtn.disabled = true;
-    stopSwitchingBtn.disabled = false;
-    fastcutBtns.forEach(btn => btn.disabled = false);
-
-    const ctx = mixCanvas.getContext('2d');
-    ctx.fillStyle = "#111";
-    ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
-
-    const videoStream = mixCanvas.captureStream(30);
-    let audioStream = null;
-    if (audio.captureStream) {
-      audioStream = audio.captureStream();
-    } else if (audio.mozCaptureStream) {
-      audioStream = audio.mozCaptureStream();
+    if (segmentMediaRecorder && segmentMediaRecorder.state !== "inactive") {
+      segmentMediaRecorder.stop();
     }
+    if (segmentDrawRequestId !== null) cancelAnimationFrame(segmentDrawRequestId);
+    segmentDrawRequestId = null;
+  }
 
-    let combinedStream;
-    if (audioStream) {
-      combinedStream = new MediaStream([
-        ...videoStream.getVideoTracks(),
-        ...audioStream.getAudioTracks()
-      ]);
-    } else {
-      combinedStream = videoStream;
-      exportStatus.textContent = "Warning: Audio captureStream not supported in your browser. Output will be silent.";
+  lockSegmentBtn.onclick = () => {
+    if (!segmentRecordings[currentSegment]) return;
+    isSegmentLocked[currentSegment] = true;
+    updateSegmentUI();
+    renderSegmentTimeline();
+  };
+  unlockSegmentBtn.onclick = () => {
+    isSegmentLocked[currentSegment] = false;
+    updateSegmentUI();
+    renderSegmentTimeline();
+  };
+  previewSegmentBtn.onclick = () => {
+    if (segmentRecordings[currentSegment]) {
+      segmentPreviewVideo.src = URL.createObjectURL(segmentRecordings[currentSegment].videoBlob);
+      segmentPreviewVideo.style.display = '';
+      segmentMixCanvas.style.display = 'none';
+      segmentPreviewVideo.play();
     }
-
-    masterChunks = [];
-    mediaRecorder = new MediaRecorder(combinedStream, { mimeType: "video/webm" });
-    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) masterChunks.push(e.data); };
-    mediaRecorder.onstop = () => {
-      masterOutputVideo.srcObject = null;
-      if(livePlaybackUrl) {
-        URL.revokeObjectURL(livePlaybackUrl);
-        livePlaybackUrl = null;
-      }
-      const blob = new Blob(masterChunks, { type: "video/webm" });
-      const url = URL.createObjectURL(blob);
-      masterOutputVideo.src = url;
-      masterOutputVideo.load();
-      masterOutputVideo.muted = false;
-      livePlaybackUrl = url;
-      exportStatus.textContent = "Export complete! Download your final video.";
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `fastcut_music_video.webm`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    };
-
-    mixing = true;
-    let duration = getAudioDuration();
-    masterOutputVideo.srcObject = combinedStream;
-    masterOutputVideo.muted = true;
-    masterOutputVideo.play();
-    audio.currentTime = 0;
-    audio.play();
-    mediaRecorder.start();
-
-    // Timeline for draw(): either from segmentData (if any locked) or live
-    const useTimeline = getExportTimeline();
-
-    function draw() {
-      if (!mixing) return;
-      let elapsed = (audio.currentTime || 0) * 1000;
-      let track = useTimeline[0].track;
-      for (let i = 0; i < useTimeline.length; i++) {
-        if (useTimeline[i].time <= elapsed) {
-          track = useTimeline[i].track;
-        } else {
-          break;
-        }
-      }
-      const v = document.getElementById(`video-${track}`);
-      const ctx = mixCanvas.getContext('2d');
-      ctx.fillStyle = "#111";
-      ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
-      if (v && !v.paused && !v.ended) {
-        ctx.drawImage(v, 0, 0, mixCanvas.width, mixCanvas.height);
-      }
-      if ((audio.currentTime < duration) && mixing && isSwitching) {
-        drawRequestId = requestAnimationFrame(draw);
-      }
-    }
-    draw();
   };
 
-  stopSwitchingBtn.onclick = () => {
-    if (!isSwitching) return;
-    mixing = false;
-    isSwitching = false;
-    startSwitchingBtn.disabled = false;
-    stopSwitchingBtn.disabled = true;
-    audio.pause();
-    if (mediaRecorder && mediaRecorder.state !== "inactive") {
-      mediaRecorder.stop();
-    }
-    if (drawRequestId !== null) cancelAnimationFrame(drawRequestId);
-    drawRequestId = null;
-    exportStatus.textContent = "Rendering and export complete! Download below.";
-  };
+  recalcSegments();
+  renderSegmentTimeline();
+  updateSegmentUI();
 
-  masterOutputVideo.muted = false;
-
+  // Export Logic: Concatenate all segment videos
+  const masterOutputVideo = document.getElementById('masterOutputVideo');
   const exportMusicVideoBtn = document.getElementById('exportMusicVideoBtn');
-  exportMusicVideoBtn.onclick = function() {
-    let videoUrl = masterOutputVideo.src;
-    if (!videoUrl || videoUrl === window.location.href) {
-      exportStatus.textContent = "No exported video available to download yet!";
-      exportMusicVideoBtn.disabled = true;
-      setTimeout(() => {
-        exportMusicVideoBtn.disabled = false;
-        exportStatus.textContent = "";
-      }, 1600);
+  const exportStatus = document.getElementById('exportStatus');
+
+  exportMusicVideoBtn.onclick = async function() {
+    if (isSegmentLocked.some(l => !l) || segmentRecordings.some(r => !r)) {
+      exportStatus.textContent = "Please record and lock all segments first!";
       return;
     }
+    exportStatus.textContent = "Exporting (concatenating segments)...";
+    const blobs = segmentRecordings.map(r => r.videoBlob);
+    const superBlob = new Blob(blobs, { type: "video/webm" });
+    const url = URL.createObjectURL(superBlob);
+    masterOutputVideo.src = url;
+    masterOutputVideo.load();
+    masterOutputVideo.muted = false;
+    exportStatus.textContent = "Export complete! Download your final video.";
     const a = document.createElement('a');
-    a.href = videoUrl;
-    a.download = "fastcut_music_video.webm";
+    a.href = url;
+    a.download = `fastcut_music_video.webm`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    exportStatus.textContent = "Music video exported and downloaded!";
-    exportMusicVideoBtn.disabled = true;
-    setTimeout(() => {
-      exportMusicVideoBtn.disabled = false;
-      exportStatus.textContent = "";
-    }, 1800);
   };
 });
