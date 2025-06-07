@@ -288,7 +288,7 @@ input[type="file"] {
   border: 2.5px solid #ffe87d44;
   background: #222;
 }
-#segmentPreviewVideo {
+#segmentPreviewVideo, #fullEditPreviewVideo {
   display: block;
   margin: 20px auto 0 auto;
   border-radius: 13px;
@@ -415,7 +415,7 @@ footer {
 }
 @media (max-width: 600px) {
   section { padding: 12px 3vw 10px 3vw; }
-  .master-output-section video, #segmentPreviewVideo, #segmentMixCanvas {
+  .master-output-section video, #segmentPreviewVideo, #segmentMixCanvas, #fullEditPreviewVideo {
     width: 97vw !important;
     max-width: 99vw;
     height: auto;
