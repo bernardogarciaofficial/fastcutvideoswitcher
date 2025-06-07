@@ -1,4 +1,4 @@
-// FastCut 24-bar segment editor with per-take download, per-segment download, and robust export preview
+// FastCut 24-bar segment editor, always-visible take download buttons, robust switching visuals, full segment locking
 
 function animateMembersCounter() {
   const el = document.getElementById('membersCountNumber');
@@ -46,6 +46,7 @@ const TAKE_NAMES = [
 const filmEachTakeSection = document.getElementById('filmEachTakeSection');
 const filmTakes = document.getElementById('filmTakes');
 const proceedBtn = document.getElementById('proceedToSegmentEditingBtn');
+const takeDownloadsDiv = document.getElementById('takeDownloads');
 let filmBlobs = Array(NUM_TAKES).fill(null); // URL of uploaded/recorded blobs
 let takeVideos = Array(NUM_TAKES).fill(null);
 
@@ -68,9 +69,6 @@ function renderFilmTakes() {
         <button class="upload-video-btn" id="filmUploadBtn-${i}">🎬 Upload</button>
       </div>
       <button class="record-take-btn" id="filmRecordBtn-${i}">Record Take</button>
-      <a id="filmDownloadBtn-${i}" class="download-take-btn" href="#" download="take${i+1}.webm" style="margin-top:8px;display:none;">
-        ⬇️ Download Take
-      </a>
     `;
     filmTakes.appendChild(block);
 
@@ -78,18 +76,7 @@ function renderFilmTakes() {
     const uploadBtn = document.getElementById(`filmUploadBtn-${i}`);
     const uploadInput = document.getElementById(`filmUploadInput-${i}`);
     const recordBtn = document.getElementById(`filmRecordBtn-${i}`);
-    const downloadBtn = document.getElementById(`filmDownloadBtn-${i}`);
     const videoEl = document.getElementById(`film-video-${i}`);
-
-    function updateDownloadBtn() {
-      if (filmBlobs[i]) {
-        downloadBtn.href = filmBlobs[i];
-        downloadBtn.style.display = '';
-      } else {
-        downloadBtn.style.display = 'none';
-      }
-    }
-    updateDownloadBtn();
 
     uploadBtn.onclick = () => uploadInput.click();
     uploadInput.onchange = e => {
@@ -103,7 +90,7 @@ function renderFilmTakes() {
       videoEl.load();
       uploadBtn.textContent = "🎬 Uploaded!";
       setTimeout(() => uploadBtn.textContent = "🎬 Upload", 2500);
-      updateDownloadBtn();
+      updateTakeDownloads();
     };
 
     // Webcam record logic (with main audio play/pause)
@@ -141,7 +128,7 @@ function renderFilmTakes() {
             recordBtn.textContent = "Record Take";
             isRecordingArr[i] = false;
             audio.pause();
-            updateDownloadBtn();
+            updateTakeDownloads();
           };
           mediaRecorders[i].start();
           isRecordingArr[i] = true;
@@ -165,20 +152,36 @@ function renderFilmTakes() {
       videoEl.style.display = '';
       videoEl.load();
       takeVideos[i] = videoEl;
-      updateDownloadBtn();
     }
+  }
+  updateTakeDownloads();
+}
+function updateTakeDownloads() {
+  takeDownloadsDiv.innerHTML = '';
+  for (let i = 0; i < NUM_TAKES; i++) {
+    const a = document.createElement('a');
+    a.className = 'take-download-btn';
+    a.textContent = `⬇️ Download ${TAKE_NAMES[i]}`;
+    a.style.marginRight = '10px';
+    if (filmBlobs[i]) {
+      a.href = filmBlobs[i];
+      a.setAttribute('download', `take${i+1}.webm`);
+      a.style.pointerEvents = '';
+      a.style.opacity = '';
+    } else {
+      a.href = "#";
+      a.style.pointerEvents = 'none';
+      a.style.opacity = 0.5;
+    }
+    takeDownloadsDiv.appendChild(a);
   }
 }
 renderFilmTakes();
 
 proceedBtn.onclick = () => {
-  if (filmBlobs.some(v => !v)) {
-    proceedBtn.textContent = "Upload or film all takes first!";
-    setTimeout(() => proceedBtn.textContent = "Proceed to Segment Editing", 2000);
-    return;
-  }
-  filmEachTakeSection.style.display = 'none';
+  // Don't hide filmEachTakeSection, just scroll to editor
   document.getElementById('segmentEditingSection').style.display = '';
+  window.scrollTo({ top: document.getElementById('segmentEditingSection').offsetTop - 12, behavior: 'smooth' });
   for (let i = 0; i < NUM_TAKES; i++) {
     takeVideos[i] = document.createElement('video');
     takeVideos[i].src = filmBlobs[i];
@@ -273,7 +276,7 @@ function renderSegmentTimeline() {
       lockIcon.textContent = '🔒';
       block.appendChild(lockIcon);
     }
-    if (idx <= currentSegment) {
+    if (idx <= currentSegment+1) {
       block.onclick = () => {
         if (idx === currentSegment || isSegmentLocked[idx]) {
           currentSegment = idx;
@@ -301,6 +304,7 @@ function updateSegmentUI() {
   segmentPreviewVideo.style.display = 'none';
   segmentMixCanvas.style.display = 'none';
   overlay.style.display = 'none';
+  renderSegmentTimeline();
   renderSegmentSwitcherBtns();
 }
 
@@ -527,8 +531,10 @@ startSegmentRecordingBtn.onclick = async () => {
 
 function drawVideoFrame(trackIdx, ctx) {
   const v = takeVideos[trackIdx];
-  if (v && v.readyState >= 2 && !v.paused && !v.ended) {
-    ctx.drawImage(v, 0, 0, segmentMixCanvas.width, segmentMixCanvas.height);
+  if (v && v.readyState >= 2 && !v.ended) {
+    try {
+      ctx.drawImage(v, 0, 0, segmentMixCanvas.width, segmentMixCanvas.height);
+    } catch (e) {}
   }
 }
 
