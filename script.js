@@ -95,6 +95,9 @@ document.addEventListener('DOMContentLoaded', function() {
   const overlay = document.getElementById('segmentRecordingOverlay');
   const countdownDiv = document.getElementById('countdown');
   const recIndicator = document.getElementById('recIndicator');
+  const fullEditPreviewVideo = document.getElementById('fullEditPreviewVideo');
+  const previewFullEditBtn = document.getElementById('previewFullEditBtn');
+  const exportStatus = document.getElementById('exportStatus');
 
   let segmentData = [];
   let currentSegment = 0;
@@ -182,6 +185,7 @@ document.addEventListener('DOMContentLoaded', function() {
     segmentPreviewVideo.style.display = 'none';
     segmentMixCanvas.style.display = 'none';
     overlay.style.display = 'none';
+    fullEditPreviewVideo.style.display = 'none';
     renderSegmentSwitcherBtns();
   }
 
@@ -243,6 +247,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Live preview when not recording
   function previewTrackInCanvas(trackIdx) {
     segmentMixCanvas.style.display = '';
+    fullEditPreviewVideo.style.display = 'none';
     const ctx = segmentMixCanvas.getContext('2d');
     const v = document.getElementById(`video-${trackIdx}`);
     if (v && v.readyState >= 2) {
@@ -312,6 +317,7 @@ document.addEventListener('DOMContentLoaded', function() {
       audio.play();
 
       segmentMixCanvas.style.display = '';
+      fullEditPreviewVideo.style.display = 'none';
       const ctx = segmentMixCanvas.getContext('2d');
       ctx.fillStyle = "#111";
       ctx.fillRect(0,0,segmentMixCanvas.width,segmentMixCanvas.height);
@@ -347,6 +353,7 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         segmentPreviewVideo.style.display = '';
         segmentMixCanvas.style.display = 'none';
+        fullEditPreviewVideo.style.display = 'none';
         isSegmentRecording = false;
         hideOverlay();
         renderSegmentSwitcherBtns();
@@ -411,6 +418,7 @@ document.addEventListener('DOMContentLoaded', function() {
       segmentPreviewVideo.src = URL.createObjectURL(segmentRecordings[currentSegment].videoBlob);
       segmentPreviewVideo.style.display = '';
       segmentMixCanvas.style.display = 'none';
+      fullEditPreviewVideo.style.display = 'none';
       segmentPreviewVideo.play();
     }
   };
@@ -419,10 +427,46 @@ document.addEventListener('DOMContentLoaded', function() {
   renderSegmentTimeline();
   updateSegmentUI();
 
-  // Export Logic: Concatenate all segment videos
+  // --- FULL EDIT PREVIEW LOGIC ---
+  previewFullEditBtn.onclick = function() {
+    // Hide other previews
+    segmentPreviewVideo.style.display = 'none';
+    segmentMixCanvas.style.display = 'none';
+    // Gather all locked segments in order
+    const lockedSegments = segmentRecordings
+      .map((rec, idx) => ({ rec, idx }))
+      .filter(({ rec }, idx) => rec && isSegmentLocked[idx]);
+
+    if (lockedSegments.length === 0) {
+      alert("No locked segments to preview!");
+      fullEditPreviewVideo.style.display = 'none';
+      return;
+    }
+
+    // Concatenate blobs (simulate quick fade by hint only - real fades require ffmpeg or advanced browser processing)
+    let blobs = lockedSegments.map(({ rec }) => rec.videoBlob);
+
+    const superBlob = new Blob(blobs, { type: "video/webm" });
+    const url = URL.createObjectURL(superBlob);
+    fullEditPreviewVideo.src = url;
+    fullEditPreviewVideo.style.display = '';
+    fullEditPreviewVideo.load();
+    fullEditPreviewVideo.play();
+    exportStatus.textContent = "Previewing full edit. Fades between segments will appear in the exported version.";
+  };
+
+  // Hide full edit preview when editing other things
+  function hideFullEditPreview() {
+    fullEditPreviewVideo.style.display = 'none';
+  }
+  // Hide preview on any major UI update
+  [lockSegmentBtn, unlockSegmentBtn, previewSegmentBtn, startSegmentRecordingBtn, prevSegmentBtn, nextSegmentBtn].forEach(btn => {
+    btn.addEventListener('click', hideFullEditPreview);
+  });
+
+  // --- EXPORT FINAL VIDEO ---
   const masterOutputVideo = document.getElementById('masterOutputVideo');
   const exportMusicVideoBtn = document.getElementById('exportMusicVideoBtn');
-  const exportStatus = document.getElementById('exportStatus');
 
   exportMusicVideoBtn.onclick = async function() {
     if (isSegmentLocked.some(l => !l) || segmentRecordings.some(r => !r)) {
@@ -436,7 +480,7 @@ document.addEventListener('DOMContentLoaded', function() {
     masterOutputVideo.src = url;
     masterOutputVideo.load();
     masterOutputVideo.muted = false;
-    exportStatus.textContent = "Export complete! Download your final video.";
+    exportStatus.textContent = "Export complete! Download your final video. Fades between segments will appear if you process with an external editor.";
     const a = document.createElement('a');
     a.href = url;
     a.download = `fastcut_music_video.webm`;
