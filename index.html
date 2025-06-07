@@ -36,6 +36,12 @@
       <button id="proceedToSegmentEditingBtn" style="margin-top:18px;">Proceed to Segment Editing</button>
     </section>
     
+    <!-- Always visible Download Takes area -->
+    <section id="downloadTakesSection">
+      <h3>Download Takes</h3>
+      <div id="takeDownloads"></div>
+    </section>
+
     <!-- Step 3: Segmented Editing -->
     <section class="segmented-edit-section" id="segmentEditingSection" style="display:none;">
       <h3>Step 3: Edit by 24-bar segments (Live Switcher)</h3>
@@ -55,7 +61,7 @@
       <div id="segmentSwitcherUI">
         <div id="segmentSwitcherBtns"></div>
       </div>
-      <canvas id="segmentMixCanvas" width="480" height="270" style="display:none;"></canvas>
+      <canvas id="segmentMixCanvas" width="480" height="270" style="display:none;background:#000;"></canvas>
       <video id="segmentPreviewVideo" width="360" height="202" controls style="display:none; margin-top:8px;"></video>
       <div id="segmentRecordingOverlay" class="overlay" style="display:none;">
         <div id="countdown" class="countdown"></div>
