@@ -93,7 +93,7 @@ function renderFilmTakes() {
       updateTakeDownloads();
     };
 
-    // Webcam record logic (with main audio play/pause)
+    // Webcam record logic
     recordBtn.onclick = async () => {
       if (!isRecordingArr[i]) {
         audio.pause();
@@ -179,7 +179,6 @@ function updateTakeDownloads() {
 renderFilmTakes();
 
 proceedBtn.onclick = () => {
-  // Don't hide filmEachTakeSection, just scroll to editor
   document.getElementById('segmentEditingSection').style.display = '';
   window.scrollTo({ top: document.getElementById('segmentEditingSection').offsetTop - 12, behavior: 'smooth' });
   for (let i = 0; i < NUM_TAKES; i++) {
@@ -344,10 +343,9 @@ function renderSegmentSwitcherBtns() {
       if (isSegmentRecording) {
         const now = Date.now();
         recordSegmentSwitch(now - segmentRecordingStart, i);
-      } else {
-        switchToTrack(i);
-        previewTrackInCanvas(i);
       }
+      switchToTrack(i);
+      if (!isSegmentRecording) previewTrackInCanvas(i);
     };
     segmentSwitcherBtns.appendChild(btn);
   }
@@ -432,15 +430,12 @@ startSegmentRecordingBtn.onclick = async () => {
     for (let i = 0; i < NUM_TAKES; i++) {
       takeVideos[i].currentTime = segmentData[currentSegment].start;
       takeVideos[i].muted = true;
-      takeVideos[i].play();
+      takeVideos[i].play().catch(()=>{});
     }
     audio.pause();
     audio.currentTime = segmentData[currentSegment].start;
     audio.load();
-    audio.play().catch(e => {
-      alert("The browser blocked audio playback. Please click again or interact with the page.");
-      console.log("Audio play failed:", e);
-    });
+    audio.play().catch(()=>{});
 
     segmentMixCanvas.style.display = '';
     const ctx = segmentMixCanvas.getContext('2d');
