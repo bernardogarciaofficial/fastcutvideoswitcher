@@ -1,4 +1,5 @@
-// FastCut 24-bar segment editor with working "Film Each Take", fade, and REC indicator in corner, with webcam record per take
+// FastCut 24-bar segment editor with working "Film Each Take", fade, REC indicator in corner, 
+// with webcam record per take, and FIXED: main audio plays on "Record Take" and segment switcher
 
 function animateMembersCounter() {
   const el = document.getElementById('membersCountNumber');
@@ -89,7 +90,7 @@ function renderFilmTakes() {
       uploadBtn.textContent = "🎬 Uploaded!";
       setTimeout(() => uploadBtn.textContent = "🎬 Upload", 2500);
     };
-    // Webcam record logic
+    // Webcam record logic (with main audio play/pause)
     recordBtn.onclick = async () => {
       if (!isRecordingArr[i]) {
         // Start webcam
@@ -116,10 +117,17 @@ function renderFilmTakes() {
             if (takeStreams[i]) takeStreams[i].getTracks().forEach(track => track.stop());
             recordBtn.textContent = "Record Take";
             isRecordingArr[i] = false;
+            // Pause song audio when we finish recording
+            audio.pause();
           };
           mediaRecorders[i].start();
           isRecordingArr[i] = true;
           recordBtn.textContent = "Stop Recording";
+
+          // *** Play main audio from start when beginning to record this take ***
+          audio.pause();
+          audio.currentTime = 0;
+          audio.play();
         } catch (err) {
           alert("Could not access webcam.");
         }
@@ -128,6 +136,7 @@ function renderFilmTakes() {
         mediaRecorders[i].stop();
         isRecordingArr[i] = false;
         recordBtn.textContent = "Saving...";
+        audio.pause();
       }
     };
     // Show video if available
@@ -402,6 +411,8 @@ startSegmentRecordingBtn.onclick = async () => {
       takeVideos[i].muted = true;
       takeVideos[i].play();
     }
+    // *** Always set/pause and play audio here to ensure in sync ***
+    audio.pause();
     audio.currentTime = segmentData[currentSegment].start;
     audio.play();
 
