@@ -93,7 +93,16 @@ function renderFilmTakes() {
     // Webcam record logic (with main audio play/pause)
     recordBtn.onclick = async () => {
       if (!isRecordingArr[i]) {
-        // Start webcam
+        // --- RELIABLE AUDIO PLAY: pause, set time, load, play before async! ---
+        audio.pause();
+        audio.currentTime = 0;
+        audio.load();
+        audio.play().catch(e => {
+          // Chrome/Safari/Firefox: if it fails, it's likely due to autoplay/security policy
+          alert("The browser blocked audio playback. Please click again or interact with the page.");
+          console.log("Audio play failed:", e);
+        });
+
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
           takeStreams[i] = stream;
@@ -117,22 +126,16 @@ function renderFilmTakes() {
             if (takeStreams[i]) takeStreams[i].getTracks().forEach(track => track.stop());
             recordBtn.textContent = "Record Take";
             isRecordingArr[i] = false;
-            // Pause song audio when we finish recording
             audio.pause();
           };
           mediaRecorders[i].start();
           isRecordingArr[i] = true;
           recordBtn.textContent = "Stop Recording";
-
-          // *** Play main audio from start when beginning to record this take ***
-          audio.pause();
-          audio.currentTime = 0;
-          audio.play();
         } catch (err) {
           alert("Could not access webcam.");
+          audio.pause();
         }
       } else {
-        // Stop recording
         mediaRecorders[i].stop();
         isRecordingArr[i] = false;
         recordBtn.textContent = "Saving...";
@@ -411,10 +414,14 @@ startSegmentRecordingBtn.onclick = async () => {
       takeVideos[i].muted = true;
       takeVideos[i].play();
     }
-    // *** Always set/pause and play audio here to ensure in sync ***
+    // --- RELIABLE AUDIO PLAY for segment switcher ---
     audio.pause();
     audio.currentTime = segmentData[currentSegment].start;
-    audio.play();
+    audio.load();
+    audio.play().catch(e => {
+      alert("The browser blocked audio playback. Please click again or interact with the page.");
+      console.log("Audio play failed:", e);
+    });
 
     segmentMixCanvas.style.display = '';
     const ctx = segmentMixCanvas.getContext('2d');
