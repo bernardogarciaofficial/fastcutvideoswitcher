@@ -429,17 +429,18 @@ startSegmentRecordingBtn.onclick = async () => {
       if (segmentRecordingBlobUrl) URL.revokeObjectURL(segmentRecordingBlobUrl);
       const blob = new Blob(segmentChunks, { type: "video/webm" });
       segmentRecordingBlobUrl = URL.createObjectURL(blob);
-      segmentPreviewVideo.src = segmentRecordingBlobUrl;
-      segmentPreviewVideo.load();
       segmentRecordings[currentSegment] = {
         videoBlob: blob,
         timeline: [...segmentSwitchTimeline]
       };
+      segmentPreviewVideo.src = segmentRecordingBlobUrl;
+      segmentPreviewVideo.load();
       segmentPreviewVideo.style.display = '';
       segmentMixCanvas.style.display = 'none';
       isSegmentRecording = false;
       hideOverlay();
       renderSegmentSwitcherBtns();
+      // FIX: UI stays on segment we just finished, so lock/unlock works!
       updateSegmentUI();
     };
     segmentMediaRecorder.start();
