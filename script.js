@@ -1,5 +1,4 @@
-// FastCut 24-bar segment editor with working "Film Each Take", fade, REC indicator in corner, 
-// with webcam record per take, and FIXED: main audio plays on "Record Take" and segment switcher
+// FastCut 24-bar segment editor with per-take download, per-segment download, and robust export preview
 
 function animateMembersCounter() {
   const el = document.getElementById('membersCountNumber');
@@ -34,8 +33,7 @@ document.getElementById('songInput').onchange = e => {
   }
 };
 
-// --- FILM EACH TAKE LOGIC (with webcam record)
-
+// --- FILM EACH TAKE LOGIC (with webcam record and download)
 const NUM_TAKES = 6;
 const TAKE_NAMES = [
   "Video Track 1",
@@ -70,13 +68,29 @@ function renderFilmTakes() {
         <button class="upload-video-btn" id="filmUploadBtn-${i}">🎬 Upload</button>
       </div>
       <button class="record-take-btn" id="filmRecordBtn-${i}">Record Take</button>
+      <a id="filmDownloadBtn-${i}" class="download-take-btn" href="#" download="take${i+1}.webm" style="margin-top:8px;display:none;">
+        ⬇️ Download Take
+      </a>
     `;
     filmTakes.appendChild(block);
+
     // Wire up upload
     const uploadBtn = document.getElementById(`filmUploadBtn-${i}`);
     const uploadInput = document.getElementById(`filmUploadInput-${i}`);
     const recordBtn = document.getElementById(`filmRecordBtn-${i}`);
+    const downloadBtn = document.getElementById(`filmDownloadBtn-${i}`);
     const videoEl = document.getElementById(`film-video-${i}`);
+
+    function updateDownloadBtn() {
+      if (filmBlobs[i]) {
+        downloadBtn.href = filmBlobs[i];
+        downloadBtn.style.display = '';
+      } else {
+        downloadBtn.style.display = 'none';
+      }
+    }
+    updateDownloadBtn();
+
     uploadBtn.onclick = () => uploadInput.click();
     uploadInput.onchange = e => {
       const file = e.target.files[0];
@@ -89,16 +103,16 @@ function renderFilmTakes() {
       videoEl.load();
       uploadBtn.textContent = "🎬 Uploaded!";
       setTimeout(() => uploadBtn.textContent = "🎬 Upload", 2500);
+      updateDownloadBtn();
     };
+
     // Webcam record logic (with main audio play/pause)
     recordBtn.onclick = async () => {
       if (!isRecordingArr[i]) {
-        // --- RELIABLE AUDIO PLAY: pause, set time, load, play before async! ---
         audio.pause();
         audio.currentTime = 0;
         audio.load();
         audio.play().catch(e => {
-          // Chrome/Safari/Firefox: if it fails, it's likely due to autoplay/security policy
           alert("The browser blocked audio playback. Please click again or interact with the page.");
           console.log("Audio play failed:", e);
         });
@@ -127,6 +141,7 @@ function renderFilmTakes() {
             recordBtn.textContent = "Record Take";
             isRecordingArr[i] = false;
             audio.pause();
+            updateDownloadBtn();
           };
           mediaRecorders[i].start();
           isRecordingArr[i] = true;
@@ -142,6 +157,7 @@ function renderFilmTakes() {
         audio.pause();
       }
     };
+
     // Show video if available
     if (filmBlobs[i]) {
       videoEl.srcObject = null;
@@ -149,6 +165,7 @@ function renderFilmTakes() {
       videoEl.style.display = '';
       videoEl.load();
       takeVideos[i] = videoEl;
+      updateDownloadBtn();
     }
   }
 }
@@ -162,7 +179,6 @@ proceedBtn.onclick = () => {
   }
   filmEachTakeSection.style.display = 'none';
   document.getElementById('segmentEditingSection').style.display = '';
-  // Now load the segment editing with the takes
   for (let i = 0; i < NUM_TAKES; i++) {
     takeVideos[i] = document.createElement('video');
     takeVideos[i].src = filmBlobs[i];
@@ -173,7 +189,6 @@ proceedBtn.onclick = () => {
 };
 
 // --- SEGMENTED EDITING LOGIC
-
 function setupSegmentEditing() {
 const bpmInput = document.getElementById('bpmInput');
 const timeSigInput = document.getElementById('timeSigInput');
@@ -207,7 +222,8 @@ let segmentChunks = [];
 let segmentRecordingStart = 0;
 let segmentRecordingBlobUrl = null;
 
-// Fade logic
+let lastDownloadsContainer = null;
+
 let fadeDuration = 180; // ms
 let fadeStartTime = null;
 let isFading = false;
@@ -414,7 +430,6 @@ startSegmentRecordingBtn.onclick = async () => {
       takeVideos[i].muted = true;
       takeVideos[i].play();
     }
-    // --- RELIABLE AUDIO PLAY for segment switcher ---
     audio.pause();
     audio.currentTime = segmentData[currentSegment].start;
     audio.load();
@@ -480,7 +495,6 @@ startSegmentRecordingBtn.onclick = async () => {
       if (segmentActiveTrack !== track) {
         switchToTrack(track);
       }
-      // Fade logic
       const ctx = segmentMixCanvas.getContext('2d');
       if (isFading && previousTrack !== null) {
         const now = performance.now();
@@ -556,27 +570,49 @@ recalcSegments();
 renderSegmentTimeline();
 updateSegmentUI();
 
-// Export Logic: Concatenate all segment videos
+// --- Export Section: per-segment downloads + merged preview
 const masterOutputVideo = document.getElementById('masterOutputVideo');
 const exportMusicVideoBtn = document.getElementById('exportMusicVideoBtn');
 const exportStatus = document.getElementById('exportStatus');
+const masterOutputSection = document.querySelector('.master-output-section');
+
+function renderSegmentDownloads(segmentRecordings, isSegmentLocked) {
+  if (lastDownloadsContainer) lastDownloadsContainer.remove();
+  const container = document.createElement('div');
+  container.id = 'segmentDownloads';
+  masterOutputSection.appendChild(container);
+  lastDownloadsContainer = container;
+  for (let i = 0; i < segmentRecordings.length; i++) {
+    if (segmentRecordings[i] && isSegmentLocked[i]) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(segmentRecordings[i].videoBlob);
+      a.download = `segment${i + 1}.webm`;
+      a.textContent = `⬇️ Download Segment ${i + 1} Video`;
+      a.style.display = 'block';
+      a.style.margin = '6px 0';
+      container.appendChild(a);
+    }
+  }
+}
 
 exportMusicVideoBtn.onclick = async function() {
   if (isSegmentLocked.some(l => !l) || segmentRecordings.some(r => !r)) {
     exportStatus.textContent = "Please record and lock all segments first!";
     return;
   }
-  exportStatus.textContent = "Exporting (concatenating segments)...";
+  exportStatus.innerHTML = "Exporting preview (concatenating segments in browser)...<br>"
+    + "<b>Note:</b> This is a quick preview, not a true merge. For a real music video, download all segment videos below and join using a video editor or ffmpeg.";
   const blobs = segmentRecordings.map(r => r.videoBlob);
   const superBlob = new Blob(blobs, { type: "video/webm" });
   const url = URL.createObjectURL(superBlob);
   masterOutputVideo.src = url;
   masterOutputVideo.load();
   masterOutputVideo.muted = false;
-  exportStatus.textContent = "Export complete! Download your final video.";
+  renderSegmentDownloads(segmentRecordings, isSegmentLocked);
+  exportStatus.innerHTML += "<br>Done! Download your full video preview above, or download all segments below for professional editing.";
   const a = document.createElement('a');
   a.href = url;
-  a.download = `fastcut_music_video.webm`;
+  a.download = `fastcut_music_video_preview.webm`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
