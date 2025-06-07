@@ -106,15 +106,15 @@ section h3 {
   border: 2px solid #ffe87d;
 }
 
-/* Film Each Take screen */
-#filmTakes {
+/* Switcher Upload */
+#switcherTracks {
   display: flex;
   gap: 24px;
   flex-wrap: wrap;
   margin-top: 16px;
   justify-content: center;
 }
-.film-take-block {
+.switcher-track {
   background: linear-gradient(120deg, #2b283d 75%, #1c1a2b 100%);
   border: 2.5px solid #ffe87d50;
   border-radius: 15px;
@@ -128,8 +128,11 @@ section h3 {
   position: relative;
   transition: border 0.2s, box-shadow 0.2s;
 }
-
-.film-take-block .track-title {
+.switcher-track.active {
+  border: 2.5px solid #ffd700;
+  box-shadow: 0 0 25px #ffd70066;
+}
+.switcher-track .track-title {
   margin-bottom: 6px;
   font-weight: 700;
   color: #ffe87d;
@@ -137,7 +140,7 @@ section h3 {
   letter-spacing: 1.2px;
   text-shadow: 0 2px 10px #fff7;
 }
-.upload-video-btn, .record-take-btn {
+.upload-video-btn {
   margin: 8px 0;
   padding: 4px 16px;
   background: linear-gradient(90deg, #fff2b1 40%, #ffd700 100%);
@@ -151,7 +154,7 @@ section h3 {
   box-shadow: 0 2px 8px #ffd70033;
   transition: background 0.2s, color 0.2s;
 }
-.upload-video-btn:hover, .record-take-btn:hover {
+.upload-video-btn:hover {
   background: linear-gradient(90deg, #ffe87d 40%, #fff2b1 100%);
   color: #222;
 }
@@ -161,48 +164,6 @@ section h3 {
 }
 input[type="file"] {
   margin-top: 7px;
-}
-
-/* Always-visible Download Takes */
-#downloadTakesSection {
-  margin-bottom: 18px;
-  padding: 18px 24px 10px 24px;
-  border-radius: 15px;
-  background: #27273a;
-  border: 2px solid #ffe87d33;
-  box-shadow: 0 2px 10px #0002;
-}
-#downloadTakesSection h3 {
-  margin-top: 0;
-  color: #ffe87d;
-  font-size: 1.12rem;
-}
-#takeDownloads {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  align-items: center;
-  justify-content: flex-start;
-}
-.take-download-btn {
-  display: inline-block;
-  background: linear-gradient(90deg, #ffe87d 40%, #fff2b1 100%);
-  color: #2d2c15;
-  font-size: 1rem;
-  font-family: 'Montserrat', Arial, sans-serif;
-  font-weight: 700;
-  border-radius: 10px;
-  padding: 5px 16px;
-  margin-top: 2px;
-  margin-bottom: 2px;
-  text-decoration: none;
-  border: 2px solid #ffe87d66;
-  box-shadow: 0 2px 8px #ffd70033;
-  transition: background 0.18s, color 0.18s;
-}
-.take-download-btn:hover {
-  background: linear-gradient(90deg, #fff2b1 40%, #ffd700 100%);
-  color: #222;
 }
 
 /* Segmented Editing UI */
@@ -344,8 +305,8 @@ input[type="file"] {
   z-index: 30;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  justify-content: flex-start;
+  align-items: center;
+  justify-content: center;
   pointer-events: none;
   background: radial-gradient(ellipse at center, #ffd70038 20%, #23243c00 80%);
 }
@@ -359,9 +320,6 @@ input[type="file"] {
   padding: 22px 60px;
   box-shadow: 0 8px 30px #ffe87d66, 0 2px 30px #fff2b1aa;
   margin-bottom: 44px;
-  margin-top: 60px;
-  margin-right: auto;
-  margin-left: auto;
   letter-spacing: 3px;
   border: 2.5px solid #fff2b1;
   animation: countdown-scale 1s linear;
@@ -371,12 +329,7 @@ input[type="file"] {
   0% { transform: scale(1.3); }
   100% { transform: scale(1); }
 }
-
-/* REC indicator in the corner, not over buttons */
 .rec-indicator {
-  position: absolute;
-  top: 18px;
-  right: 24px;
   font-size: 2.7rem;
   font-family: 'Orbitron', 'Montserrat', Arial, sans-serif;
   font-weight: 900;
@@ -390,7 +343,6 @@ input[type="file"] {
   animation: blinkRec 0.89s step-end infinite;
   display: none;
   text-shadow: 0 2px 12px #fff2, 0 0 20px #ff4040;
-  z-index: 100;
 }
 .rec-indicator.blinking {
   display: block;
@@ -457,7 +409,7 @@ footer {
   #switcherTracks { justify-content: center; }
 }
 @media (max-width: 820px) {
-  .film-take-block, .switcher-track { width: 96vw; max-width: 330px; }
+  .switcher-track { width: 96vw; max-width: 330px; }
   main { padding: 0 2vw; }
   section { padding: 10vw 3vw 8vw 3vw; }
 }
