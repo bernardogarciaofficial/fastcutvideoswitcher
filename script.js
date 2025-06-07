@@ -1,4 +1,4 @@
-// FastCut 24-bar segment editor with working "Film Each Take", fade, and REC indicator in corner
+// FastCut 24-bar segment editor with working "Film Each Take", fade, and REC indicator in corner, with webcam record per take
 
 function animateMembersCounter() {
   const el = document.getElementById('membersCountNumber');
@@ -33,7 +33,7 @@ document.getElementById('songInput').onchange = e => {
   }
 };
 
-// --- FILM EACH TAKE LOGIC
+// --- FILM EACH TAKE LOGIC (with webcam record)
 
 const NUM_TAKES = 6;
 const TAKE_NAMES = [
@@ -50,6 +50,11 @@ const proceedBtn = document.getElementById('proceedToSegmentEditingBtn');
 let filmBlobs = Array(NUM_TAKES).fill(null); // URL of uploaded/recorded blobs
 let takeVideos = Array(NUM_TAKES).fill(null);
 
+let mediaRecorders = Array(NUM_TAKES).fill(null);
+let recordedBlobs = Array(NUM_TAKES).fill(null);
+let takeStreams = Array(NUM_TAKES).fill(null);
+let isRecordingArr = Array(NUM_TAKES).fill(false);
+
 function renderFilmTakes() {
   filmTakes.innerHTML = "";
   for (let i = 0; i < NUM_TAKES; i++) {
@@ -63,31 +68,75 @@ function renderFilmTakes() {
         <input type="file" id="filmUploadInput-${i}" accept=".mp4,.webm,.mov,.ogg,.mkv,video/*" style="display:none;">
         <button class="upload-video-btn" id="filmUploadBtn-${i}">🎬 Upload</button>
       </div>
+      <button class="record-take-btn" id="filmRecordBtn-${i}">Record Take</button>
     `;
     filmTakes.appendChild(block);
     // Wire up upload
     const uploadBtn = document.getElementById(`filmUploadBtn-${i}`);
     const uploadInput = document.getElementById(`filmUploadInput-${i}`);
+    const recordBtn = document.getElementById(`filmRecordBtn-${i}`);
+    const videoEl = document.getElementById(`film-video-${i}`);
     uploadBtn.onclick = () => uploadInput.click();
     uploadInput.onchange = e => {
       const file = e.target.files[0];
       if (!file) return;
       const url = URL.createObjectURL(file);
       filmBlobs[i] = url;
-      const v = document.getElementById(`film-video-${i}`);
-      v.src = url;
-      v.style.display = '';
-      v.load();
+      videoEl.srcObject = null;
+      videoEl.src = url;
+      videoEl.style.display = '';
+      videoEl.load();
       uploadBtn.textContent = "🎬 Uploaded!";
       setTimeout(() => uploadBtn.textContent = "🎬 Upload", 2500);
     };
+    // Webcam record logic
+    recordBtn.onclick = async () => {
+      if (!isRecordingArr[i]) {
+        // Start webcam
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          takeStreams[i] = stream;
+          videoEl.srcObject = stream;
+          videoEl.muted = true;
+          videoEl.style.display = '';
+          videoEl.play();
+          mediaRecorders[i] = new MediaRecorder(stream, { mimeType: "video/webm" });
+          recordedBlobs[i] = [];
+          mediaRecorders[i].ondataavailable = e => {
+            if (e.data.size > 0) recordedBlobs[i].push(e.data);
+          };
+          mediaRecorders[i].onstop = () => {
+            const blob = new Blob(recordedBlobs[i], { type: "video/webm" });
+            const url = URL.createObjectURL(blob);
+            filmBlobs[i] = url;
+            videoEl.srcObject = null;
+            videoEl.src = url;
+            videoEl.muted = false;
+            videoEl.load();
+            if (takeStreams[i]) takeStreams[i].getTracks().forEach(track => track.stop());
+            recordBtn.textContent = "Record Take";
+            isRecordingArr[i] = false;
+          };
+          mediaRecorders[i].start();
+          isRecordingArr[i] = true;
+          recordBtn.textContent = "Stop Recording";
+        } catch (err) {
+          alert("Could not access webcam.");
+        }
+      } else {
+        // Stop recording
+        mediaRecorders[i].stop();
+        isRecordingArr[i] = false;
+        recordBtn.textContent = "Saving...";
+      }
+    };
     // Show video if available
     if (filmBlobs[i]) {
-      const v = document.getElementById(`film-video-${i}`);
-      v.src = filmBlobs[i];
-      v.style.display = '';
-      v.load();
-      takeVideos[i] = v;
+      videoEl.srcObject = null;
+      videoEl.src = filmBlobs[i];
+      videoEl.style.display = '';
+      videoEl.load();
+      takeVideos[i] = videoEl;
     }
   }
 }
@@ -95,7 +144,7 @@ renderFilmTakes();
 
 proceedBtn.onclick = () => {
   if (filmBlobs.some(v => !v)) {
-    proceedBtn.textContent = "Upload all takes first!";
+    proceedBtn.textContent = "Upload or film all takes first!";
     setTimeout(() => proceedBtn.textContent = "Proceed to Segment Editing", 2000);
     return;
   }
@@ -335,7 +384,7 @@ function hideOverlay() {
 
 startSegmentRecordingBtn.onclick = async () => {
   if (takeVideos.some(v => !v)) {
-    segmentLockStatus.textContent = "Please upload all 6 takes before recording!";
+    segmentLockStatus.textContent = "Please upload or film all 6 takes before recording!";
     return;
   }
   for (let i = 0; i < NUM_TAKES; i++) {
@@ -410,7 +459,6 @@ startSegmentRecordingBtn.onclick = async () => {
           break;
         }
       }
-      // Let draw loop handle switching for fade effect
       if (segmentActiveTrack !== track) {
         switchToTrack(track);
       }
@@ -419,10 +467,8 @@ startSegmentRecordingBtn.onclick = async () => {
       if (isFading && previousTrack !== null) {
         const now = performance.now();
         const alpha = Math.min((now - fadeStartTime) / fadeDuration, 1);
-        // Draw previous track frame with (1-alpha)
         ctx.globalAlpha = 1 - alpha;
         drawVideoFrame(previousTrack, ctx);
-        // Draw current track frame with alpha
         ctx.globalAlpha = alpha;
         drawVideoFrame(segmentActiveTrack, ctx);
         ctx.globalAlpha = 1;
@@ -434,7 +480,6 @@ startSegmentRecordingBtn.onclick = async () => {
           previousTrack = null;
         }
       }
-      // Draw current track as normal
       ctx.globalAlpha = 1;
       drawVideoFrame(segmentActiveTrack, ctx);
 
