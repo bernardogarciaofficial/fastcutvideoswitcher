@@ -1,5 +1,25 @@
-// FastCut 24-bar segment editor, always-visible take download buttons, robust switching visuals, full segment locking
+// FastCut 24-bar segment editor, robust segment/lock state, always-visible take downloads, live switching visuals
 
+// ===== GLOBAL STATE =====
+const NUM_TAKES = 6;
+const TAKE_NAMES = [
+  "Video Track 1",
+  "Video Track 2",
+  "Video Track 3",
+  "Video Track 4",
+  "Video Track 5",
+  "Video Track 6"
+];
+
+let filmBlobs = Array(NUM_TAKES).fill(null);
+let takeVideos = Array(NUM_TAKES).fill(null);
+let segmentData = [];
+let segmentRecordings = [];
+let isSegmentLocked = [];
+let currentSegment = 0;
+let segmentCount = 0;
+
+// ===== MEMBERS COUNTER (fun animation) =====
 function animateMembersCounter() {
   const el = document.getElementById('membersCountNumber');
   let n = 15347, up = true;
@@ -12,6 +32,7 @@ function animateMembersCounter() {
 }
 animateMembersCounter();
 
+// ===== AUDIO UPLOAD & BPM =====
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
 document.getElementById('songInput').setAttribute('accept', AUDIO_ACCEPTED);
 
@@ -33,23 +54,11 @@ document.getElementById('songInput').onchange = e => {
   }
 };
 
-// --- FILM EACH TAKE LOGIC (with webcam record and download)
-const NUM_TAKES = 6;
-const TAKE_NAMES = [
-  "Video Track 1",
-  "Video Track 2",
-  "Video Track 3",
-  "Video Track 4",
-  "Video Track 5",
-  "Video Track 6"
-];
+// ===== FILM EACH TAKE =====
 const filmEachTakeSection = document.getElementById('filmEachTakeSection');
 const filmTakes = document.getElementById('filmTakes');
 const proceedBtn = document.getElementById('proceedToSegmentEditingBtn');
 const takeDownloadsDiv = document.getElementById('takeDownloads');
-let filmBlobs = Array(NUM_TAKES).fill(null); // URL of uploaded/recorded blobs
-let takeVideos = Array(NUM_TAKES).fill(null);
-
 let mediaRecorders = Array(NUM_TAKES).fill(null);
 let recordedBlobs = Array(NUM_TAKES).fill(null);
 let takeStreams = Array(NUM_TAKES).fill(null);
@@ -72,7 +81,7 @@ function renderFilmTakes() {
     `;
     filmTakes.appendChild(block);
 
-    // Wire up upload
+    // Upload
     const uploadBtn = document.getElementById(`filmUploadBtn-${i}`);
     const uploadInput = document.getElementById(`filmUploadInput-${i}`);
     const recordBtn = document.getElementById(`filmRecordBtn-${i}`);
@@ -89,21 +98,17 @@ function renderFilmTakes() {
       videoEl.style.display = '';
       videoEl.load();
       uploadBtn.textContent = "🎬 Uploaded!";
-      setTimeout(() => uploadBtn.textContent = "🎬 Upload", 2500);
+      setTimeout(() => uploadBtn.textContent = "🎬 Upload", 2000);
       updateTakeDownloads();
     };
 
-    // Webcam record logic
+    // Webcam record
     recordBtn.onclick = async () => {
       if (!isRecordingArr[i]) {
         audio.pause();
         audio.currentTime = 0;
         audio.load();
-        audio.play().catch(e => {
-          alert("The browser blocked audio playback. Please click again or interact with the page.");
-          console.log("Audio play failed:", e);
-        });
-
+        audio.play().catch(()=>{});
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
           takeStreams[i] = stream;
@@ -145,7 +150,6 @@ function renderFilmTakes() {
       }
     };
 
-    // Show video if available
     if (filmBlobs[i]) {
       videoEl.srcObject = null;
       videoEl.src = filmBlobs[i];
@@ -156,6 +160,7 @@ function renderFilmTakes() {
   }
   updateTakeDownloads();
 }
+
 function updateTakeDownloads() {
   takeDownloadsDiv.innerHTML = '';
   for (let i = 0; i < NUM_TAKES; i++) {
@@ -190,7 +195,7 @@ proceedBtn.onclick = () => {
   setupSegmentEditing();
 };
 
-// --- SEGMENTED EDITING LOGIC
+// ===== SEGMENT EDITING =====
 function setupSegmentEditing() {
 const bpmInput = document.getElementById('bpmInput');
 const timeSigInput = document.getElementById('timeSigInput');
@@ -210,11 +215,6 @@ const overlay = document.getElementById('segmentRecordingOverlay');
 const countdownDiv = document.getElementById('countdown');
 const recIndicator = document.getElementById('recIndicator');
 
-let segmentData = [];
-let currentSegment = 0;
-let segmentCount = 0;
-let segmentRecordings = [];
-let isSegmentLocked = [];
 let segmentSwitchTimeline = [];
 let segmentActiveTrack = 0;
 let isSegmentRecording = false;
@@ -223,10 +223,8 @@ let segmentMediaRecorder = null;
 let segmentChunks = [];
 let segmentRecordingStart = 0;
 let segmentRecordingBlobUrl = null;
-
 let lastDownloadsContainer = null;
-
-let fadeDuration = 180; // ms
+let fadeDuration = 180;
 let fadeStartTime = null;
 let isFading = false;
 let previousTrack = null;
@@ -245,8 +243,6 @@ function getAudioDuration() {
 }
 function recalcSegments() {
   segmentData = [];
-  segmentRecordings = [];
-  isSegmentLocked = [];
   const totalDuration = getAudioDuration();
   const segLen = getSegmentLengthSec();
   segmentCount = Math.ceil(totalDuration / segLen);
@@ -255,8 +251,11 @@ function recalcSegments() {
       start: i * segLen,
       end: Math.min((i + 1) * segLen, totalDuration)
     });
-    segmentRecordings.push(null);
-    isSegmentLocked.push(false);
+  }
+  // Don't reset segmentRecordings/isSegmentLocked if already present!
+  if (segmentRecordings.length !== segmentCount) {
+    segmentRecordings = Array(segmentCount).fill(null);
+    isSegmentLocked = Array(segmentCount).fill(false);
   }
   currentSegment = 0;
 }
@@ -342,29 +341,14 @@ function renderSegmentSwitcherBtns() {
     btn.onclick = () => {
       if (isSegmentRecording) {
         const now = Date.now();
-        recordSegmentSwitch(now - segmentRecordingStart, i);
+        segmentSwitchTimeline.push({ time: now - segmentRecordingStart, track: i });
       }
-      switchToTrack(i);
+      segmentActiveTrack = i;
       if (!isSegmentRecording) previewTrackInCanvas(i);
+      renderSegmentSwitcherBtns();
     };
     segmentSwitcherBtns.appendChild(btn);
   }
-}
-
-function switchToTrack(newTrackIndex) {
-  if (segmentActiveTrack !== newTrackIndex) {
-    previousTrack = segmentActiveTrack;
-    segmentActiveTrack = newTrackIndex;
-    isFading = true;
-    fadeStartTime = performance.now();
-  }
-  renderSegmentSwitcherBtns();
-}
-
-function recordSegmentSwitch(timeMs, trackIdx) {
-  if (segmentSwitchTimeline.length === 0 && timeMs > 100) return;
-  if (segmentSwitchTimeline.length > 0 && segmentSwitchTimeline[segmentSwitchTimeline.length-1].track === trackIdx) return;
-  segmentSwitchTimeline.push({ time: timeMs, track: trackIdx });
 }
 
 function previewTrackInCanvas(trackIdx) {
@@ -372,7 +356,7 @@ function previewTrackInCanvas(trackIdx) {
   const ctx = segmentMixCanvas.getContext('2d');
   const v = takeVideos[trackIdx];
   if (v && v.readyState >= 2) {
-    v.currentTime = Math.max(v.currentTime, segmentData[currentSegment].start);
+    v.currentTime = segmentData[currentSegment].start;
     v.pause();
     ctx.fillStyle = "#111";
     ctx.fillRect(0, 0, segmentMixCanvas.width, segmentMixCanvas.height);
@@ -436,30 +420,10 @@ startSegmentRecordingBtn.onclick = async () => {
     audio.currentTime = segmentData[currentSegment].start;
     audio.load();
     audio.play().catch(()=>{});
-
     segmentMixCanvas.style.display = '';
     const ctx = segmentMixCanvas.getContext('2d');
-    ctx.fillStyle = "#111";
-    ctx.fillRect(0,0,segmentMixCanvas.width,segmentMixCanvas.height);
-
-    const videoStream = segmentMixCanvas.captureStream(30);
-    let audioStream = null;
-    if (audio.captureStream) {
-      audioStream = audio.captureStream();
-    } else if (audio.mozCaptureStream) {
-      audioStream = audio.mozCaptureStream();
-    }
-    let combinedStream;
-    if (audioStream) {
-      combinedStream = new MediaStream([
-        ...videoStream.getVideoTracks(),
-        ...audioStream.getAudioTracks()
-      ]);
-    } else {
-      combinedStream = videoStream;
-    }
     segmentChunks = [];
-    segmentMediaRecorder = new MediaRecorder(combinedStream, { mimeType: "video/webm" });
+    segmentMediaRecorder = new MediaRecorder(segmentMixCanvas.captureStream(30), { mimeType: "video/webm" });
     segmentMediaRecorder.ondataavailable = e => { if (e.data.size > 0) segmentChunks.push(e.data); };
     segmentMediaRecorder.onstop = () => {
       if (segmentRecordingBlobUrl) URL.revokeObjectURL(segmentRecordingBlobUrl);
@@ -491,26 +455,7 @@ startSegmentRecordingBtn.onclick = async () => {
           break;
         }
       }
-      if (segmentActiveTrack !== track) {
-        switchToTrack(track);
-      }
-      const ctx = segmentMixCanvas.getContext('2d');
-      if (isFading && previousTrack !== null) {
-        const now = performance.now();
-        const alpha = Math.min((now - fadeStartTime) / fadeDuration, 1);
-        ctx.globalAlpha = 1 - alpha;
-        drawVideoFrame(previousTrack, ctx);
-        ctx.globalAlpha = alpha;
-        drawVideoFrame(segmentActiveTrack, ctx);
-        ctx.globalAlpha = 1;
-        if (alpha < 1) {
-          segmentDrawRequestId = requestAnimationFrame(draw);
-          return;
-        } else {
-          isFading = false;
-          previousTrack = null;
-        }
-      }
+      segmentActiveTrack = track;
       ctx.globalAlpha = 1;
       drawVideoFrame(segmentActiveTrack, ctx);
 
@@ -526,7 +471,7 @@ startSegmentRecordingBtn.onclick = async () => {
 
 function drawVideoFrame(trackIdx, ctx) {
   const v = takeVideos[trackIdx];
-  if (v && v.readyState >= 2 && !v.ended) {
+  if (v && v.readyState >= 2 && !v.ended && !v.paused) {
     try {
       ctx.drawImage(v, 0, 0, segmentMixCanvas.width, segmentMixCanvas.height);
     } catch (e) {}
@@ -571,7 +516,7 @@ recalcSegments();
 renderSegmentTimeline();
 updateSegmentUI();
 
-// --- Export Section: per-segment downloads + merged preview
+// ===== EXPORT =====
 const masterOutputVideo = document.getElementById('masterOutputVideo');
 const exportMusicVideoBtn = document.getElementById('exportMusicVideoBtn');
 const exportStatus = document.getElementById('exportStatus');
