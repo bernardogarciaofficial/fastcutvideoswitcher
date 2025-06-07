@@ -163,23 +163,44 @@ input[type="file"] {
   margin-top: 7px;
 }
 
-.download-take-btn {
+/* Always-visible Download Takes */
+#downloadTakesSection {
+  margin-bottom: 18px;
+  padding: 18px 24px 10px 24px;
+  border-radius: 15px;
+  background: #27273a;
+  border: 2px solid #ffe87d33;
+  box-shadow: 0 2px 10px #0002;
+}
+#downloadTakesSection h3 {
+  margin-top: 0;
+  color: #ffe87d;
+  font-size: 1.12rem;
+}
+#takeDownloads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  justify-content: flex-start;
+}
+.take-download-btn {
   display: inline-block;
-  background: linear-gradient(90deg,#ffe87d 40%,#fff2b1 100%);
+  background: linear-gradient(90deg, #ffe87d 40%, #fff2b1 100%);
   color: #2d2c15;
   font-size: 1rem;
   font-family: 'Montserrat', Arial, sans-serif;
   font-weight: 700;
   border-radius: 10px;
   padding: 5px 16px;
-  margin-top: 8px;
-  margin-bottom: 8px;
+  margin-top: 2px;
+  margin-bottom: 2px;
   text-decoration: none;
   border: 2px solid #ffe87d66;
   box-shadow: 0 2px 8px #ffd70033;
   transition: background 0.18s, color 0.18s;
 }
-.download-take-btn:hover {
+.take-download-btn:hover {
   background: linear-gradient(90deg, #fff2b1 40%, #ffd700 100%);
   color: #222;
 }
