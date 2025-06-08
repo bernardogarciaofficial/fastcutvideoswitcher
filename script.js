@@ -1,4 +1,4 @@
-// FASTCUT by Bernardo Garcia - BEAUTIFUL UI, RECORD & DOWNLOAD TRACKS
+// FASTCUT by Bernardo Garcia - BEAUTIFUL UI, RECORD & DOWNLOAD TRACKS, STOP PREVIEW BUTTON
 
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
 const songInput = document.getElementById('songInput');
@@ -183,6 +183,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   const recordBtn = document.getElementById('recordFullEditBtn');
   const previewBtn = document.getElementById('previewFullEditBtn');
+  const stopPreviewBtn = document.getElementById('stopPreviewBtn');
   const exportStatus = document.getElementById('exportStatus');
   const exportMusicVideoBtn = document.getElementById('exportMusicVideoBtn');
   const masterOutputVideo = document.getElementById('masterOutputVideo');
@@ -404,6 +405,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     fullPreviewCleanup = cleanupPreview;
     if (exportStatus) exportStatus.textContent = "Previewing your full music video edit.";
+  };
+
+  // STOP PREVIEW BUTTON LOGIC
+  if (stopPreviewBtn) stopPreviewBtn.onclick = function() {
+    if (typeof fullPreviewCleanup === "function") {
+      fullPreviewCleanup();
+    }
+    if (previewVideo) {
+      previewVideo.pause();
+      previewVideo.currentTime = 0;
+      previewVideo.style.display = 'none';
+    }
+    if (exportStatus) exportStatus.textContent = "Preview stopped.";
   };
 
   if (exportMusicVideoBtn) exportMusicVideoBtn.onclick = async function() {
