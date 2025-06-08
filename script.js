@@ -433,12 +433,13 @@ document.addEventListener('DOMContentLoaded', function() {
   renderSegmentTimeline();
   updateSegmentUI();
 
-  // --- FULL EDIT PREVIEW LOGIC (PLAYLIST WITH AUDIO/VIDEO SYNC) ---
+  // --- FULL EDIT PREVIEW LOGIC (IMPROVED FOR TIGHT SYNC & MULTI-SEGMENT) ---
   previewFullEditBtn.onclick = function() {
-    // Hide other previews
+    // Cleanup previous preview if needed
+    if (typeof fullPreviewCleanup === "function") fullPreviewCleanup();
+
     segmentPreviewVideo.style.display = 'none';
     segmentMixCanvas.style.display = 'none';
-    if (typeof fullPreviewCleanup === "function") fullPreviewCleanup();
 
     // Gather all locked segments in order
     const lockedSegments = segmentRecordings
@@ -451,22 +452,26 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
 
-    // Playlist approach: play segments one by one, sync with master audio
-    let current = 0;
+    // Setup video and audio
     let videoEl = fullEditPreviewVideo;
-    videoEl.style.display = '';
-    videoEl.src = URL.createObjectURL(lockedSegments[0].rec.videoBlob);
-    videoEl.load();
-    videoEl.currentTime = 0;
-
-    // Setup a hidden master audio player
     let masterAudio = audio.cloneNode(true);
     masterAudio.currentTime = segmentData[lockedSegments[0].idx].start;
     masterAudio.volume = 1;
     masterAudio.style.display = "none";
+    masterAudio.muted = false;
     document.body.appendChild(masterAudio);
 
     let stopped = false;
+    let current = 0;
+    let segIdx = lockedSegments[current].idx;
+    let segStart = segmentData[segIdx].start;
+    let segEnd = segmentData[segIdx].end;
+
+    videoEl.src = URL.createObjectURL(lockedSegments[0].rec.videoBlob);
+    videoEl.currentTime = 0;
+    videoEl.muted = true; // Use master audio only!
+    videoEl.style.display = '';
+    videoEl.load();
 
     // Fade overlay
     let fadeOverlay = document.createElement('div');
@@ -477,68 +482,73 @@ document.addEventListener('DOMContentLoaded', function() {
     fadeOverlay.style.background = 'black';
     fadeOverlay.style.opacity = '0';
     fadeOverlay.style.pointerEvents = 'none';
-    fadeOverlay.style.transition = 'opacity 0.3s linear';
+    fadeOverlay.style.transition = 'opacity 0.25s linear';
     fadeOverlay.style.zIndex = '10';
     fadeOverlay.id = "fadeOverlay";
     videoEl.parentNode.insertBefore(fadeOverlay, videoEl.nextSibling);
 
-    // Helper: fade in/out
     function fadeTo(opacity, cb) {
       fadeOverlay.style.opacity = opacity;
-      setTimeout(cb, 300);
+      setTimeout(cb, 250);
     }
 
-    function playNextSegment() {
-      if (current >= lockedSegments.length) {
-        masterAudio.pause();
-        fadeTo(0,()=>{});
-        stopped = true;
+    // Tighter sync loop
+    let syncRAF;
+    function sync() {
+      if (stopped) return;
+      // force audio to match video time + segment offset
+      let expectedAudioTime = segStart + videoEl.currentTime;
+      if (Math.abs(masterAudio.currentTime - expectedAudioTime) > 0.04) {
+        masterAudio.currentTime = expectedAudioTime;
+      }
+      // when segment ends, go to next
+      if (videoEl.currentTime >= (segEnd - segStart - 0.05)) {
+        fadeTo(1, () => {
+          current++;
+          if (current >= lockedSegments.length) {
+            masterAudio.pause();
+            fadeTo(0,()=>{});
+            stopped = true;
+            return;
+          }
+          // Next segment
+          segIdx = lockedSegments[current].idx;
+          segStart = segmentData[segIdx].start;
+          segEnd = segmentData[segIdx].end;
+          videoEl.src = URL.createObjectURL(lockedSegments[current].rec.videoBlob);
+          videoEl.currentTime = 0;
+          videoEl.muted = true;
+          videoEl.load();
+          videoEl.oncanplay = function() {
+            fadeTo(0, ()=>{});
+            videoEl.play();
+            masterAudio.currentTime = segStart;
+            masterAudio.play();
+          };
+        });
         return;
       }
-      let segIdx = lockedSegments[current].idx;
-      videoEl.src = URL.createObjectURL(lockedSegments[current].rec.videoBlob);
-      videoEl.load();
-      videoEl.oncanplay = function() {
-        fadeTo(0, ()=>{});
-        videoEl.play();
-        masterAudio.currentTime = segmentData[segIdx].start;
-        masterAudio.play();
-      };
+      syncRAF = requestAnimationFrame(sync);
     }
 
-    videoEl.onended = function() {
-      fadeTo(1, () => {
-        current++;
-        playNextSegment();
-      });
+    // Start playback
+    videoEl.oncanplay = function() {
+      videoEl.play();
+      masterAudio.currentTime = segStart;
+      masterAudio.play();
+      syncRAF = requestAnimationFrame(sync);
     };
 
-    videoEl.ontimeupdate = function() {
-      if (stopped) return;
-      let segIdx = lockedSegments[current].idx;
-      let segStart = segmentData[segIdx].start;
-      if (Math.abs(videoEl.currentTime + segStart - masterAudio.currentTime) > 0.1) {
-        masterAudio.currentTime = videoEl.currentTime + segStart;
-      }
-    };
-
-    // Start the playlist preview
-    masterAudio.play();
-    videoEl.play();
-
-    // When stopping preview, clean up
+    // Clean up when done or UI leaves
     function cleanupPreview() {
       stopped = true;
       masterAudio.pause();
       if (fadeOverlay && fadeOverlay.parentNode) fadeOverlay.parentNode.removeChild(fadeOverlay);
       if (masterAudio && masterAudio.parentNode) masterAudio.parentNode.removeChild(masterAudio);
-      videoEl.onended = null;
-      videoEl.ontimeupdate = null;
+      if (syncRAF) cancelAnimationFrame(syncRAF);
       videoEl.oncanplay = null;
     }
     fullPreviewCleanup = cleanupPreview;
-
-    // Hide full preview when editing other things
     [lockSegmentBtn, unlockSegmentBtn, previewSegmentBtn, startSegmentRecordingBtn, prevSegmentBtn, nextSegmentBtn].forEach(btn => {
       btn.addEventListener('click', function() {
         cleanupPreview();
