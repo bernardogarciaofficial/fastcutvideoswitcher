@@ -1,5 +1,6 @@
 // --- FASTCUT CONTINUOUS FULL SONG VIDEO SWITCHING PLATFORM ---
 
+// Optional: Members counter animation for your UI (remove if not needed)
 function animateMembersCounter() {
   const el = document.getElementById('membersCountNumber');
   if (!el) return;
@@ -13,6 +14,7 @@ function animateMembersCounter() {
 }
 animateMembersCounter();
 
+// Accept all common audio types for song input
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
 const songInput = document.getElementById('songInput');
 if (songInput) songInput.setAttribute('accept', AUDIO_ACCEPTED);
@@ -38,6 +40,7 @@ if (songInput) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+  // --- CONFIG ---
   const NUM_TRACKS = 6;
   const TRACK_NAMES = [
     "Video Track 1",
@@ -47,6 +50,8 @@ document.addEventListener('DOMContentLoaded', function() {
     "Video Track 5",
     "Video Track 6"
   ];
+
+  // --- VIDEO TAKE UPLOADS ---
   const switcherTracks = document.getElementById("switcherTracks");
   if (switcherTracks) {
     switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => `
@@ -85,7 +90,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // --- CONTINUOUS LIVE RECORDING LOGIC ---
+  // --- CONTINUOUS FULL-SONG LIVE EDITING ---
   const recordBtn = document.getElementById('recordFullEditBtn');
   const previewBtn = document.getElementById('previewFullEditBtn');
   const exportStatus = document.getElementById('exportStatus');
@@ -94,6 +99,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const switcherBtnsContainer = document.getElementById('switcherBtnsContainer');
   const mixCanvas = document.getElementById('mixCanvas');
   const previewVideo = document.getElementById('previewVideo');
+
   let isRecording = false;
   let switchTimeline = [];
   let currentTrack = 0;
@@ -103,10 +109,9 @@ document.addEventListener('DOMContentLoaded', function() {
   let chunks = [];
   let drawRequestId = null;
   let recordingStartTime = 0;
-  let previewAudio = null;
   let fullPreviewCleanup = null;
 
-  // --- UI: Track Switcher Buttons ---
+  // --- LIVE CAMERA SWITCHER BUTTONS ---
   function renderSwitcherBtns() {
     if (!switcherBtnsContainer) return;
     switcherBtnsContainer.innerHTML = '';
@@ -136,17 +141,17 @@ document.addEventListener('DOMContentLoaded', function() {
     switchTimeline.push({ time: timeMs, track: trackIdx });
   }
 
-  // --- Record the entire song as a single edit ---
+  // --- RECORD THE ENTIRE SONG AS ONE VIDEO ---
   if (recordBtn) recordBtn.onclick = function() {
     if (uploadedVideos.some(v => !v)) {
       if (exportStatus) exportStatus.textContent = "Please upload all 6 takes before recording!";
       return;
     }
-    // Reset and setup
     switchTimeline = [{ time: 0, track: currentTrack }];
     isRecording = true;
     renderSwitcherBtns();
 
+    // Sync all takes to start, mute, and play
     for (let i = 0; i < NUM_TRACKS; i++) {
       let v = document.getElementById(`video-${i}`);
       if (v) {
@@ -182,6 +187,7 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
       combinedStream = videoStream;
     }
+
     chunks = [];
     mediaRecorder = new MediaRecorder(combinedStream, { mimeType: "video/webm" });
     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
@@ -243,7 +249,7 @@ document.addEventListener('DOMContentLoaded', function() {
     drawRequestId = null;
   }
 
-  // --- Preview Logic (always full song) ---
+  // --- PREVIEW FULL SONG EDIT ---
   if (previewBtn) previewBtn.onclick = function() {
     if (!previewVideo) return;
     previewVideo.style.display = '';
@@ -253,7 +259,7 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
     if (typeof fullPreviewCleanup === "function") fullPreviewCleanup();
-    // Use a hidden audio element to play the song in sync
+
     let v = previewVideo;
     let pa = audio.cloneNode(true);
     pa.currentTime = 0;
@@ -268,7 +274,6 @@ document.addEventListener('DOMContentLoaded', function() {
     v.muted = true;
     v.load();
 
-    // Tighter sync loop
     let syncRAF;
     function sync() {
       if (stopped) return;
@@ -301,7 +306,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (exportStatus) exportStatus.textContent = "Previewing your full music video edit.";
   };
 
-  // --- Export Final Video ---
+  // --- EXPORT FINAL VIDEO ---
   if (exportMusicVideoBtn) exportMusicVideoBtn.onclick = async function() {
     if (!recordedBlob) {
       if (exportStatus) exportStatus.textContent = "Please record your edit first!";
@@ -322,7 +327,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.body.removeChild(a);
   };
 
-  // --- UI Helper: Preview Track Without Recording ---
+  // --- PREVIEW SINGLE TAKE WITHOUT RECORDING ---
   function previewTrackInCanvas(trackIdx) {
     if (!mixCanvas) return;
     mixCanvas.style.display = '';
