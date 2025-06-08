@@ -1,86 +1,68 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FastCut 16-Bar Segment Live Editor</title>
-  <link rel="stylesheet" href="styles.css"/>
+  <meta charset="UTF-8">
+  <title>FastCut Full-Song Live Video Switcher</title>
+  <style>
+    body { background: #1a1a1a; color: #fafafa; font-family: sans-serif; margin: 0; padding: 0; }
+    .container { max-width: 750px; margin: 35px auto; padding: 30px 20px; background: #242424; border-radius: 8px; box-shadow: 0 4px 36px #000a; }
+    h1 { color: #ffe87d; margin-bottom: 0.5em; }
+    h2 { color: #ffd700; margin-top: 2em; }
+    .track-title { font-weight: bold; color: #ffe87d; margin-bottom: 0.3em; }
+    #switcherTracks { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 1.7em; }
+    .switcher-track { background: #181818; border-radius: 6px; padding: 12px; width: 150px; }
+    .upload-video-label { display: block; font-size: 0.96em; margin-bottom: 0.2em; }
+    .upload-video-btn { padding: 0.3em 1em; font-size: 1em; background: #232323; color: #ffe87d; border: 1px solid #ffe87d; border-radius: 4px; cursor: pointer; }
+    .upload-video-btn:hover { background: #ffe87d; color: #232323; }
+    #audioStatus { display: inline-block; margin-left: 1em; color: #ffe87d; }
+    #switcherBtnsContainer { margin: 1.2em 0; }
+    .switch-btn { margin: 0 0.3em 0.7em 0; padding: 0.7em 1.2em; font-size: 1.1em; border: none; border-radius: 4px; background: #393939; color: #ffe87d; cursor: pointer; }
+    .switch-btn.active, .switch-btn:active { background: #ffe87d; color: #232323; }
+    .switch-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    #mixCanvas { display: block; margin: 18px auto 12px auto; background: #111; border: 2px solid #ffe87d; border-radius: 6px; }
+    #previewVideo, #masterOutputVideo { display: block; margin: 18px auto 12px auto; background: #111; border: 2px solid #ffe87d; border-radius: 6px; }
+    #recordFullEditBtn, #previewFullEditBtn, #exportMusicVideoBtn {
+      margin: 0 1em 1.3em 0; padding: 0.8em 2em; font-size: 1.1em; border-radius: 4px; border: none; background: #ffe87d; color: #181818; font-weight: bold; cursor: pointer;
+    }
+    #recordFullEditBtn:hover, #previewFullEditBtn:hover, #exportMusicVideoBtn:hover { background: #232323; color: #ffe87d; border: 1px solid #ffe87d; }
+    #exportStatus { display: block; margin: 0.7em 0 2em 0; color: #ffe87d; }
+    @media (max-width: 900px) {
+      .container { width: 97vw; min-width: unset; }
+      #switcherTracks { flex-direction: column; align-items: flex-start; }
+      .switcher-track { width: 100%; margin-bottom: 16px; }
+    }
+  </style>
 </head>
 <body>
-  <header>
-    <h1>FastCut 16-Bar Segment Live Editor</h1>
-    <div id="membersCount">Members: <span id="membersCountNumber">0</span></div>
-  </header>
-  <main>
-    <!-- AUDIO UPLOAD & BPM SECTION -->
-    <section class="audio-upload-section">
-      <h3>Step 1: Upload your audio track</h3>
-      <input type="file" id="songInput"/>
-      <audio id="audio" controls style="display:none;"></audio>
-      <div id="audioStatus"></div>
-      <div class="bpm-settings">
-        <label for="bpmInput">Song BPM:</label>
-        <input type="number" id="bpmInput" min="40" max="240" value="120"/>
-        <label for="timeSigInput">Time Signature:</label>
-        <select id="timeSigInput">
-          <option value="4">4/4</option>
-          <option value="3">3/4</option>
-        </select>
-      </div>
-    </section>
+  <div class="container">
+    <h1>FastCut Full-Song Live Video Switcher</h1>
 
-    <!-- VIDEO TAKES UPLOAD SECTION -->
-    <section class="switcher-upload-section">
-      <h3>Step 2: Upload your 6 takes here</h3>
-      <div id="switcherTracks"></div>
-    </section>
-    
-    <!-- SEGMENTED EDITING SECTION -->
-    <section class="segmented-edit-section">
-      <h3>Step 3: Edit by 16-bar segments (Live Switcher)</h3>
-      <div id="segmentTimeline"></div>
-      <div class="segment-controls">
-        <button id="prevSegmentBtn">⟨ Prev</button>
-        <span id="segmentInfo"></span>
-        <button id="nextSegmentBtn">Next ⟩</button>
-      </div>
-      <div class="live-segment-switcher">
-        <button id="startSegmentRecordingBtn">Start 16-Bar Switching</button>
-        <button id="lockSegmentBtn" style="display:none;">Lock Segment</button>
-        <button id="unlockSegmentBtn" style="display:none;">Unlock Segment</button>
-        <button id="previewSegmentBtn" style="display:none;">Preview Segment</button>
-      </div>
-      <div id="segmentLockStatus"></div>
-      <div id="segmentSwitcherUI">
-        <div id="segmentSwitcherBtns"></div>
-      </div>
-      <canvas id="segmentMixCanvas" width="480" height="270" style="display:none;"></canvas>
-      <video id="segmentPreviewVideo" width="360" height="202" controls style="display:none; margin-top:8px;"></video>
-      <!-- FULL EDIT PREVIEW AREA -->
-      <video id="fullEditPreviewVideo" width="480" height="270" controls style="display:none; margin-top:18px;"></video>
-      <button id="previewFullEditBtn" style="margin-top:8px;">Preview Full Edit</button>
-      <div id="segmentRecordingOverlay" class="overlay" style="display:none;">
-        <div id="countdown" class="countdown"></div>
-        <div id="recIndicator" class="rec-indicator">● REC</div>
-      </div>
-    </section>
+    <h2>Step 1: Upload Your Song</h2>
+    <input type="file" id="songInput">
+    <span id="audioStatus"></span>
+    <audio id="audio" style="display:none;" controls></audio>
 
-    <!-- EXPORT SECTION -->
-    <section class="master-output-section">
-      <h3>Master Output & Export</h3>
-      <video id="masterOutputVideo" width="480" height="270" controls style="background:#111;"></video>
-      <div>
-        <button id="exportMusicVideoBtn">Export & Download Final Video</button>
-      </div>
-      <div id="exportStatus"></div>
-    </section>
-  </main>
-  <footer>
-    <div class="footer-note">
-      FastCut &copy; 2025. All rights reserved.<br>
-      Created by Bernardo Garcia (<a href="mailto:bernardogarciagarcia441@gmail.com" style="color:#ffe87d">bernardogarciagarcia441@gmail.com</a>)
+    <h2>Step 2: Upload Your Video Takes</h2>
+    <div id="switcherTracks"></div>
+
+    <h2>Step 3: Live Edit Your Music Video (Full Song)</h2>
+    <div id="switcherBtnsContainer"></div>
+    <canvas id="mixCanvas" width="320" height="180" style="display:none;"></canvas>
+    <video id="previewVideo" width="320" height="180" style="display:none;" controls></video>
+    <video id="masterOutputVideo" width="320" height="180" style="display:none;" controls></video>
+
+    <button id="recordFullEditBtn">Record Full Edit</button>
+    <button id="previewFullEditBtn">Preview</button>
+    <button id="exportMusicVideoBtn">Export Video</button>
+    <span id="exportStatus"></span>
+
+    <div style="margin-top:2.2em; color:#aaa; font-size: 0.96em;">
+      <b>Instructions:</b> <br>
+      1. Upload your audio file and 6 video takes.<br>
+      2. Press <b>Record Full Edit</b> and use the camera buttons to switch views live as the song plays.<br>
+      3. When finished, <b>Preview</b> or <b>Export</b> your complete music video.<br>
     </div>
-  </footer>
+  </div>
   <script src="script.js"></script>
 </body>
 </html>
