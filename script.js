@@ -1,18 +1,4 @@
-// FASTCUT FULL SONG LIVE SWITCHER - COMPLETE, ROBUST VERSION
-
-// Animate a fake member counter (optional UI bling)
-function animateMembersCounter() {
-  const el = document.getElementById('membersCountNumber');
-  if (!el) return;
-  let n = 15347, up = true;
-  setInterval(() => {
-    if (Math.random() > 0.5) n += up ? 1 : -1;
-    if (n < 15320) up = true;
-    if (n > 15360) up = false;
-    el.textContent = n.toLocaleString();
-  }, 1200);
-}
-animateMembersCounter();
+// FASTCUT FULL SONG LIVE SWITCHER - SYNC/STROBE FIXED VERSION
 
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
 const songInput = document.getElementById('songInput');
@@ -223,9 +209,10 @@ document.addEventListener('DOMContentLoaded', function() {
       const v = document.getElementById(`video-${track}`);
       ctx.fillStyle = "#111";
       ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
-      if (v && !v.paused && !v.ended && v.readyState >= 2) {
-        // Try to keep video in sync with audio
-        if (Math.abs(v.currentTime - audio.currentTime) > 0.03) {
+
+      if (v && v.readyState >= 2 && !v.paused && !v.ended) {
+        // Only correct if drift is large (prevents strobing)
+        if (Math.abs(v.currentTime - audio.currentTime) > 0.08) {
           v.currentTime = audio.currentTime;
         }
         ctx.drawImage(v, 0, 0, mixCanvas.width, mixCanvas.height);
