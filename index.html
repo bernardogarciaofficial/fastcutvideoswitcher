@@ -2,55 +2,313 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>FastCut by Bernardo Garcia</title>
+  <title>FASTCUT • Lights, Camera, Action!</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="https://fonts.googleapis.com/css?family=Montserrat:700,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css?family=Montserrat:700,400|Bebas+Neue:400&display=swap" rel="stylesheet">
   <style>
-    body { background: #23243e; color: #ffe87d; font-family: Montserrat,Arial,sans-serif; margin:0; }
-    .container { max-width: 900px; margin: 30px auto; background: #191950ee; border-radius: 18px; padding: 30px 26px; box-shadow: 0 6px 40px #000b; }
-    .branding { display: flex; align-items: center; margin-bottom: 24px; }
-    .brand-logo { background: linear-gradient(135deg, #ffe87d 40%, #ffd700 100%); color: #232323; font-size: 2.1em; font-weight: bold; border-radius: 13px; padding: 10px 20px; margin-right: 18px; letter-spacing: 1.2px; box-shadow: 0 3px 12px #ffe87d44; }
-    .brand-info { font-size: 1em; color: #ffe87d; }
-    h2 { margin-top: 1.6em; color: #ffe87d; font-weight: 700; letter-spacing: 1px; margin-bottom: 0.4em; }
-    .step-desc { color: #ffe87dcc; margin-bottom: 1em; font-size: 1.04em; font-weight: 400; }
-    #songInput { background: #222; color: #ffe87d; border: 2px solid #ffd700; padding: 10px 18px; font-size: 1.04em; border-radius: 8px; margin-bottom: 10px; }
-    #audioStatus { margin-left: 18px; color: #ffe87d; font-weight: 500; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      background: radial-gradient(ellipse at top, #23243e 60%, #0e0d16 100%);
+      color: #ffd700;
+      font-family: 'Montserrat', Arial, sans-serif;
+      position: relative;
+      overflow-x: hidden;
+    }
+    .hollywood-header {
+      text-align: center;
+      margin-bottom: 2em;
+      position: relative;
+      z-index: 2;
+    }
+    .marquee-brand {
+      font-family: 'Bebas Neue', Arial Black, sans-serif;
+      font-size: 3.2em;
+      color: #ffd700;
+      letter-spacing: 0.07em;
+      text-shadow:
+        0 0 32px #ffd700cc,
+        0 4px 12px #23243e,
+        0 1px 1px #fffbe8;
+      display: inline-block;
+      position: relative;
+      margin: 2em 0 0.3em 0;
+      background: linear-gradient(90deg, #ffd70022 40%, #fffbe811 100%);
+      padding: 0.13em 0.5em;
+      border-radius: 1em;
+      border: 2px solid #ffd70099;
+      box-shadow: 0 0 40px #ffd70033, 0 1.5px 5px #0008;
+    }
+    .marquee-lights {
+      display: inline-block;
+      vertical-align: middle;
+      margin: 0 9px;
+    }
+    .marquee-bulb {
+      display: inline-block;
+      width: 13px; height: 13px;
+      border-radius: 50%;
+      margin: 0 2px;
+      background: radial-gradient(circle, #fffbe8 60%, #ffb300 100%);
+      box-shadow:
+        0 0 14px #ffd70099,
+        0 0 32px #fffbe822;
+      animation: marquee-flicker 1.3s infinite alternate;
+    }
+    @keyframes marquee-flicker {
+      0% { opacity: 1; }
+      60% { opacity: 0.7; box-shadow: 0 0 26px #fffbe8cc; }
+      100% { opacity: 1; }
+    }
+    .subtitle {
+      font-size: 1.3em;
+      color: #fffbe8;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.5em;
+      text-shadow: 0 0 8px #ffd70077, 0 1px 3px #23243e;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto 32px auto;
+      background: rgba(20,19,35,0.96);
+      border-radius: 20px;
+      padding: 28px 24px 32px 24px;
+      box-shadow: 0 8px 44px #000c, 0 1.5px 7px #ffd7000d;
+      position: relative;
+    }
+    .filmgrain {
+      pointer-events: none;
+      position: fixed;
+      top:0; left:0; width:100vw; height:100vh;
+      z-index: 999;
+      opacity: 0.11;
+      background: url('https://raw.githubusercontent.com/bernardogarciaofficial/fastcut-assets/main/filmgrain.png') repeat;
+      mix-blend-mode: luminosity;
+      animation: grainmove 2s infinite linear alternate;
+    }
+    @keyframes grainmove {
+      0% { background-position: 0 0; }
+      100% { background-position: 60px 40px; }
+    }
+    h2 {
+      margin-top: 2.2em;
+      color: #ffd700;
+      font-size: 1.58em;
+      font-family: 'Bebas Neue', Arial Black, sans-serif;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.28em;
+      text-shadow: 0 1px 7px #ffd70033;
+    }
+    .step-desc {
+      color: #ffe87dcc;
+      margin-bottom: 1em;
+      font-size: 1.06em;
+      font-weight: 400;
+    }
+    #songInput {
+      background: #181822;
+      color: #ffd700;
+      border: 2px solid #ffd700;
+      padding: 11px 18px;
+      font-size: 1.11em;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      font-family: inherit;
+      box-shadow: 0 0 12px #ffd70033;
+    }
+    #audioStatus {
+      margin-left: 18px;
+      color: #ffd700;
+      font-weight: 500;
+      font-size: 1.08em;
+      text-shadow: 0 1px 7px #ffd70033;
+    }
     #audio { margin-top: 0.7em; }
-    #switcherTracks { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 2.2em; justify-content: space-between; }
-    .switcher-track { width: 260px; background: linear-gradient(135deg, #191950 0%, #29294e 100%); border: 2px solid #ffe87d44; border-radius: 12px; box-shadow: 0 3px 16px #ffe87d22, 0 1px 4px #111b; padding: 15px 12px 14px 12px; display: flex; flex-direction: column; align-items: center; position: relative; }
-    .track-title { font-weight: bold; color: #ffe87d; font-size: 1.12em; margin-bottom: 0.4em; text-shadow: 0 1px 6px #ffd70033; }
-    video { box-shadow: 0 1px 8px #000c; background: #111; border-radius: 8px; margin-bottom: 0.7em; border: 2px solid #ffe87d22; }
-    .track-btns { display: flex; gap: 8px; margin-top: 0.4em; }
-    .upload-video-btn, .record-take-btn, .download-take-btn { padding: 7px 14px; font-size: 0.97em; font-weight: bold; border-radius: 7px; border: none; cursor: pointer; background: linear-gradient(90deg, #ffe87d 60%, #ffd700 100%); color: #232323; box-shadow: 0 2px 8px #ffe87d24; transition: background 0.15s, color 0.15s; }
-    .upload-video-btn:hover, .record-take-btn:hover, .download-take-btn:hover { background: #232323; color: #ffe87d; border: 1.5px solid #ffd700; }
-    #switcherBtnsContainer { margin: 1.2em 0; display: flex; flex-wrap: wrap; gap: 12px; }
-    .switch-btn { padding: 0.7em 1.5em; font-size: 1.1em; border: none; border-radius: 7px; background: linear-gradient(90deg, #ffe87d 60%, #ffd700 100%); color: #232323; font-weight: bold; cursor: pointer; margin-bottom: 0.8em; box-shadow: 0 2px 8px #ffe87d24; margin-right: 0.4em; transition: all 0.15s; }
-    .switch-btn.active, .switch-btn:active { background: #232323; color: #ffe87d; border: 2px solid #ffd700; }
+    #switcherTracks {
+      display: flex; flex-wrap: wrap; gap: 28px;
+      margin-bottom: 2.2em; justify-content: space-between;
+    }
+    .switcher-track {
+      width: 260px;
+      background: linear-gradient(135deg, #231f3b 0%, #191950 100%);
+      border: 2.5px solid #ffd70044;
+      border-radius: 14px;
+      box-shadow: 0 4px 22px #ffd70022, 0 1.5px 6px #111b;
+      padding: 18px 12px 17px 12px;
+      display: flex; flex-direction: column; align-items: center;
+      position: relative;
+    }
+    .track-title {
+      font-family: 'Bebas Neue', Arial Black, sans-serif;
+      font-weight: bold;
+      color: #ffd700;
+      font-size: 1.19em;
+      margin-bottom: 0.4em;
+      text-shadow: 0 1px 8px #ffd70033;
+      letter-spacing: 0.07em;
+    }
+    video {
+      box-shadow: 0 1px 10px #000c;
+      background: #111;
+      border-radius: 10px;
+      margin-bottom: 0.7em;
+      border: 2px solid #ffd70022;
+      width: 220px;
+      height: 140px;
+      background-image: repeating-linear-gradient(
+        135deg, #23243e 0 7px, #111 7px 14px
+      );
+    }
+    .track-btns {
+      display: flex; gap: 9px; margin-top: 0.4em;
+    }
+    .upload-video-btn, .record-take-btn, .download-take-btn {
+      padding: 7px 13px; font-size: 1em; font-weight: bold;
+      border-radius: 7px; border: none; cursor: pointer;
+      background: linear-gradient(90deg, #ffd700 60%, #ff5252 100%);
+      color: #231f3b; font-family: 'Bebas Neue', Arial Black, sans-serif;
+      box-shadow: 0 2px 9px #ffd70033;
+      transition: background 0.17s, color 0.17s, box-shadow 0.13s;
+      letter-spacing: 0.03em;
+    }
+    .upload-video-btn:hover, .record-take-btn:hover, .download-take-btn:hover {
+      background: linear-gradient(90deg, #ffd700 30%, #23abe3 100%);
+      color: #ffd700;
+      border: 2px solid #ffd700;
+      box-shadow: 0 0 20px #23abe3cc, 0 0 40px #ffd70044;
+      text-shadow: 0 0 10px #23abe3cc;
+    }
+    #switcherBtnsContainer {
+      margin: 1.2em 0;
+      display: flex; flex-wrap: wrap; gap: 16px;
+      justify-content: center;
+    }
+    .switch-btn {
+      padding: 0.85em 2em;
+      font-size: 1.13em;
+      border: none;
+      border-radius: 9px;
+      background: linear-gradient(90deg, #ffd700 60%, #ff5252 100%);
+      color: #231f3b;
+      font-family: 'Bebas Neue', Arial Black, sans-serif;
+      letter-spacing: 0.07em;
+      font-weight: bold; cursor: pointer;
+      margin-bottom: 0.8em;
+      box-shadow: 0 2px 10px #ffd70033;
+      margin-right: 0.4em;
+      transition: all 0.15s;
+      text-shadow: 0 1px 6px #fffbe822;
+    }
+    .switch-btn.active, .switch-btn:active {
+      background: linear-gradient(90deg, #181824 50%, #ffd700 100%);
+      color: #ffd700;
+      border: 2.5px solid #ffd700;
+      box-shadow: 0 0 18px #ffd70055, 0 0 42px #ff525244;
+      text-shadow: 0 0 13px #ffd700cc, 0 1px 2px #181824;
+    }
     .switch-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    #mixCanvas, #previewVideo { display: block; margin: 23px auto 14px auto; background: #111; border: 2.5px solid #ffe87d; border-radius: 10px; box-shadow: 0 3px 20px #ffe87d11; }
-    #masterOutputVideo { display: block; margin: 23px auto 14px auto; background: #111; border: 2.5px solid #ffe87d; border-radius: 10px; box-shadow: 0 3px 20px #ffe87d11; }
-    #recordFullEditBtn, #previewFullEditBtn, #stopPreviewBtn, #exportMusicVideoBtn { margin: 0 1em 1.3em 0; padding: 0.8em 2em; font-size: 1.13em; border-radius: 8px; border: none; background: linear-gradient(90deg, #ffe87d 60%, #ffd700 100%); color: #191950; font-weight: bold; cursor: pointer; box-shadow: 0 2px 10px #ffe87d14; transition: background 0.15s, color 0.15s; }
-    #recordFullEditBtn:hover, #previewFullEditBtn:hover, #stopPreviewBtn:hover, #exportMusicVideoBtn:hover { background: #232323; color: #ffe87d; border: 2px solid #ffd700; }
-    #exportStatus { display: block; margin: 0.7em 0 2em 0; color: #ffe87d; font-size: 1.1em; font-weight: 500; }
-    .footer { margin-top: 2.6em; padding: 26px 0 10px 0; text-align: center; background: none; color: #ffe87d; font-size: 1.04em; border-top: 1.5px solid #ffe87d33; letter-spacing: 0.08em; }
-    .footer a { color: #ffe87d; text-decoration: underline; }
-    @media (max-width: 1100px) { .container { max-width: 99vw; } #switcherTracks { flex-direction: column; align-items: center; } .switcher-track { width: 99vw; max-width: 340px; margin-bottom: 20px; } }
-    @media (max-width: 600px) { .container { padding: 9px 2vw 12vw 2vw; } .switcher-track { padding: 9px 2px 10px 2px; } .brand-logo { font-size: 1.05em; padding: 7px 9px; } }
+    #mixCanvas, #previewVideo, #masterOutputVideo {
+      display: block;
+      margin: 27px auto 18px auto;
+      background: #111;
+      border: 3px solid #ffd700;
+      border-radius: 13px;
+      box-shadow: 0 5px 36px #ffd70022, 0 1.5px 9px #231f3b77;
+      width: 420px; height: 236px;
+    }
+    #masterOutputVideo {
+      box-shadow: 0 0 22px #ffd70055, 0 1.5px 12px #231f3b99;
+      border-width: 4px;
+      margin-top: 1.1em;
+    }
+    #recordFullEditBtn, #previewFullEditBtn, #stopPreviewBtn, #exportMusicVideoBtn {
+      margin: 0 1em 1.3em 0;
+      padding: 1em 2.3em;
+      font-size: 1.23em;
+      border-radius: 11px;
+      border: none;
+      background: linear-gradient(90deg, #ffd700 60%, #23abe3 100%);
+      color: #181824;
+      font-family: 'Bebas Neue', Arial Black, sans-serif;
+      letter-spacing: 0.08em;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 17px #ffd70055, 0 3px 22px #23abe344;
+      transition: background 0.15s, color 0.15s, box-shadow 0.18s;
+      text-shadow: 0 1px 6px #fffbe822;
+      position: relative;
+      z-index: 1;
+    }
+    #recordFullEditBtn:hover, #previewFullEditBtn:hover, #stopPreviewBtn:hover, #exportMusicVideoBtn:hover {
+      background: linear-gradient(90deg, #181824 20%, #ffd700 90%);
+      color: #ffd700;
+      border: 2.5px solid #ffd700;
+      box-shadow: 0 0 32px #ffd700bb, 0 0 96px #23abe399;
+      text-shadow: 0 0 10px #ffd700cc, 0 1px 2px #181824;
+    }
+    #exportStatus {
+      display: block; margin: 0.7em 0 2em 0;
+      color: #ffe87d; font-size: 1.1em; font-weight: 500;
+      text-shadow: 0 1px 7px #ffd70033;
+    }
+    .footer {
+      margin-top: 2.6em; padding: 26px 0 10px 0; text-align: center;
+      background: #181824; color: #ffd700; font-size: 1.06em;
+      border-top: 2px solid #ffd70044; letter-spacing: 0.09em;
+      text-shadow: 0 1px 10px #ffd70022;
+      box-shadow: 0 -6px 24px #ffd70011 inset;
+    }
+    .footer a { color: #ffd700; text-decoration: underline; }
+    .clapboard {
+      display: inline-block;
+      width: 48px; height: 48px; margin-right: 18px; vertical-align: middle;
+      background: url('https://raw.githubusercontent.com/bernardogarciaofficial/fastcut-assets/main/clapboard.svg') no-repeat center/contain;
+      animation: clap-action 1.6s infinite;
+    }
+    @keyframes clap-action {
+      0%, 90%, 100% { transform: rotate(-10deg) scale(1.0); }
+      10% { transform: rotate(-22deg) scale(1.05);}
+      12% { transform: rotate(-10deg) scale(1.0);}
+      16% { transform: rotate(-22deg) scale(1.05);}
+      18% { transform: rotate(-10deg) scale(1.0);}
+    }
+    /* Responsive */
+    @media (max-width: 1100px) {
+      .container { max-width: 99vw;}
+      #switcherTracks { flex-direction: column; align-items: center;}
+      .switcher-track { width: 99vw; max-width: 340px; margin-bottom: 22px;}
+      #mixCanvas, #masterOutputVideo, #previewVideo { width: 97vw; max-width: 420px;}
+    }
+    @media (max-width: 600px) {
+      .container { padding: 9px 2vw 12vw 2vw;}
+      .switcher-track { padding: 9px 2px 10px 2px;}
+      .marquee-brand { font-size: 1.2em; padding: 7px 8px;}
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="branding">
-      <span class="brand-logo">FASTCUT</span>
-      <div class="brand-info">
-        by <b>Bernardo Garcia</b><br>
-        <a href="mailto:bernardogarciagarcia441@gmail.com">bernardogarciagarcia441@gmail.com</a>
-      </div>
+  <div class="filmgrain"></div>
+  <div class="hollywood-header">
+    <div class="clapboard"></div>
+    <div class="marquee-brand">
+      <span class="marquee-lights">
+        <span class="marquee-bulb"></span>
+        <span class="marquee-bulb"></span>
+        <span class="marquee-bulb"></span>
+      </span>
+      FASTCUT
+      <span class="marquee-lights">
+        <span class="marquee-bulb"></span>
+        <span class="marquee-bulb"></span>
+        <span class="marquee-bulb"></span>
+      </span>
     </div>
-
-    <h2>Step 1: Upload Your Song</h2>
+    <div class="subtitle">Lights. Camera. Action! &mdash; Your Studio in a Browser</div>
+  </div>
+  <div class="container">
+    <h2>🎵 Step 1: Upload Your Song</h2>
     <div class="step-desc">
-      Select the main audio track (your song or backing track). This will be used for syncing and editing your music video.
+      <b>Star of the show:</b> Select your main audio track (your song or backing track). This will be used for syncing and editing your music video.
     </div>
     <div class="main-controls">
       <input type="file" id="songInput">
@@ -58,15 +316,16 @@
       <audio id="audio" style="display:none;" controls></audio>
     </div>
 
-    <h2>Step 2: Video Takes</h2>
+    <h2>🎥 Step 2: Video Takes</h2>
     <div class="step-desc">
-      For each camera angle, upload a video or record a take. You can also download your latest take for each track.
+      <b>Roll camera!</b> For each angle, upload a video or record a take. Download takes for review, and get ready to direct your masterpiece.
     </div>
     <div id="switcherTracks"></div>
 
-    <h2>Step 3: Live Edit Your Music Video</h2>
+    <h2>🎬 Step 3: Live Edit Your Music Video</h2>
     <div class="step-desc">
-      Use the camera switcher below to live-switch between tracks while the music plays. When you're ready, record your live edit, preview it, or export the final video!
+      <b>Director’s chair:</b> Use the camera switcher below to live-switch between tracks while the music plays.<br>
+      <b>Record</b> the edit, <b>preview</b> your blockbuster, and <b>export</b> your finished cut!
     </div>
     <div id="switcherBtnsContainer"></div>
     <canvas id="mixCanvas" width="420" height="236" style="display:none;"></canvas>
@@ -74,21 +333,22 @@
     <video id="masterOutputVideo" width="420" height="236" controls style="display:block;"></video>
 
     <div style="margin:10px 0;">
-      <button id="recordFullEditBtn">Record Full Edit</button>
+      <button id="recordFullEditBtn"><span class="clapboard" style="width: 32px; height: 32px; margin-right: 0;"></span>Record Full Edit</button>
       <button id="previewFullEditBtn">Preview</button>
       <button id="stopPreviewBtn">Stop</button>
       <button id="exportMusicVideoBtn">Export Video</button>
       <span id="exportStatus"></span>
     </div>
 
-    <div style="margin:24px 0 0 0; font-size:0.98em; color:#ffe87dcc;">
-      <b>Instructions:</b><br>
+    <div style="margin:24px 0 0 0; font-size:1.06em; color:#fffbe8;">
+      <b>Hollywood Workflow:</b><br>
       1. Upload your main song file.<br>
       2. For each track, upload or record a take.<br>
       3. Use the camera switcher to select the active video.<br>
-      4. Click "Record Full Edit" to capture your live camera switching.<br>
+      4. Click <b>Record Full Edit</b> to capture your live camera switching.<br>
       5. Preview or export your final video.<br>
-      <i>Tip: You can download any take from each track for review or backup.</i>
+      <i>Tip: Download any take for review or backup. <br>
+      <span style="color:#ffd700">Ready? <span style="font-family: 'Bebas Neue', Arial Black,sans-serif;">Lights, Camera, Action!</span></span></i>
     </div>
   </div>
   <div class="footer">
