@@ -1,4 +1,4 @@
-// FASTCUT FULL SONG LIVE SWITCHER - SYNC/STROBE FIXED VERSION
+// FASTCUT FULL SONG LIVE SWITCHER - ANTI-STROBE, ANTI-FLASH, NATURAL PLAY VERSION
 
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
 const songInput = document.getElementById('songInput');
@@ -66,8 +66,8 @@ document.addEventListener('DOMContentLoaded', function() {
         video.controls = true;
         video.muted = false;
         video.load();
-        uploadBtn.textContent = "🎬 Uploaded!";
         uploadedVideos[i] = url;
+        uploadBtn.textContent = "🎬 Uploaded!";
         setTimeout(() => uploadBtn.textContent = "🎬 Upload Take", 3000);
       };
     }
@@ -93,6 +93,7 @@ document.addEventListener('DOMContentLoaded', function() {
   let chunks = [];
   let drawRequestId = null;
   let fullPreviewCleanup = null;
+  let lastSync = Array(NUM_TRACKS).fill(0); // for anti-strobe
 
   // LIVE CAMERA SWITCHER BUTTONS
   function renderSwitcherBtns() {
@@ -196,7 +197,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function draw() {
       if (!isRecording) return;
-      // Ultra-tight sync: always use audio.currentTime as master clock
       let elapsed = audio.currentTime * 1000;
       let track = switchTimeline[0].track;
       for (let i = 0; i < switchTimeline.length; i++) {
@@ -211,13 +211,16 @@ document.addEventListener('DOMContentLoaded', function() {
       ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
 
       if (v && v.readyState >= 2 && !v.paused && !v.ended) {
-        // Only correct if drift is large (prevents strobing)
-        if (Math.abs(v.currentTime - audio.currentTime) > 0.08) {
+        let drift = v.currentTime - audio.currentTime;
+        let now = performance.now();
+        // Only re-sync if drift is big and not corrected in last second (anti-strobe)
+        if (Math.abs(drift) > 0.25 && now - lastSync[track] > 1000) {
           v.currentTime = audio.currentTime;
+          v.play();
+          lastSync[track] = now;
         }
         ctx.drawImage(v, 0, 0, mixCanvas.width, mixCanvas.height);
       } else {
-        // fallback: blank canvas
         ctx.fillStyle = "#222";
         ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
       }
