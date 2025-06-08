@@ -27,7 +27,8 @@
     .switch-btn { padding: 0.7em 1.5em; font-size: 1.1em; border: none; border-radius: 7px; background: linear-gradient(90deg, #ffe87d 60%, #ffd700 100%); color: #232323; font-weight: bold; cursor: pointer; margin-bottom: 0.8em; box-shadow: 0 2px 8px #ffe87d24; margin-right: 0.4em; transition: all 0.15s; }
     .switch-btn.active, .switch-btn:active { background: #232323; color: #ffe87d; border: 2px solid #ffd700; }
     .switch-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    #mixCanvas, #previewVideo, #masterOutputVideo { display: block; margin: 23px auto 14px auto; background: #111; border: 2.5px solid #ffe87d; border-radius: 10px; box-shadow: 0 3px 20px #ffe87d11; }
+    #mixCanvas, #previewVideo { display: block; margin: 23px auto 14px auto; background: #111; border: 2.5px solid #ffe87d; border-radius: 10px; box-shadow: 0 3px 20px #ffe87d11; }
+    #masterOutputVideo { display: block; margin: 23px auto 14px auto; background: #111; border: 2.5px solid #ffe87d; border-radius: 10px; box-shadow: 0 3px 20px #ffe87d11; }
     #recordFullEditBtn, #previewFullEditBtn, #stopPreviewBtn, #exportMusicVideoBtn { margin: 0 1em 1.3em 0; padding: 0.8em 2em; font-size: 1.13em; border-radius: 8px; border: none; background: linear-gradient(90deg, #ffe87d 60%, #ffd700 100%); color: #191950; font-weight: bold; cursor: pointer; box-shadow: 0 2px 10px #ffe87d14; transition: background 0.15s, color 0.15s; }
     #recordFullEditBtn:hover, #previewFullEditBtn:hover, #stopPreviewBtn:hover, #exportMusicVideoBtn:hover { background: #232323; color: #ffe87d; border: 2px solid #ffd700; }
     #exportStatus { display: block; margin: 0.7em 0 2em 0; color: #ffe87d; font-size: 1.1em; font-weight: 500; }
@@ -70,7 +71,7 @@
     <div id="switcherBtnsContainer"></div>
     <canvas id="mixCanvas" width="420" height="236" style="display:none;"></canvas>
     <video id="previewVideo" width="420" height="236" style="display:none;" controls></video>
-    <video id="masterOutputVideo" width="420" height="236" style="display:none;" controls></video>
+    <video id="masterOutputVideo" width="420" height="236" controls style="display:block;"></video>
 
     <div style="margin:10px 0;">
       <button id="recordFullEditBtn">Record Full Edit</button>
