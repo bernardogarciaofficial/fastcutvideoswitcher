@@ -1,6 +1,6 @@
-// --- FASTCUT CONTINUOUS FULL SONG VIDEO SWITCHING PLATFORM ---
-// Improved: Ultra-tight sync and minimal switcher button delay!
+// FASTCUT FULL SONG LIVE SWITCHER - COMPLETE, ROBUST VERSION
 
+// Animate a fake member counter (optional UI bling)
 function animateMembersCounter() {
   const el = document.getElementById('membersCountNumber');
   if (!el) return;
@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // --- CONTINUOUS FULL-SONG LIVE EDITING ---
+  // CONTINUOUS FULL-SONG LIVE EDITING
 
   const recordBtn = document.getElementById('recordFullEditBtn');
   const previewBtn = document.getElementById('previewFullEditBtn');
@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function() {
   let drawRequestId = null;
   let fullPreviewCleanup = null;
 
-  // --- LIVE CAMERA SWITCHER BUTTONS ---
+  // LIVE CAMERA SWITCHER BUTTONS
   function renderSwitcherBtns() {
     if (!switcherBtnsContainer) return;
     switcherBtnsContainer.innerHTML = '';
@@ -138,10 +138,14 @@ document.addEventListener('DOMContentLoaded', function() {
     switchTimeline.push({ time: timeMs, track: trackIdx });
   }
 
-  // --- RECORD THE ENTIRE SONG AS ONE VIDEO ---
+  // RECORD THE ENTIRE SONG AS ONE VIDEO
   if (recordBtn) recordBtn.onclick = function() {
     if (uploadedVideos.some(v => !v)) {
       if (exportStatus) exportStatus.textContent = "Please upload all 6 takes before recording!";
+      return;
+    }
+    if (!audio.src || audio.src === "") {
+      if (exportStatus) exportStatus.textContent = "Please upload your song file before recording!";
       return;
     }
     switchTimeline = [{ time: 0, track: currentTrack }];
@@ -225,6 +229,10 @@ document.addEventListener('DOMContentLoaded', function() {
           v.currentTime = audio.currentTime;
         }
         ctx.drawImage(v, 0, 0, mixCanvas.width, mixCanvas.height);
+      } else {
+        // fallback: blank canvas
+        ctx.fillStyle = "#222";
+        ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
       }
       if (audio.currentTime >= audio.duration || !isRecording) {
         stopFullRecording();
@@ -251,7 +259,7 @@ document.addEventListener('DOMContentLoaded', function() {
     drawRequestId = null;
   }
 
-  // --- PREVIEW FULL SONG EDIT ---
+  // PREVIEW FULL SONG EDIT
   if (previewBtn) previewBtn.onclick = function() {
     if (!previewVideo) return;
     previewVideo.style.display = '';
@@ -308,7 +316,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (exportStatus) exportStatus.textContent = "Previewing your full music video edit.";
   };
 
-  // --- EXPORT FINAL VIDEO ---
+  // EXPORT FINAL VIDEO
   if (exportMusicVideoBtn) exportMusicVideoBtn.onclick = async function() {
     if (!recordedBlob) {
       if (exportStatus) exportStatus.textContent = "Please record your edit first!";
@@ -330,7 +338,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.body.removeChild(a);
   };
 
-  // --- PREVIEW SINGLE TAKE WITHOUT RECORDING ---
+  // PREVIEW SINGLE TAKE WITHOUT RECORDING
   function previewTrackInCanvas(trackIdx) {
     if (!mixCanvas) return;
     mixCanvas.style.display = '';
