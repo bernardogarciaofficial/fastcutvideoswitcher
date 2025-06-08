@@ -1,4 +1,4 @@
-// FASTCUT FULL SONG LIVE SWITCHER - ANTI-STROBE, ANTI-FLASH, NATURAL PLAY VERSION
+// FASTCUT by Bernardo Garcia - BEAUTIFUL UI, RECORD & DOWNLOAD TRACKS
 
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
 const songInput = document.getElementById('songInput');
@@ -35,28 +35,35 @@ document.addEventListener('DOMContentLoaded', function() {
     "Video Track 6"
   ];
   const switcherTracks = document.getElementById("switcherTracks");
+  const uploadedVideos = Array(NUM_TRACKS).fill(null);
+  const recordedBlobs = Array(NUM_TRACKS).fill(null);
+  const recordingStates = Array(NUM_TRACKS).fill(false);
+  const recorders = Array(NUM_TRACKS).fill(null);
+  const tempStreams = Array(NUM_TRACKS).fill(null);
+  const tempVideoURLs = Array(NUM_TRACKS).fill(null);
+
+  // Build the UI for each track
   if (switcherTracks) {
     switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => `
       <div class="switcher-track" id="switcher-track-${i}">
         <div class="track-title">${TRACK_NAMES[i]}</div>
-        <video id="video-${i}" width="140" height="90" controls preload="auto" muted></video>
-        <div>
-          <label class="upload-video-label" for="uploadVideoInput-${i}">Upload Take</label>
+        <video id="video-${i}" width="220" height="140" controls preload="auto" muted></video>
+        <div class="track-btns">
+          <button class="upload-video-btn" id="uploadVideoBtn-${i}">Upload</button>
           <input type="file" id="uploadVideoInput-${i}" class="upload-video-input" accept=".mp4,.webm,.mov,.ogg,.mkv,video/*" style="display:none;">
-          <button class="upload-video-btn" id="uploadVideoBtn-${i}">🎬 Upload Take</button>
+          <button class="record-take-btn" id="recordTakeBtn-${i}">Record Take</button>
+          <button class="download-take-btn" id="downloadTakeBtn-${i}">Download Take</button>
         </div>
       </div>
     `).join("");
   }
 
-  const uploadedVideos = Array(NUM_TRACKS).fill(null);
-
   for (let i = 0; i < NUM_TRACKS; i++) {
+    // Upload button logic
     const uploadBtn = document.getElementById(`uploadVideoBtn-${i}`);
     const uploadInput = document.getElementById(`uploadVideoInput-${i}`);
     const video = document.getElementById(`video-${i}`);
     if (uploadBtn && uploadInput && video) {
-      video.preload = "auto";
       uploadBtn.onclick = () => uploadInput.click();
       uploadInput.onchange = e => {
         const file = e.target.files[0];
@@ -67,13 +74,112 @@ document.addEventListener('DOMContentLoaded', function() {
         video.muted = false;
         video.load();
         uploadedVideos[i] = url;
-        uploadBtn.textContent = "🎬 Uploaded!";
-        setTimeout(() => uploadBtn.textContent = "🎬 Upload Take", 3000);
+        tempVideoURLs[i] = url;
+        uploadBtn.textContent = "Uploaded!";
+        setTimeout(() => uploadBtn.textContent = "Upload", 2000);
+      };
+    }
+
+    // RECORD TAKE
+    const recordBtn = document.getElementById(`recordTakeBtn-${i}`);
+    if (recordBtn && video) {
+      recordBtn.onclick = async () => {
+        if (!recordingStates[i]) {
+          // Start recording
+          recordBtn.textContent = "Stop";
+          recordingStates[i] = true;
+          if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            try {
+              const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+              tempStreams[i] = stream;
+              video.srcObject = stream;
+              video.muted = true;
+              video.play();
+              recordedBlobs[i] = [];
+              const recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+              recorders[i] = recorder;
+              recorder.ondataavailable = e => { if (e.data.size > 0) recordedBlobs[i].push(e.data); };
+              recorder.onstop = () => {
+                // Stop webcam
+                video.srcObject = null;
+                stream.getTracks().forEach(track => track.stop());
+                const blob = new Blob(recordedBlobs[i], { type: "video/webm" });
+                const url = URL.createObjectURL(blob);
+                video.src = url;
+                video.controls = true;
+                video.muted = false;
+                video.load();
+                uploadedVideos[i] = url;
+                tempVideoURLs[i] = url;
+                recordBtn.textContent = "Record Take";
+              };
+              recorder.start();
+            } catch (err) {
+              alert("Camera/mic access denied or unavailable.");
+              recordBtn.textContent = "Record Take";
+              recordingStates[i] = false;
+            }
+          }
+        } else {
+          // Stop recording
+          if (recorders[i]) {
+            recorders[i].stop();
+            recorders[i] = null;
+            recordingStates[i] = false;
+          }
+        }
+      };
+    }
+
+    // DOWNLOAD TAKE
+    const downloadBtn = document.getElementById(`downloadTakeBtn-${i}`);
+    if (downloadBtn && video) {
+      downloadBtn.onclick = () => {
+        let blob = null;
+        // Prefer download of recorded take if available, else uploaded video blob
+        if (recordedBlobs[i] && recordedBlobs[i].length > 0) {
+          blob = new Blob(recordedBlobs[i], { type: "video/webm" });
+        } else if (video.src && !video.src.startsWith("blob:")) {
+          // For uploaded file, fetch and re-blob it
+          fetch(video.src)
+            .then(resp => resp.blob())
+            .then(_blob => {
+              saveBlob(_blob, `FastCut_Take${i+1}.webm`);
+            });
+          return;
+        } else if (video.src && video.src.startsWith("blob:")) {
+          // For blob url, just download
+          fetch(video.src)
+            .then(resp => resp.blob())
+            .then(_blob => {
+              saveBlob(_blob, `FastCut_Take${i+1}.webm`);
+            });
+          return;
+        }
+        if (blob) {
+          saveBlob(blob, `FastCut_Take${i+1}.webm`);
+        } else {
+          alert("No take available to download.");
+        }
       };
     }
   }
 
-  // CONTINUOUS FULL-SONG LIVE EDITING
+  function saveBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = "none";
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 200);
+  }
+
+  // === MASTER EDITOR ===
 
   const recordBtn = document.getElementById('recordFullEditBtn');
   const previewBtn = document.getElementById('previewFullEditBtn');
@@ -95,7 +201,6 @@ document.addEventListener('DOMContentLoaded', function() {
   let fullPreviewCleanup = null;
   let lastSync = Array(NUM_TRACKS).fill(0); // for anti-strobe
 
-  // LIVE CAMERA SWITCHER BUTTONS
   function renderSwitcherBtns() {
     if (!switcherBtnsContainer) return;
     switcherBtnsContainer.innerHTML = '';
@@ -103,11 +208,10 @@ document.addEventListener('DOMContentLoaded', function() {
       const btn = document.createElement('button');
       btn.className = 'switch-btn' + (i === currentTrack ? ' active' : '');
       btn.textContent = `Cam ${i+1}`;
-      btn.disabled = isRecording ? false : uploadedVideos[i] === null;
+      btn.disabled = isRecording ? false : !uploadedVideos[i];
       btn.onclick = () => {
         setActiveTrack(i);
         if (isRecording) {
-          // Use audio.currentTime for ultra-tight sync
           recordSwitch(audio.currentTime * 1000, i);
         } else {
           previewTrackInCanvas(i);
@@ -125,10 +229,9 @@ document.addEventListener('DOMContentLoaded', function() {
     switchTimeline.push({ time: timeMs, track: trackIdx });
   }
 
-  // RECORD THE ENTIRE SONG AS ONE VIDEO
   if (recordBtn) recordBtn.onclick = function() {
     if (uploadedVideos.some(v => !v)) {
-      if (exportStatus) exportStatus.textContent = "Please upload all 6 takes before recording!";
+      if (exportStatus) exportStatus.textContent = "Please upload or record all 6 takes before recording!";
       return;
     }
     if (!audio.src || audio.src === "") {
@@ -139,7 +242,6 @@ document.addEventListener('DOMContentLoaded', function() {
     isRecording = true;
     renderSwitcherBtns();
 
-    // Sync all takes to start, mute, and play
     for (let i = 0; i < NUM_TRACKS; i++) {
       let v = document.getElementById(`video-${i}`);
       if (v) {
@@ -213,7 +315,6 @@ document.addEventListener('DOMContentLoaded', function() {
       if (v && v.readyState >= 2 && !v.paused && !v.ended) {
         let drift = v.currentTime - audio.currentTime;
         let now = performance.now();
-        // Only re-sync if drift is big and not corrected in last second (anti-strobe)
         if (Math.abs(drift) > 0.25 && now - lastSync[track] > 1000) {
           v.currentTime = audio.currentTime;
           v.play();
@@ -249,7 +350,6 @@ document.addEventListener('DOMContentLoaded', function() {
     drawRequestId = null;
   }
 
-  // PREVIEW FULL SONG EDIT
   if (previewBtn) previewBtn.onclick = function() {
     if (!previewVideo) return;
     previewVideo.style.display = '';
@@ -306,7 +406,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (exportStatus) exportStatus.textContent = "Previewing your full music video edit.";
   };
 
-  // EXPORT FINAL VIDEO
   if (exportMusicVideoBtn) exportMusicVideoBtn.onclick = async function() {
     if (!recordedBlob) {
       if (exportStatus) exportStatus.textContent = "Please record your edit first!";
@@ -328,7 +427,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.body.removeChild(a);
   };
 
-  // PREVIEW SINGLE TAKE WITHOUT RECORDING
   function previewTrackInCanvas(trackIdx) {
     if (!mixCanvas) return;
     mixCanvas.style.display = '';
