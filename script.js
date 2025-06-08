@@ -1,7 +1,8 @@
-// --- FASTCUT LIVE 16-BAR SEGMENT SWITCHING ---
+// --- FASTCUT CONTINUOUS FULL SONG VIDEO SWITCHING PLATFORM ---
 
 function animateMembersCounter() {
   const el = document.getElementById('membersCountNumber');
+  if (!el) return;
   let n = 15347, up = true;
   setInterval(() => {
     if (Math.random() > 0.5) n += up ? 1 : -1;
@@ -13,25 +14,28 @@ function animateMembersCounter() {
 animateMembersCounter();
 
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
-document.getElementById('songInput').setAttribute('accept', AUDIO_ACCEPTED);
+const songInput = document.getElementById('songInput');
+if (songInput) songInput.setAttribute('accept', AUDIO_ACCEPTED);
 
 const audio = document.getElementById('audio');
 const audioStatus = document.getElementById('audioStatus');
 let masterAudioFile = null;
 
-document.getElementById('songInput').onchange = e => {
-  const file = e.target.files[0];
-  masterAudioFile = file;
-  if (file) {
-    audio.src = URL.createObjectURL(file);
-    audio.style.display = 'block';
-    audio.load();
-    audioStatus.textContent = `Audio loaded: ${file.name}`;
-  } else {
-    audio.style.display = 'none';
-    audioStatus.textContent = "";
-  }
-};
+if (songInput) {
+  songInput.onchange = e => {
+    const file = e.target.files[0];
+    masterAudioFile = file;
+    if (file) {
+      audio.src = URL.createObjectURL(file);
+      audio.style.display = 'block';
+      audio.load();
+      audioStatus.textContent = `Audio loaded: ${file.name}`;
+    } else {
+      audio.style.display = 'none';
+      audioStatus.textContent = "";
+    }
+  };
+}
 
 document.addEventListener('DOMContentLoaded', function() {
   const NUM_TRACKS = 6;
@@ -44,17 +48,19 @@ document.addEventListener('DOMContentLoaded', function() {
     "Video Track 6"
   ];
   const switcherTracks = document.getElementById("switcherTracks");
-  switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => `
-    <div class="switcher-track" id="switcher-track-${i}">
-      <div class="track-title">${TRACK_NAMES[i]}</div>
-      <video id="video-${i}" width="140" height="90" controls muted></video>
-      <div>
-        <label class="upload-video-label" for="uploadVideoInput-${i}">Upload Take</label>
-        <input type="file" id="uploadVideoInput-${i}" class="upload-video-input" accept=".mp4,.webm,.mov,.ogg,.mkv,video/*" style="display:none;">
-        <button class="upload-video-btn" id="uploadVideoBtn-${i}">🎬 Upload Take</button>
+  if (switcherTracks) {
+    switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => `
+      <div class="switcher-track" id="switcher-track-${i}">
+        <div class="track-title">${TRACK_NAMES[i]}</div>
+        <video id="video-${i}" width="140" height="90" controls muted></video>
+        <div>
+          <label class="upload-video-label" for="uploadVideoInput-${i}">Upload Take</label>
+          <input type="file" id="uploadVideoInput-${i}" class="upload-video-input" accept=".mp4,.webm,.mov,.ogg,.mkv,video/*" style="display:none;">
+          <button class="upload-video-btn" id="uploadVideoBtn-${i}">🎬 Upload Take</button>
+        </div>
       </div>
-    </div>
-  `).join("");
+    `).join("");
+  }
 
   const uploadedVideos = Array(NUM_TRACKS).fill(null);
 
@@ -62,510 +68,282 @@ document.addEventListener('DOMContentLoaded', function() {
     const uploadBtn = document.getElementById(`uploadVideoBtn-${i}`);
     const uploadInput = document.getElementById(`uploadVideoInput-${i}`);
     const video = document.getElementById(`video-${i}`);
-    uploadBtn.onclick = () => uploadInput.click();
-    uploadInput.onchange = e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const url = URL.createObjectURL(file);
-      video.src = url;
-      video.controls = true;
-      video.muted = false;
-      video.load();
-      uploadBtn.textContent = "🎬 Uploaded!";
-      uploadedVideos[i] = url;
-      setTimeout(() => uploadBtn.textContent = "🎬 Upload Take", 3000);
-    };
+    if (uploadBtn && uploadInput && video) {
+      uploadBtn.onclick = () => uploadInput.click();
+      uploadInput.onchange = e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        video.src = url;
+        video.controls = true;
+        video.muted = false;
+        video.load();
+        uploadBtn.textContent = "🎬 Uploaded!";
+        uploadedVideos[i] = url;
+        setTimeout(() => uploadBtn.textContent = "🎬 Upload Take", 3000);
+      };
+    }
   }
 
-  // 16-Bar Live Segment Edit Logic
-  const bpmInput = document.getElementById('bpmInput');
-  const timeSigInput = document.getElementById('timeSigInput');
-  const segmentTimeline = document.getElementById('segmentTimeline');
-  const prevSegmentBtn = document.getElementById('prevSegmentBtn');
-  const nextSegmentBtn = document.getElementById('nextSegmentBtn');
-  const startSegmentRecordingBtn = document.getElementById('startSegmentRecordingBtn');
-  const lockSegmentBtn = document.getElementById('lockSegmentBtn');
-  const unlockSegmentBtn = document.getElementById('unlockSegmentBtn');
-  const previewSegmentBtn = document.getElementById('previewSegmentBtn');
-  const segmentInfo = document.getElementById('segmentInfo');
-  const segmentLockStatus = document.getElementById('segmentLockStatus');
-  const segmentSwitcherBtns = document.getElementById('segmentSwitcherBtns');
-  const segmentMixCanvas = document.getElementById('segmentMixCanvas');
-  const segmentPreviewVideo = document.getElementById('segmentPreviewVideo');
-  const overlay = document.getElementById('segmentRecordingOverlay');
-  const countdownDiv = document.getElementById('countdown');
-  const recIndicator = document.getElementById('recIndicator');
-  const fullEditPreviewVideo = document.getElementById('fullEditPreviewVideo');
-  const previewFullEditBtn = document.getElementById('previewFullEditBtn');
+  // --- CONTINUOUS LIVE RECORDING LOGIC ---
+  const recordBtn = document.getElementById('recordFullEditBtn');
+  const previewBtn = document.getElementById('previewFullEditBtn');
   const exportStatus = document.getElementById('exportStatus');
+  const exportMusicVideoBtn = document.getElementById('exportMusicVideoBtn');
+  const masterOutputVideo = document.getElementById('masterOutputVideo');
+  const switcherBtnsContainer = document.getElementById('switcherBtnsContainer');
+  const mixCanvas = document.getElementById('mixCanvas');
+  const previewVideo = document.getElementById('previewVideo');
+  let isRecording = false;
+  let switchTimeline = [];
+  let currentTrack = 0;
+  let recordedBlob = null;
+  let recordedUrl = null;
+  let mediaRecorder = null;
+  let chunks = [];
+  let drawRequestId = null;
+  let recordingStartTime = 0;
+  let previewAudio = null;
+  let fullPreviewCleanup = null;
 
-  let segmentData = [];
-  let currentSegment = 0;
-  let segmentCount = 0;
-  let segmentRecordings = [];
-  let isSegmentLocked = [];
-  let segmentSwitchTimeline = [];
-  let segmentActiveTrack = 0;
-  let isSegmentRecording = false;
-  let segmentDrawRequestId = null;
-  let segmentMediaRecorder = null;
-  let segmentChunks = [];
-  let segmentRecordingStart = 0;
-  let segmentRecordingBlobUrl = null;
-  let fullPreviewCleanup = null; // for cleaning up audio/overlay
-
-  function getBarLengthSec() {
-    const bpm = parseFloat(bpmInput.value) || 120;
-    return 60 / bpm * parseInt(timeSigInput.value || 4, 10);
-  }
-  function getSegmentLengthSec() {
-    return getBarLengthSec() * 16;
-  }
-  function getAudioDuration() {
-    return isFinite(audio.duration) && audio.duration > 0
-      ? audio.duration
-      : 180;
-  }
-  function recalcSegments() {
-    segmentData = [];
-    segmentRecordings = [];
-    isSegmentLocked = [];
-    const totalDuration = getAudioDuration();
-    const segLen = getSegmentLengthSec();
-    segmentCount = Math.ceil(totalDuration / segLen);
-    for (let i = 0; i < segmentCount; i++) {
-      segmentData.push({
-        start: i * segLen,
-        end: Math.min((i + 1) * segLen, totalDuration)
-      });
-      segmentRecordings.push(null);
-      isSegmentLocked.push(false);
-    }
-    currentSegment = 0;
-  }
-
-  function renderSegmentTimeline() {
-    segmentTimeline.innerHTML = '';
-    segmentData.forEach((seg, idx) => {
-      const block = document.createElement('div');
-      block.className = 'segment-block' +
-        (idx === currentSegment ? ' active' : '') +
-        (isSegmentLocked[idx] ? ' locked' : '');
-      block.textContent = `Bars ${1 + idx * 16}–${Math.min((idx + 1) * 16, Math.ceil(getAudioDuration() / getBarLengthSec()))}`;
-      if (isSegmentLocked[idx]) {
-        const lockIcon = document.createElement('span');
-        lockIcon.className = 'lock-icon';
-        lockIcon.textContent = '🔒';
-        block.appendChild(lockIcon);
-      }
-      if (idx <= currentSegment) {
-        block.onclick = () => {
-          if (idx === currentSegment || isSegmentLocked[idx]) {
-            currentSegment = idx;
-            renderSegmentTimeline();
-            updateSegmentUI();
-          }
-        };
-      } else {
-        block.style.opacity = 0.5;
-        block.style.cursor = "not-allowed";
-      }
-      segmentTimeline.appendChild(block);
-    });
-  }
-
-  function updateSegmentUI() {
-    segmentInfo.textContent = `Segment ${currentSegment + 1} of ${segmentCount} (Bars ${1 + currentSegment * 16}–${Math.min((currentSegment + 1) * 16, Math.ceil(getAudioDuration() / getBarLengthSec()))})`;
-    segmentLockStatus.textContent = isSegmentLocked[currentSegment] ? 'Locked – cannot edit unless unlocked.' : '';
-    prevSegmentBtn.disabled = currentSegment === 0;
-    nextSegmentBtn.disabled = currentSegment === segmentCount - 1 || !isSegmentLocked[currentSegment];
-    startSegmentRecordingBtn.style.display = isSegmentLocked[currentSegment] ? 'none' : '';
-    lockSegmentBtn.style.display = (!isSegmentLocked[currentSegment] && !!segmentRecordings[currentSegment]) ? '' : 'none';
-    unlockSegmentBtn.style.display = isSegmentLocked[currentSegment] ? '' : 'none';
-    previewSegmentBtn.style.display = !!segmentRecordings[currentSegment] ? '' : 'none';
-    segmentPreviewVideo.style.display = 'none';
-    segmentMixCanvas.style.display = 'none';
-    overlay.style.display = 'none';
-    fullEditPreviewVideo.style.display = 'none';
-    if (typeof fullPreviewCleanup === "function") fullPreviewCleanup();
-    renderSegmentSwitcherBtns();
-  }
-
-  prevSegmentBtn.onclick = () => {
-    if (currentSegment > 0) {
-      currentSegment--;
-      renderSegmentTimeline();
-      updateSegmentUI();
-    }
-  };
-  nextSegmentBtn.onclick = () => {
-    if (currentSegment < segmentCount - 1 && isSegmentLocked[currentSegment]) {
-      currentSegment++;
-      renderSegmentTimeline();
-      updateSegmentUI();
-    }
-  };
-  bpmInput.onchange = timeSigInput.onchange = () => {
-    recalcSegments();
-    renderSegmentTimeline();
-    updateSegmentUI();
-  };
-  audio.onloadedmetadata = () => {
-    recalcSegments();
-    renderSegmentTimeline();
-    updateSegmentUI();
-  };
-
-  function renderSegmentSwitcherBtns() {
-    segmentSwitcherBtns.innerHTML = '';
+  // --- UI: Track Switcher Buttons ---
+  function renderSwitcherBtns() {
+    if (!switcherBtnsContainer) return;
+    switcherBtnsContainer.innerHTML = '';
     for (let i = 0; i < NUM_TRACKS; i++) {
       const btn = document.createElement('button');
-      btn.className = 'segment-switch-btn' + (i === segmentActiveTrack ? ' active' : '');
+      btn.className = 'switch-btn' + (i === currentTrack ? ' active' : '');
       btn.textContent = `Cam ${i+1}`;
-      btn.disabled = isSegmentLocked[currentSegment];
+      btn.disabled = isRecording ? false : uploadedVideos[i] === null;
       btn.onclick = () => {
-        setSegmentActiveTrack(i);
-        if (isSegmentRecording) {
-          recordSegmentSwitch(Date.now() - segmentRecordingStart, i);
+        setActiveTrack(i);
+        if (isRecording) {
+          recordSwitch(Date.now() - recordingStartTime, i);
         } else {
           previewTrackInCanvas(i);
         }
       };
-      segmentSwitcherBtns.appendChild(btn);
+      switcherBtnsContainer.appendChild(btn);
     }
   }
-
-  function setSegmentActiveTrack(idx) {
-    segmentActiveTrack = idx;
-    renderSegmentSwitcherBtns();
+  function setActiveTrack(idx) {
+    currentTrack = idx;
+    renderSwitcherBtns();
+  }
+  function recordSwitch(timeMs, trackIdx) {
+    if (switchTimeline.length === 0 && timeMs > 100) return;
+    if (switchTimeline.length > 0 && switchTimeline[switchTimeline.length-1].track === trackIdx) return;
+    switchTimeline.push({ time: timeMs, track: trackIdx });
   }
 
-  function recordSegmentSwitch(timeMs, trackIdx) {
-    if (segmentSwitchTimeline.length === 0 && timeMs > 100) return;
-    if (segmentSwitchTimeline.length > 0 && segmentSwitchTimeline[segmentSwitchTimeline.length-1].track === trackIdx) return;
-    segmentSwitchTimeline.push({ time: timeMs, track: trackIdx });
-  }
+  // --- Record the entire song as a single edit ---
+  if (recordBtn) recordBtn.onclick = function() {
+    if (uploadedVideos.some(v => !v)) {
+      if (exportStatus) exportStatus.textContent = "Please upload all 6 takes before recording!";
+      return;
+    }
+    // Reset and setup
+    switchTimeline = [{ time: 0, track: currentTrack }];
+    isRecording = true;
+    renderSwitcherBtns();
 
-  // Live preview when not recording
-  function previewTrackInCanvas(trackIdx) {
-    segmentMixCanvas.style.display = '';
-    fullEditPreviewVideo.style.display = 'none';
+    for (let i = 0; i < NUM_TRACKS; i++) {
+      let v = document.getElementById(`video-${i}`);
+      if (v) {
+        v.currentTime = 0;
+        v.muted = true;
+        v.play();
+      }
+    }
+    audio.currentTime = 0;
+    audio.play();
+
+    if (mixCanvas) mixCanvas.style.display = '';
+    if (previewVideo) previewVideo.style.display = 'none';
     if (typeof fullPreviewCleanup === "function") fullPreviewCleanup();
-    const ctx = segmentMixCanvas.getContext('2d');
+
+    const ctx = mixCanvas.getContext('2d');
+    ctx.fillStyle = "#111";
+    ctx.fillRect(0,0,mixCanvas.width,mixCanvas.height);
+
+    const videoStream = mixCanvas.captureStream(30);
+    let audioStream = null;
+    if (audio.captureStream) {
+      audioStream = audio.captureStream();
+    } else if (audio.mozCaptureStream) {
+      audioStream = audio.mozCaptureStream();
+    }
+    let combinedStream;
+    if (audioStream) {
+      combinedStream = new MediaStream([
+        ...videoStream.getVideoTracks(),
+        ...audioStream.getAudioTracks()
+      ]);
+    } else {
+      combinedStream = videoStream;
+    }
+    chunks = [];
+    mediaRecorder = new MediaRecorder(combinedStream, { mimeType: "video/webm" });
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      if (recordedUrl) URL.revokeObjectURL(recordedUrl);
+      recordedBlob = new Blob(chunks, { type: "video/webm" });
+      recordedUrl = URL.createObjectURL(recordedBlob);
+      if (previewVideo) {
+        previewVideo.src = recordedUrl;
+        previewVideo.load();
+        previewVideo.style.display = '';
+      }
+      if (mixCanvas) mixCanvas.style.display = 'none';
+      isRecording = false;
+      renderSwitcherBtns();
+      if (exportStatus) exportStatus.textContent = "Recording complete! Preview or export your music video.";
+    };
+    mediaRecorder.start();
+    recordingStartTime = Date.now();
+    function draw() {
+      if (!isRecording) return;
+      let elapsed = audio.currentTime * 1000;
+      let track = switchTimeline[0].track;
+      for (let i = 0; i < switchTimeline.length; i++) {
+        if (switchTimeline[i].time <= elapsed) {
+          track = switchTimeline[i].track;
+        } else {
+          break;
+        }
+      }
+      const v = document.getElementById(`video-${track}`);
+      ctx.fillStyle = "#111";
+      ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
+      if (v && !v.paused && !v.ended) {
+        ctx.drawImage(v, 0, 0, mixCanvas.width, mixCanvas.height);
+      }
+      if (audio.currentTime >= audio.duration || !isRecording) {
+        stopFullRecording();
+        return;
+      }
+      drawRequestId = requestAnimationFrame(draw);
+    }
+    draw();
+    if (exportStatus) exportStatus.textContent = "Recording full edit. Use the switcher to change cameras in real time.";
+  };
+
+  function stopFullRecording() {
+    if (!isRecording) return;
+    isRecording = false;
+    audio.pause();
+    for (let i = 0; i < NUM_TRACKS; i++) {
+      let v = document.getElementById(`video-${i}`);
+      if (v) v.pause();
+    }
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      mediaRecorder.stop();
+    }
+    if (drawRequestId !== null) cancelAnimationFrame(drawRequestId);
+    drawRequestId = null;
+  }
+
+  // --- Preview Logic (always full song) ---
+  if (previewBtn) previewBtn.onclick = function() {
+    if (!previewVideo) return;
+    previewVideo.style.display = '';
+    if (mixCanvas) mixCanvas.style.display = 'none';
+    if (!recordedUrl) {
+      if (exportStatus) exportStatus.textContent = "Nothing to preview yet. Please record first.";
+      return;
+    }
+    if (typeof fullPreviewCleanup === "function") fullPreviewCleanup();
+    // Use a hidden audio element to play the song in sync
+    let v = previewVideo;
+    let pa = audio.cloneNode(true);
+    pa.currentTime = 0;
+    pa.volume = 1;
+    pa.style.display = "none";
+    pa.muted = false;
+    document.body.appendChild(pa);
+
+    let stopped = false;
+    v.src = recordedUrl;
+    v.currentTime = 0;
+    v.muted = true;
+    v.load();
+
+    // Tighter sync loop
+    let syncRAF;
+    function sync() {
+      if (stopped) return;
+      if (Math.abs(pa.currentTime - v.currentTime) > 0.04) {
+        pa.currentTime = v.currentTime;
+      }
+      if (v.ended || pa.ended) {
+        stopped = true;
+        pa.pause();
+        return;
+      }
+      syncRAF = requestAnimationFrame(sync);
+    }
+
+    v.oncanplay = function() {
+      v.play();
+      pa.currentTime = 0;
+      pa.play();
+      syncRAF = requestAnimationFrame(sync);
+    };
+
+    function cleanupPreview() {
+      stopped = true;
+      pa.pause();
+      if (pa && pa.parentNode) pa.parentNode.removeChild(pa);
+      if (syncRAF) cancelAnimationFrame(syncRAF);
+      v.oncanplay = null;
+    }
+    fullPreviewCleanup = cleanupPreview;
+    if (exportStatus) exportStatus.textContent = "Previewing your full music video edit.";
+  };
+
+  // --- Export Final Video ---
+  if (exportMusicVideoBtn) exportMusicVideoBtn.onclick = async function() {
+    if (!recordedBlob) {
+      if (exportStatus) exportStatus.textContent = "Please record your edit first!";
+      return;
+    }
+    if (exportStatus) exportStatus.textContent = "Exporting video file...";
+    if (masterOutputVideo) {
+      masterOutputVideo.src = recordedUrl;
+      masterOutputVideo.load();
+      masterOutputVideo.muted = false;
+    }
+    if (exportStatus) exportStatus.textContent = "Export complete! Download your final video.";
+    const a = document.createElement('a');
+    a.href = recordedUrl;
+    a.download = `fastcut_music_video.webm`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  // --- UI Helper: Preview Track Without Recording ---
+  function previewTrackInCanvas(trackIdx) {
+    if (!mixCanvas) return;
+    mixCanvas.style.display = '';
+    if (previewVideo) previewVideo.style.display = 'none';
+    if (typeof fullPreviewCleanup === "function") fullPreviewCleanup();
+    const ctx = mixCanvas.getContext('2d');
     const v = document.getElementById(`video-${trackIdx}`);
     if (v && v.readyState >= 2) {
-      v.currentTime = Math.max(v.currentTime, segmentData[currentSegment].start);
+      v.currentTime = 0;
       v.pause();
       ctx.fillStyle = "#111";
-      ctx.fillRect(0, 0, segmentMixCanvas.width, segmentMixCanvas.height);
-      ctx.drawImage(v, 0, 0, segmentMixCanvas.width, segmentMixCanvas.height);
+      ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
+      ctx.drawImage(v, 0, 0, mixCanvas.width, mixCanvas.height);
     } else {
       ctx.fillStyle = "#111";
-      ctx.fillRect(0, 0, segmentMixCanvas.width, segmentMixCanvas.height);
+      ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
       ctx.fillStyle = "#ffe87d";
       ctx.font = "24px sans-serif";
       ctx.fillText("Load & play a video", 40, 140);
     }
   }
 
-  function showCountdownAndRec(cb) {
-    overlay.style.display = '';
-    countdownDiv.style.display = '';
-    recIndicator.classList.remove('blinking');
-    countdownDiv.textContent = '3';
-    let t = 3;
-    let interval = setInterval(() => {
-      t--;
-      if (t > 0) {
-        countdownDiv.textContent = t;
-      } else {
-        countdownDiv.textContent = '';
-        countdownDiv.style.display = 'none';
-        recIndicator.classList.add('blinking');
-        cb();
-        clearInterval(interval);
-      }
-    }, 1000);
-  }
-  function hideOverlay() {
-    overlay.style.display = 'none';
-    countdownDiv.textContent = '';
-    countdownDiv.style.display = '';
-    recIndicator.classList.remove('blinking');
-  }
-
-  startSegmentRecordingBtn.onclick = async () => {
-    if (uploadedVideos.some(v => !v)) {
-      segmentLockStatus.textContent = "Please upload all 6 takes before recording!";
-      return;
-    }
-    for (let i = 0; i < NUM_TRACKS; i++) {
-      const v = document.getElementById(`video-${i}`);
-      v.currentTime = segmentData[currentSegment].start;
-      v.pause();
-    }
-    isSegmentRecording = false;
-    renderSegmentSwitcherBtns();
-    showCountdownAndRec(() => {
-      isSegmentRecording = true;
-      segmentSwitchTimeline = [{ time: 0, track: segmentActiveTrack }];
-      segmentRecordingStart = Date.now();
-      for (let i = 0; i < NUM_TRACKS; i++) {
-        const v = document.getElementById(`video-${i}`);
-        v.currentTime = segmentData[currentSegment].start;
-        v.muted = true;
-        v.play();
-      }
-      audio.currentTime = segmentData[currentSegment].start;
-      audio.play();
-
-      segmentMixCanvas.style.display = '';
-      fullEditPreviewVideo.style.display = 'none';
-      if (typeof fullPreviewCleanup === "function") fullPreviewCleanup();
-      const ctx = segmentMixCanvas.getContext('2d');
-      ctx.fillStyle = "#111";
-      ctx.fillRect(0,0,segmentMixCanvas.width,segmentMixCanvas.height);
-
-      const videoStream = segmentMixCanvas.captureStream(30);
-      let audioStream = null;
-      if (audio.captureStream) {
-        audioStream = audio.captureStream();
-      } else if (audio.mozCaptureStream) {
-        audioStream = audio.mozCaptureStream();
-      }
-      let combinedStream;
-      if (audioStream) {
-        combinedStream = new MediaStream([
-          ...videoStream.getVideoTracks(),
-          ...audioStream.getAudioTracks()
-        ]);
-      } else {
-        combinedStream = videoStream;
-      }
-      segmentChunks = [];
-      segmentMediaRecorder = new MediaRecorder(combinedStream, { mimeType: "video/webm" });
-      segmentMediaRecorder.ondataavailable = e => { if (e.data.size > 0) segmentChunks.push(e.data); };
-      segmentMediaRecorder.onstop = () => {
-        if (segmentRecordingBlobUrl) URL.revokeObjectURL(segmentRecordingBlobUrl);
-        const blob = new Blob(segmentChunks, { type: "video/webm" });
-        segmentRecordingBlobUrl = URL.createObjectURL(blob);
-        segmentPreviewVideo.src = segmentRecordingBlobUrl;
-        segmentPreviewVideo.load();
-        segmentRecordings[currentSegment] = {
-          videoBlob: blob,
-          timeline: [...segmentSwitchTimeline]
-        };
-        segmentPreviewVideo.style.display = '';
-        segmentMixCanvas.style.display = 'none';
-        fullEditPreviewVideo.style.display = 'none';
-        if (typeof fullPreviewCleanup === "function") fullPreviewCleanup();
-        isSegmentRecording = false;
-        hideOverlay();
-        renderSegmentSwitcherBtns();
-        updateSegmentUI();
-      };
-      segmentMediaRecorder.start();
-      function draw() {
-        if (!isSegmentRecording) return;
-        let elapsed = (audio.currentTime - segmentData[currentSegment].start) * 1000;
-        let track = segmentSwitchTimeline[0].track;
-        for (let i = 0; i < segmentSwitchTimeline.length; i++) {
-          if (segmentSwitchTimeline[i].time <= elapsed) {
-            track = segmentSwitchTimeline[i].track;
-          } else {
-            break;
-          }
-        }
-        const v = document.getElementById(`video-${track}`);
-        ctx.fillStyle = "#111";
-        ctx.fillRect(0, 0, segmentMixCanvas.width, segmentMixCanvas.height);
-        if (v && !v.paused && !v.ended) {
-          ctx.drawImage(v, 0, 0, segmentMixCanvas.width, segmentMixCanvas.height);
-        }
-        if ((audio.currentTime >= segmentData[currentSegment].end) || !isSegmentRecording) {
-          stopSegmentRecording();
-          return;
-        }
-        segmentDrawRequestId = requestAnimationFrame(draw);
-      }
-      draw();
-    });
-  };
-
-  function stopSegmentRecording() {
-    if (!isSegmentRecording) return;
-    isSegmentRecording = false;
-    audio.pause();
-    for (let i = 0; i < NUM_TRACKS; i++) {
-      const v = document.getElementById(`video-${i}`);
-      v.pause();
-    }
-    if (segmentMediaRecorder && segmentMediaRecorder.state !== "inactive") {
-      segmentMediaRecorder.stop();
-    }
-    if (segmentDrawRequestId !== null) cancelAnimationFrame(segmentDrawRequestId);
-    segmentDrawRequestId = null;
-  }
-
-  lockSegmentBtn.onclick = () => {
-    if (!segmentRecordings[currentSegment]) return;
-    isSegmentLocked[currentSegment] = true;
-    updateSegmentUI();
-    renderSegmentTimeline();
-  };
-  unlockSegmentBtn.onclick = () => {
-    isSegmentLocked[currentSegment] = false;
-    updateSegmentUI();
-    renderSegmentTimeline();
-  };
-  previewSegmentBtn.onclick = () => {
-    if (segmentRecordings[currentSegment]) {
-      segmentPreviewVideo.src = URL.createObjectURL(segmentRecordings[currentSegment].videoBlob);
-      segmentPreviewVideo.style.display = '';
-      segmentMixCanvas.style.display = 'none';
-      fullEditPreviewVideo.style.display = 'none';
-      if (typeof fullPreviewCleanup === "function") fullPreviewCleanup();
-      segmentPreviewVideo.play();
-    }
-  };
-
-  recalcSegments();
-  renderSegmentTimeline();
-  updateSegmentUI();
-
-  // --- FULL EDIT PREVIEW LOGIC (ROBUST PLAYLIST STYLE) ---
-  previewFullEditBtn.onclick = function() {
-    // Clean up any previous preview
-    if (typeof fullPreviewCleanup === "function") fullPreviewCleanup();
-
-    segmentPreviewVideo.style.display = 'none';
-    segmentMixCanvas.style.display = 'none';
-
-    // Gather all locked segments in order
-    const lockedSegments = segmentRecordings
-      .map((rec, idx) => ({ rec, idx }))
-      .filter(({ rec }, idx) => rec && isSegmentLocked[idx]);
-
-    if (lockedSegments.length === 0) {
-      alert("No locked segments to preview!");
-      fullEditPreviewVideo.style.display = 'none';
-      return;
-    }
-
-    let videoEl = fullEditPreviewVideo;
-    let masterAudio = audio.cloneNode(true);
-    masterAudio.volume = 1;
-    masterAudio.style.display = "none";
-    masterAudio.muted = false;
-    document.body.appendChild(masterAudio);
-
-    let stopped = false;
-    let current = 0;
-    let syncRAF = null;
-    let segIdx, segStart, segEnd;
-
-    // Fade overlay
-    let fadeOverlay = document.createElement('div');
-    fadeOverlay.style.position = 'absolute';
-    fadeOverlay.style.left = fadeOverlay.style.top = 0;
-    fadeOverlay.style.width = videoEl.offsetWidth + "px";
-    fadeOverlay.style.height = videoEl.offsetHeight + "px";
-    fadeOverlay.style.background = 'black';
-    fadeOverlay.style.opacity = '0';
-    fadeOverlay.style.pointerEvents = 'none';
-    fadeOverlay.style.transition = 'opacity 0.25s linear';
-    fadeOverlay.style.zIndex = '10';
-    fadeOverlay.id = "fadeOverlay";
-    videoEl.parentNode.insertBefore(fadeOverlay, videoEl.nextSibling);
-
-    function fadeTo(opacity, cb) {
-      fadeOverlay.style.opacity = opacity;
-      setTimeout(cb, 250);
-    }
-
-    function playSegment(n) {
-      if (n >= lockedSegments.length) {
-        masterAudio.pause();
-        fadeTo(0,()=>{});
-        stopped = true;
-        return;
-      }
-      current = n;
-      segIdx = lockedSegments[current].idx;
-      segStart = segmentData[segIdx].start;
-      segEnd = segmentData[segIdx].end;
-      videoEl.src = URL.createObjectURL(lockedSegments[current].rec.videoBlob);
-      videoEl.currentTime = 0;
-      videoEl.muted = true;
-      videoEl.style.display = '';
-      videoEl.load();
-      videoEl.oncanplay = function() {
-        fadeTo(0, ()=>{});
-        videoEl.play();
-        masterAudio.currentTime = segStart;
-        masterAudio.play();
-        syncRAF = requestAnimationFrame(sync);
-      };
-    }
-
-    function sync() {
-      if (stopped) return;
-      let expectedAudioTime = segStart + videoEl.currentTime;
-      if (Math.abs(masterAudio.currentTime - expectedAudioTime) > 0.04) {
-        masterAudio.currentTime = expectedAudioTime;
-      }
-      if (videoEl.currentTime >= (segEnd - segStart - 0.05)) {
-        fadeTo(1, () => {
-          playSegment(current + 1);
-        });
-        return;
-      }
-      syncRAF = requestAnimationFrame(sync);
-    }
-
-    playSegment(0);
-
-    function cleanupPreview() {
-      stopped = true;
-      masterAudio.pause();
-      if (fadeOverlay && fadeOverlay.parentNode) fadeOverlay.parentNode.removeChild(fadeOverlay);
-      if (masterAudio && masterAudio.parentNode) masterAudio.parentNode.removeChild(masterAudio);
-      if (syncRAF) cancelAnimationFrame(syncRAF);
-      videoEl.oncanplay = null;
-    }
-    fullPreviewCleanup = cleanupPreview;
-    [lockSegmentBtn, unlockSegmentBtn, previewSegmentBtn, startSegmentRecordingBtn, prevSegmentBtn, nextSegmentBtn].forEach(btn => {
-      btn.addEventListener('click', function() {
-        cleanupPreview();
-        fullEditPreviewVideo.style.display = 'none';
-      });
-    });
-
-    exportStatus.textContent = "Previewing full edit. Fades between segments will appear in the exported version.";
-  };
-
-  // --- EXPORT FINAL VIDEO ---
-  const masterOutputVideo = document.getElementById('masterOutputVideo');
-  const exportMusicVideoBtn = document.getElementById('exportMusicVideoBtn');
-
-  exportMusicVideoBtn.onclick = async function() {
-    if (isSegmentLocked.some(l => !l) || segmentRecordings.some(r => !r)) {
-      exportStatus.textContent = "Please record and lock all segments first!";
-      return;
-    }
-    exportStatus.textContent = "Exporting (concatenating segments)...";
-    const blobs = segmentRecordings.map(r => r.videoBlob);
-    const superBlob = new Blob(blobs, { type: "video/webm" });
-    const url = URL.createObjectURL(superBlob);
-    masterOutputVideo.src = url;
-    masterOutputVideo.load();
-    masterOutputVideo.muted = false;
-    exportStatus.textContent = "Export complete! Download your final video. Fades between segments will appear if you process with an external editor.";
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `fastcut_music_video.webm`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
+  renderSwitcherBtns();
 });
