@@ -433,9 +433,9 @@ document.addEventListener('DOMContentLoaded', function() {
   renderSegmentTimeline();
   updateSegmentUI();
 
-  // --- FULL EDIT PREVIEW LOGIC (IMPROVED FOR TIGHT SYNC & MULTI-SEGMENT) ---
+  // --- FULL EDIT PREVIEW LOGIC (ROBUST PLAYLIST STYLE) ---
   previewFullEditBtn.onclick = function() {
-    // Cleanup previous preview if needed
+    // Clean up any previous preview
     if (typeof fullPreviewCleanup === "function") fullPreviewCleanup();
 
     segmentPreviewVideo.style.display = 'none';
@@ -452,10 +452,8 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
 
-    // Setup video and audio
     let videoEl = fullEditPreviewVideo;
     let masterAudio = audio.cloneNode(true);
-    masterAudio.currentTime = segmentData[lockedSegments[0].idx].start;
     masterAudio.volume = 1;
     masterAudio.style.display = "none";
     masterAudio.muted = false;
@@ -463,15 +461,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     let stopped = false;
     let current = 0;
-    let segIdx = lockedSegments[current].idx;
-    let segStart = segmentData[segIdx].start;
-    let segEnd = segmentData[segIdx].end;
-
-    videoEl.src = URL.createObjectURL(lockedSegments[0].rec.videoBlob);
-    videoEl.currentTime = 0;
-    videoEl.muted = true; // Use master audio only!
-    videoEl.style.display = '';
-    videoEl.load();
+    let syncRAF = null;
+    let segIdx, segStart, segEnd;
 
     // Fade overlay
     let fadeOverlay = document.createElement('div');
@@ -492,54 +483,48 @@ document.addEventListener('DOMContentLoaded', function() {
       setTimeout(cb, 250);
     }
 
-    // Tighter sync loop
-    let syncRAF;
+    function playSegment(n) {
+      if (n >= lockedSegments.length) {
+        masterAudio.pause();
+        fadeTo(0,()=>{});
+        stopped = true;
+        return;
+      }
+      current = n;
+      segIdx = lockedSegments[current].idx;
+      segStart = segmentData[segIdx].start;
+      segEnd = segmentData[segIdx].end;
+      videoEl.src = URL.createObjectURL(lockedSegments[current].rec.videoBlob);
+      videoEl.currentTime = 0;
+      videoEl.muted = true;
+      videoEl.style.display = '';
+      videoEl.load();
+      videoEl.oncanplay = function() {
+        fadeTo(0, ()=>{});
+        videoEl.play();
+        masterAudio.currentTime = segStart;
+        masterAudio.play();
+        syncRAF = requestAnimationFrame(sync);
+      };
+    }
+
     function sync() {
       if (stopped) return;
-      // force audio to match video time + segment offset
       let expectedAudioTime = segStart + videoEl.currentTime;
       if (Math.abs(masterAudio.currentTime - expectedAudioTime) > 0.04) {
         masterAudio.currentTime = expectedAudioTime;
       }
-      // when segment ends, go to next
       if (videoEl.currentTime >= (segEnd - segStart - 0.05)) {
         fadeTo(1, () => {
-          current++;
-          if (current >= lockedSegments.length) {
-            masterAudio.pause();
-            fadeTo(0,()=>{});
-            stopped = true;
-            return;
-          }
-          // Next segment
-          segIdx = lockedSegments[current].idx;
-          segStart = segmentData[segIdx].start;
-          segEnd = segmentData[segIdx].end;
-          videoEl.src = URL.createObjectURL(lockedSegments[current].rec.videoBlob);
-          videoEl.currentTime = 0;
-          videoEl.muted = true;
-          videoEl.load();
-          videoEl.oncanplay = function() {
-            fadeTo(0, ()=>{});
-            videoEl.play();
-            masterAudio.currentTime = segStart;
-            masterAudio.play();
-          };
+          playSegment(current + 1);
         });
         return;
       }
       syncRAF = requestAnimationFrame(sync);
     }
 
-    // Start playback
-    videoEl.oncanplay = function() {
-      videoEl.play();
-      masterAudio.currentTime = segStart;
-      masterAudio.play();
-      syncRAF = requestAnimationFrame(sync);
-    };
+    playSegment(0);
 
-    // Clean up when done or UI leaves
     function cleanupPreview() {
       stopped = true;
       masterAudio.pause();
