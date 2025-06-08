@@ -1,4 +1,4 @@
-// FASTCUT by Bernardo Garcia - BEAUTIFUL UI, RECORD & DOWNLOAD TRACKS, STOP PREVIEW BUTTON
+// FASTCUT by Bernardo Garcia - BEAUTIFUL UI, RECORD & DOWNLOAD TRACKS, STOP PREVIEW BUTTON, LIVE MASTER OUTPUT
 
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
 const songInput = document.getElementById('songInput');
@@ -258,6 +258,15 @@ document.addEventListener('DOMContentLoaded', function() {
     if (previewVideo) previewVideo.style.display = 'none';
     if (typeof fullPreviewCleanup === "function") fullPreviewCleanup();
 
+    // Show live output in masterOutputVideo
+    if (mixCanvas && masterOutputVideo) {
+      masterOutputVideo.style.display = '';
+      const liveStream = mixCanvas.captureStream(30);
+      masterOutputVideo.srcObject = liveStream;
+      masterOutputVideo.muted = true;
+      masterOutputVideo.play();
+    }
+
     const ctx = mixCanvas.getContext('2d');
     ctx.fillStyle = "#111";
     ctx.fillRect(0,0,mixCanvas.width,mixCanvas.height);
@@ -294,6 +303,16 @@ document.addEventListener('DOMContentLoaded', function() {
       if (mixCanvas) mixCanvas.style.display = 'none';
       isRecording = false;
       renderSwitcherBtns();
+
+      // Show recorded output in masterOutputVideo
+      if (masterOutputVideo) {
+        masterOutputVideo.srcObject = null;
+        masterOutputVideo.src = recordedUrl;
+        masterOutputVideo.muted = false;
+        masterOutputVideo.load();
+        masterOutputVideo.style.display = '';
+      }
+
       if (exportStatus) exportStatus.textContent = "Recording complete! Preview or export your music video.";
     };
     mediaRecorder.start();
@@ -349,6 +368,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     if (drawRequestId !== null) cancelAnimationFrame(drawRequestId);
     drawRequestId = null;
+    // Clean up live stream from masterOutputVideo
+    if (masterOutputVideo) {
+      masterOutputVideo.srcObject = null;
+      masterOutputVideo.pause();
+    }
   }
 
   if (previewBtn) previewBtn.onclick = function() {
@@ -427,9 +451,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     if (exportStatus) exportStatus.textContent = "Exporting video file...";
     if (masterOutputVideo) {
+      masterOutputVideo.srcObject = null;
       masterOutputVideo.src = recordedUrl;
-      masterOutputVideo.load();
       masterOutputVideo.muted = false;
+      masterOutputVideo.load();
       masterOutputVideo.style.display = '';
     }
     if (exportStatus) exportStatus.textContent = "Export complete! Download your final video.";
