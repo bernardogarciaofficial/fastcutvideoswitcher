@@ -1,4 +1,4 @@
-// FASTCUT by Bernardo Garcia - BEAUTIFUL UI, RECORD & DOWNLOAD TRACKS, STOP PREVIEW BUTTON, LIVE MASTER OUTPUT
+// FASTCUT by Bernardo Garcia - Hollywood Theme, Single Preview Output
 
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
 const songInput = document.getElementById('songInput');
@@ -189,7 +189,6 @@ document.addEventListener('DOMContentLoaded', function() {
   const masterOutputVideo = document.getElementById('masterOutputVideo');
   const switcherBtnsContainer = document.getElementById('switcherBtnsContainer');
   const mixCanvas = document.getElementById('mixCanvas');
-  const previewVideo = document.getElementById('previewVideo');
 
   let isRecording = false;
   let switchTimeline = [];
@@ -199,7 +198,6 @@ document.addEventListener('DOMContentLoaded', function() {
   let mediaRecorder = null;
   let chunks = [];
   let drawRequestId = null;
-  let fullPreviewCleanup = null;
   let lastSync = Array(NUM_TRACKS).fill(0); // for anti-strobe
 
   function renderSwitcherBtns() {
@@ -255,7 +253,6 @@ document.addEventListener('DOMContentLoaded', function() {
     audio.play();
 
     if (mixCanvas) mixCanvas.style.display = '';
-    if (previewVideo) previewVideo.style.display = 'none';
     if (typeof fullPreviewCleanup === "function") fullPreviewCleanup();
 
     // Show live output in masterOutputVideo
@@ -295,12 +292,6 @@ document.addEventListener('DOMContentLoaded', function() {
       if (recordedUrl) URL.revokeObjectURL(recordedUrl);
       recordedBlob = new Blob(chunks, { type: "video/webm" });
       recordedUrl = URL.createObjectURL(recordedBlob);
-      if (previewVideo) {
-        previewVideo.src = recordedUrl;
-        previewVideo.load();
-        previewVideo.style.display = '';
-      }
-      if (mixCanvas) mixCanvas.style.display = 'none';
       isRecording = false;
       renderSwitcherBtns();
 
@@ -375,71 +366,31 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
+  // SIMPLIFIED PREVIEW: Only uses masterOutputVideo!
+
   if (previewBtn) previewBtn.onclick = function() {
-    if (!previewVideo) return;
-    previewVideo.style.display = '';
-    if (mixCanvas) mixCanvas.style.display = 'none';
     if (!recordedUrl) {
       if (exportStatus) exportStatus.textContent = "Nothing to preview yet. Please record first.";
       return;
     }
-    if (typeof fullPreviewCleanup === "function") fullPreviewCleanup();
-
-    let v = previewVideo;
-    let pa = audio.cloneNode(true);
-    pa.currentTime = 0;
-    pa.volume = 1;
-    pa.style.display = "none";
-    pa.muted = false;
-    document.body.appendChild(pa);
-
-    let stopped = false;
-    v.src = recordedUrl;
-    v.currentTime = 0;
-    v.muted = true;
-    v.load();
-
-    let syncRAF;
-    function sync() {
-      if (stopped) return;
-      if (Math.abs(pa.currentTime - v.currentTime) > 0.04) {
-        pa.currentTime = v.currentTime;
-      }
-      if (v.ended || pa.ended) {
-        stopped = true;
-        pa.pause();
-        return;
-      }
-      syncRAF = requestAnimationFrame(sync);
+    if (mixCanvas) mixCanvas.style.display = 'none';
+    if (masterOutputVideo) {
+      masterOutputVideo.srcObject = null; // Just in case
+      masterOutputVideo.src = recordedUrl;
+      masterOutputVideo.muted = false;
+      masterOutputVideo.style.display = '';
+      masterOutputVideo.currentTime = 0;
+      masterOutputVideo.load();
+      masterOutputVideo.play();
     }
-
-    v.oncanplay = function() {
-      v.play();
-      pa.currentTime = 0;
-      pa.play();
-      syncRAF = requestAnimationFrame(sync);
-    };
-
-    function cleanupPreview() {
-      stopped = true;
-      pa.pause();
-      if (pa && pa.parentNode) pa.parentNode.removeChild(pa);
-      if (syncRAF) cancelAnimationFrame(syncRAF);
-      v.oncanplay = null;
-    }
-    fullPreviewCleanup = cleanupPreview;
     if (exportStatus) exportStatus.textContent = "Previewing your full music video edit.";
   };
 
   // STOP PREVIEW BUTTON LOGIC
   if (stopPreviewBtn) stopPreviewBtn.onclick = function() {
-    if (typeof fullPreviewCleanup === "function") {
-      fullPreviewCleanup();
-    }
-    if (previewVideo) {
-      previewVideo.pause();
-      previewVideo.currentTime = 0;
-      previewVideo.style.display = 'none';
+    if (masterOutputVideo) {
+      masterOutputVideo.pause();
+      masterOutputVideo.currentTime = 0;
     }
     if (exportStatus) exportStatus.textContent = "Preview stopped.";
   };
@@ -469,8 +420,6 @@ document.addEventListener('DOMContentLoaded', function() {
   function previewTrackInCanvas(trackIdx) {
     if (!mixCanvas) return;
     mixCanvas.style.display = '';
-    if (previewVideo) previewVideo.style.display = 'none';
-    if (typeof fullPreviewCleanup === "function") fullPreviewCleanup();
     const ctx = mixCanvas.getContext('2d');
     const v = document.getElementById(`video-${trackIdx}`);
     if (v && v.readyState >= 2) {
