@@ -3,48 +3,96 @@
 <head>
   <meta charset="UTF-8">
   <title>FastCut by Bernardo Garcia</title>
-  <meta name="viewport" content="width=420">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://fonts.googleapis.com/css?family=Montserrat:700,400&display=swap" rel="stylesheet">
   <style>
     body { background: #23243e; color: #ffe87d; font-family: Montserrat,Arial,sans-serif; margin:0; }
-    .container { max-width: 720px; margin: 24px auto; background: #191950ee; border-radius: 12px; padding: 22px; }
-    h2 { color: #ffe87d; margin-bottom: 5px; }
-    label,button { font-family: inherit; }
-    #switcherTracks { display:flex; flex-wrap:wrap; gap:12px; margin:12px 0; }
-    .switcher-track { background: #23243e; border-radius:8px; padding:10px; width:216px; }
-    .track-title { font-weight:bold; margin-bottom:4px; }
-    .track-btns { display:flex; gap:4px; margin-top:4px; }
-    button { background: #ffe87d; color:#222; border:none; border-radius:5px; padding:6px 10px; font-weight:bold; cursor:pointer; }
-    button:hover { background: #ffd700; }
-    #switcherBtnsContainer { margin:12px 0; }
-    .switch-btn.active { background: #222; color: #ffe87d; }
-    #mixCanvas, #previewVideo, #masterOutputVideo { width:420px; height:236px; margin:10px auto; display:none; background:#111; border-radius:8px; }
-    .footer { margin-top:28px; font-size:0.95em; color:#ffe87d88; text-align:center; }
+    .container { max-width: 900px; margin: 30px auto; background: #191950ee; border-radius: 18px; padding: 30px 26px; box-shadow: 0 6px 40px #000b; }
+    .branding { display: flex; align-items: center; margin-bottom: 24px; }
+    .brand-logo { background: linear-gradient(135deg, #ffe87d 40%, #ffd700 100%); color: #232323; font-size: 2.1em; font-weight: bold; border-radius: 13px; padding: 10px 20px; margin-right: 18px; letter-spacing: 1.2px; box-shadow: 0 3px 12px #ffe87d44; }
+    .brand-info { font-size: 1em; color: #ffe87d; }
+    h2 { margin-top: 1.6em; color: #ffe87d; font-weight: 700; letter-spacing: 1px; margin-bottom: 0.4em; }
+    .step-desc { color: #ffe87dcc; margin-bottom: 1em; font-size: 1.04em; font-weight: 400; }
+    #songInput { background: #222; color: #ffe87d; border: 2px solid #ffd700; padding: 10px 18px; font-size: 1.04em; border-radius: 8px; margin-bottom: 10px; }
+    #audioStatus { margin-left: 18px; color: #ffe87d; font-weight: 500; }
+    #audio { margin-top: 0.7em; }
+    #switcherTracks { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 2.2em; justify-content: space-between; }
+    .switcher-track { width: 260px; background: linear-gradient(135deg, #191950 0%, #29294e 100%); border: 2px solid #ffe87d44; border-radius: 12px; box-shadow: 0 3px 16px #ffe87d22, 0 1px 4px #111b; padding: 15px 12px 14px 12px; display: flex; flex-direction: column; align-items: center; position: relative; }
+    .track-title { font-weight: bold; color: #ffe87d; font-size: 1.12em; margin-bottom: 0.4em; text-shadow: 0 1px 6px #ffd70033; }
+    video { box-shadow: 0 1px 8px #000c; background: #111; border-radius: 8px; margin-bottom: 0.7em; border: 2px solid #ffe87d22; }
+    .track-btns { display: flex; gap: 8px; margin-top: 0.4em; }
+    .upload-video-btn, .record-take-btn, .download-take-btn { padding: 7px 14px; font-size: 0.97em; font-weight: bold; border-radius: 7px; border: none; cursor: pointer; background: linear-gradient(90deg, #ffe87d 60%, #ffd700 100%); color: #232323; box-shadow: 0 2px 8px #ffe87d24; transition: background 0.15s, color 0.15s; }
+    .upload-video-btn:hover, .record-take-btn:hover, .download-take-btn:hover { background: #232323; color: #ffe87d; border: 1.5px solid #ffd700; }
+    #switcherBtnsContainer { margin: 1.2em 0; display: flex; flex-wrap: wrap; gap: 12px; }
+    .switch-btn { padding: 0.7em 1.5em; font-size: 1.1em; border: none; border-radius: 7px; background: linear-gradient(90deg, #ffe87d 60%, #ffd700 100%); color: #232323; font-weight: bold; cursor: pointer; margin-bottom: 0.8em; box-shadow: 0 2px 8px #ffe87d24; margin-right: 0.4em; transition: all 0.15s; }
+    .switch-btn.active, .switch-btn:active { background: #232323; color: #ffe87d; border: 2px solid #ffd700; }
+    .switch-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    #mixCanvas, #previewVideo, #masterOutputVideo { display: block; margin: 23px auto 14px auto; background: #111; border: 2.5px solid #ffe87d; border-radius: 10px; box-shadow: 0 3px 20px #ffe87d11; }
+    #recordFullEditBtn, #previewFullEditBtn, #stopPreviewBtn, #exportMusicVideoBtn { margin: 0 1em 1.3em 0; padding: 0.8em 2em; font-size: 1.13em; border-radius: 8px; border: none; background: linear-gradient(90deg, #ffe87d 60%, #ffd700 100%); color: #191950; font-weight: bold; cursor: pointer; box-shadow: 0 2px 10px #ffe87d14; transition: background 0.15s, color 0.15s; }
+    #recordFullEditBtn:hover, #previewFullEditBtn:hover, #stopPreviewBtn:hover, #exportMusicVideoBtn:hover { background: #232323; color: #ffe87d; border: 2px solid #ffd700; }
+    #exportStatus { display: block; margin: 0.7em 0 2em 0; color: #ffe87d; font-size: 1.1em; font-weight: 500; }
+    .footer { margin-top: 2.6em; padding: 26px 0 10px 0; text-align: center; background: none; color: #ffe87d; font-size: 1.04em; border-top: 1.5px solid #ffe87d33; letter-spacing: 0.08em; }
+    .footer a { color: #ffe87d; text-decoration: underline; }
+    @media (max-width: 1100px) { .container { max-width: 99vw; } #switcherTracks { flex-direction: column; align-items: center; } .switcher-track { width: 99vw; max-width: 340px; margin-bottom: 20px; } }
+    @media (max-width: 600px) { .container { padding: 9px 2vw 12vw 2vw; } .switcher-track { padding: 9px 2px 10px 2px; } .brand-logo { font-size: 1.05em; padding: 7px 9px; } }
   </style>
 </head>
 <body>
-<div class="container">
-  <div style="font-size:1.5em;font-weight:bold;">FASTCUT <span style="font-size:0.6em;font-weight:400;">by Bernardo Garcia</span></div>
-  <div style="font-size:0.95em;color:#ffe87d99;">bernardogarciagarcia441@gmail.com</div>
-  <h2>1. Song</h2>
-  <input type="file" id="songInput"><span id="audioStatus"></span>
-  <audio id="audio" style="display:none;" controls></audio>
-  <h2>2. Takes</h2>
-  <div id="switcherTracks"></div>
-  <h2>3. Edit</h2>
-  <div id="switcherBtnsContainer"></div>
-  <canvas id="mixCanvas"></canvas>
-  <video id="previewVideo" controls></video>
-  <video id="masterOutputVideo" controls></video>
-  <div style="margin:10px 0;">
-    <button id="recordFullEditBtn">Record Full Edit</button>
-    <button id="previewFullEditBtn">Preview</button>
-    <button id="stopPreviewBtn">Stop</button>
-    <button id="exportMusicVideoBtn">Export Video</button>
-    <span id="exportStatus"></span>
+  <div class="container">
+    <div class="branding">
+      <span class="brand-logo">FASTCUT</span>
+      <div class="brand-info">
+        by <b>Bernardo Garcia</b><br>
+        <a href="mailto:bernardogarciagarcia441@gmail.com">bernardogarciagarcia441@gmail.com</a>
+      </div>
+    </div>
+
+    <h2>Step 1: Upload Your Song</h2>
+    <div class="step-desc">
+      Select the main audio track (your song or backing track). This will be used for syncing and editing your music video.
+    </div>
+    <div class="main-controls">
+      <input type="file" id="songInput">
+      <span id="audioStatus"></span>
+      <audio id="audio" style="display:none;" controls></audio>
+    </div>
+
+    <h2>Step 2: Video Takes</h2>
+    <div class="step-desc">
+      For each camera angle, upload a video or record a take. You can also download your latest take for each track.
+    </div>
+    <div id="switcherTracks"></div>
+
+    <h2>Step 3: Live Edit Your Music Video</h2>
+    <div class="step-desc">
+      Use the camera switcher below to live-switch between tracks while the music plays. When you're ready, record your live edit, preview it, or export the final video!
+    </div>
+    <div id="switcherBtnsContainer"></div>
+    <canvas id="mixCanvas" width="420" height="236" style="display:none;"></canvas>
+    <video id="previewVideo" width="420" height="236" style="display:none;" controls></video>
+    <video id="masterOutputVideo" width="420" height="236" style="display:none;" controls></video>
+
+    <div style="margin:10px 0;">
+      <button id="recordFullEditBtn">Record Full Edit</button>
+      <button id="previewFullEditBtn">Preview</button>
+      <button id="stopPreviewBtn">Stop</button>
+      <button id="exportMusicVideoBtn">Export Video</button>
+      <span id="exportStatus"></span>
+    </div>
+
+    <div style="margin:24px 0 0 0; font-size:0.98em; color:#ffe87dcc;">
+      <b>Instructions:</b><br>
+      1. Upload your main song file.<br>
+      2. For each track, upload or record a take.<br>
+      3. Use the camera switcher to select the active video.<br>
+      4. Click "Record Full Edit" to capture your live camera switching.<br>
+      5. Preview or export your final video.<br>
+      <i>Tip: You can download any take from each track for review or backup.</i>
+    </div>
   </div>
-</div>
-<div class="footer">&copy; 2025 Bernardo Garcia</div>
-<script src="script.js"></script>
+  <div class="footer">
+    &copy; 2025 Bernardo Garcia &mdash; <a href="mailto:bernardogarciagarcia441@gmail.com">bernardogarciagarcia441@gmail.com</a>
+  </div>
+  <script src="script.js"></script>
 </body>
 </html>
