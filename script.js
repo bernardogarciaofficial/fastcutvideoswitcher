@@ -1,6 +1,6 @@
 // --- FASTCUT CONTINUOUS FULL SONG VIDEO SWITCHING PLATFORM ---
+// Improved: Ultra-tight sync and minimal switcher button delay!
 
-// Optional: Members counter animation for your UI (remove if not needed)
 function animateMembersCounter() {
   const el = document.getElementById('membersCountNumber');
   if (!el) return;
@@ -14,7 +14,6 @@ function animateMembersCounter() {
 }
 animateMembersCounter();
 
-// Accept all common audio types for song input
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
 const songInput = document.getElementById('songInput');
 if (songInput) songInput.setAttribute('accept', AUDIO_ACCEPTED);
@@ -40,7 +39,6 @@ if (songInput) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  // --- CONFIG ---
   const NUM_TRACKS = 6;
   const TRACK_NAMES = [
     "Video Track 1",
@@ -50,14 +48,12 @@ document.addEventListener('DOMContentLoaded', function() {
     "Video Track 5",
     "Video Track 6"
   ];
-
-  // --- VIDEO TAKE UPLOADS ---
   const switcherTracks = document.getElementById("switcherTracks");
   if (switcherTracks) {
     switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => `
       <div class="switcher-track" id="switcher-track-${i}">
         <div class="track-title">${TRACK_NAMES[i]}</div>
-        <video id="video-${i}" width="140" height="90" controls muted></video>
+        <video id="video-${i}" width="140" height="90" controls preload="auto" muted></video>
         <div>
           <label class="upload-video-label" for="uploadVideoInput-${i}">Upload Take</label>
           <input type="file" id="uploadVideoInput-${i}" class="upload-video-input" accept=".mp4,.webm,.mov,.ogg,.mkv,video/*" style="display:none;">
@@ -74,6 +70,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const uploadInput = document.getElementById(`uploadVideoInput-${i}`);
     const video = document.getElementById(`video-${i}`);
     if (uploadBtn && uploadInput && video) {
+      video.preload = "auto";
       uploadBtn.onclick = () => uploadInput.click();
       uploadInput.onchange = e => {
         const file = e.target.files[0];
@@ -91,6 +88,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // --- CONTINUOUS FULL-SONG LIVE EDITING ---
+
   const recordBtn = document.getElementById('recordFullEditBtn');
   const previewBtn = document.getElementById('previewFullEditBtn');
   const exportStatus = document.getElementById('exportStatus');
@@ -108,7 +106,6 @@ document.addEventListener('DOMContentLoaded', function() {
   let mediaRecorder = null;
   let chunks = [];
   let drawRequestId = null;
-  let recordingStartTime = 0;
   let fullPreviewCleanup = null;
 
   // --- LIVE CAMERA SWITCHER BUTTONS ---
@@ -123,7 +120,8 @@ document.addEventListener('DOMContentLoaded', function() {
       btn.onclick = () => {
         setActiveTrack(i);
         if (isRecording) {
-          recordSwitch(Date.now() - recordingStartTime, i);
+          // Use audio.currentTime for ultra-tight sync
+          recordSwitch(audio.currentTime * 1000, i);
         } else {
           previewTrackInCanvas(i);
         }
@@ -136,7 +134,6 @@ document.addEventListener('DOMContentLoaded', function() {
     renderSwitcherBtns();
   }
   function recordSwitch(timeMs, trackIdx) {
-    if (switchTimeline.length === 0 && timeMs > 100) return;
     if (switchTimeline.length > 0 && switchTimeline[switchTimeline.length-1].track === trackIdx) return;
     switchTimeline.push({ time: timeMs, track: trackIdx });
   }
@@ -206,9 +203,10 @@ document.addEventListener('DOMContentLoaded', function() {
       if (exportStatus) exportStatus.textContent = "Recording complete! Preview or export your music video.";
     };
     mediaRecorder.start();
-    recordingStartTime = Date.now();
+
     function draw() {
       if (!isRecording) return;
+      // Ultra-tight sync: always use audio.currentTime as master clock
       let elapsed = audio.currentTime * 1000;
       let track = switchTimeline[0].track;
       for (let i = 0; i < switchTimeline.length; i++) {
@@ -221,7 +219,11 @@ document.addEventListener('DOMContentLoaded', function() {
       const v = document.getElementById(`video-${track}`);
       ctx.fillStyle = "#111";
       ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
-      if (v && !v.paused && !v.ended) {
+      if (v && !v.paused && !v.ended && v.readyState >= 2) {
+        // Try to keep video in sync with audio
+        if (Math.abs(v.currentTime - audio.currentTime) > 0.03) {
+          v.currentTime = audio.currentTime;
+        }
         ctx.drawImage(v, 0, 0, mixCanvas.width, mixCanvas.height);
       }
       if (audio.currentTime >= audio.duration || !isRecording) {
@@ -317,6 +319,7 @@ document.addEventListener('DOMContentLoaded', function() {
       masterOutputVideo.src = recordedUrl;
       masterOutputVideo.load();
       masterOutputVideo.muted = false;
+      masterOutputVideo.style.display = '';
     }
     if (exportStatus) exportStatus.textContent = "Export complete! Download your final video.";
     const a = document.createElement('a');
