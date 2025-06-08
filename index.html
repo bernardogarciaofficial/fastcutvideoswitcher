@@ -207,7 +207,7 @@
       text-shadow: 0 0 13px #ffd700cc, 0 1px 2px #181824;
     }
     .switch-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    #mixCanvas, #previewVideo, #masterOutputVideo {
+    #mixCanvas, #masterOutputVideo {
       display: block;
       margin: 27px auto 18px auto;
       background: #111;
@@ -277,7 +277,7 @@
       .container { max-width: 99vw;}
       #switcherTracks { flex-direction: column; align-items: center;}
       .switcher-track { width: 99vw; max-width: 340px; margin-bottom: 22px;}
-      #mixCanvas, #masterOutputVideo, #previewVideo { width: 97vw; max-width: 420px;}
+      #mixCanvas, #masterOutputVideo { width: 97vw; max-width: 420px;}
     }
     @media (max-width: 600px) {
       .container { padding: 9px 2vw 12vw 2vw;}
@@ -332,7 +332,6 @@
     </div>
     <div id="switcherBtnsContainer"></div>
     <canvas id="mixCanvas" width="420" height="236" style="display:none;"></canvas>
-    <video id="previewVideo" width="420" height="236" style="display:none;" controls></video>
     <video id="masterOutputVideo" width="420" height="236" controls style="display:block;"></video>
 
     <div style="margin:10px 0;">
