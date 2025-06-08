@@ -112,6 +112,7 @@ document.addEventListener('DOMContentLoaded', function() {
   let segmentChunks = [];
   let segmentRecordingStart = 0;
   let segmentRecordingBlobUrl = null;
+  let fullPreviewCleanup = null; // for cleaning up audio/overlay
 
   function getBarLengthSec() {
     const bpm = parseFloat(bpmInput.value) || 120;
@@ -186,6 +187,7 @@ document.addEventListener('DOMContentLoaded', function() {
     segmentMixCanvas.style.display = 'none';
     overlay.style.display = 'none';
     fullEditPreviewVideo.style.display = 'none';
+    if (typeof fullPreviewCleanup === "function") fullPreviewCleanup();
     renderSegmentSwitcherBtns();
   }
 
@@ -248,6 +250,7 @@ document.addEventListener('DOMContentLoaded', function() {
   function previewTrackInCanvas(trackIdx) {
     segmentMixCanvas.style.display = '';
     fullEditPreviewVideo.style.display = 'none';
+    if (typeof fullPreviewCleanup === "function") fullPreviewCleanup();
     const ctx = segmentMixCanvas.getContext('2d');
     const v = document.getElementById(`video-${trackIdx}`);
     if (v && v.readyState >= 2) {
@@ -318,6 +321,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       segmentMixCanvas.style.display = '';
       fullEditPreviewVideo.style.display = 'none';
+      if (typeof fullPreviewCleanup === "function") fullPreviewCleanup();
       const ctx = segmentMixCanvas.getContext('2d');
       ctx.fillStyle = "#111";
       ctx.fillRect(0,0,segmentMixCanvas.width,segmentMixCanvas.height);
@@ -354,6 +358,7 @@ document.addEventListener('DOMContentLoaded', function() {
         segmentPreviewVideo.style.display = '';
         segmentMixCanvas.style.display = 'none';
         fullEditPreviewVideo.style.display = 'none';
+        if (typeof fullPreviewCleanup === "function") fullPreviewCleanup();
         isSegmentRecording = false;
         hideOverlay();
         renderSegmentSwitcherBtns();
@@ -419,6 +424,7 @@ document.addEventListener('DOMContentLoaded', function() {
       segmentPreviewVideo.style.display = '';
       segmentMixCanvas.style.display = 'none';
       fullEditPreviewVideo.style.display = 'none';
+      if (typeof fullPreviewCleanup === "function") fullPreviewCleanup();
       segmentPreviewVideo.play();
     }
   };
@@ -427,11 +433,13 @@ document.addEventListener('DOMContentLoaded', function() {
   renderSegmentTimeline();
   updateSegmentUI();
 
-  // --- FULL EDIT PREVIEW LOGIC ---
+  // --- FULL EDIT PREVIEW LOGIC (PLAYLIST WITH AUDIO/VIDEO SYNC) ---
   previewFullEditBtn.onclick = function() {
     // Hide other previews
     segmentPreviewVideo.style.display = 'none';
     segmentMixCanvas.style.display = 'none';
+    if (typeof fullPreviewCleanup === "function") fullPreviewCleanup();
+
     // Gather all locked segments in order
     const lockedSegments = segmentRecordings
       .map((rec, idx) => ({ rec, idx }))
@@ -443,26 +451,103 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
 
-    // Concatenate blobs (simulate quick fade by hint only - real fades require ffmpeg or advanced browser processing)
-    let blobs = lockedSegments.map(({ rec }) => rec.videoBlob);
+    // Playlist approach: play segments one by one, sync with master audio
+    let current = 0;
+    let videoEl = fullEditPreviewVideo;
+    videoEl.style.display = '';
+    videoEl.src = URL.createObjectURL(lockedSegments[0].rec.videoBlob);
+    videoEl.load();
+    videoEl.currentTime = 0;
 
-    const superBlob = new Blob(blobs, { type: "video/webm" });
-    const url = URL.createObjectURL(superBlob);
-    fullEditPreviewVideo.src = url;
-    fullEditPreviewVideo.style.display = '';
-    fullEditPreviewVideo.load();
-    fullEditPreviewVideo.play();
+    // Setup a hidden master audio player
+    let masterAudio = audio.cloneNode(true);
+    masterAudio.currentTime = segmentData[lockedSegments[0].idx].start;
+    masterAudio.volume = 1;
+    masterAudio.style.display = "none";
+    document.body.appendChild(masterAudio);
+
+    let stopped = false;
+
+    // Fade overlay
+    let fadeOverlay = document.createElement('div');
+    fadeOverlay.style.position = 'absolute';
+    fadeOverlay.style.left = fadeOverlay.style.top = 0;
+    fadeOverlay.style.width = videoEl.offsetWidth + "px";
+    fadeOverlay.style.height = videoEl.offsetHeight + "px";
+    fadeOverlay.style.background = 'black';
+    fadeOverlay.style.opacity = '0';
+    fadeOverlay.style.pointerEvents = 'none';
+    fadeOverlay.style.transition = 'opacity 0.3s linear';
+    fadeOverlay.style.zIndex = '10';
+    fadeOverlay.id = "fadeOverlay";
+    videoEl.parentNode.insertBefore(fadeOverlay, videoEl.nextSibling);
+
+    // Helper: fade in/out
+    function fadeTo(opacity, cb) {
+      fadeOverlay.style.opacity = opacity;
+      setTimeout(cb, 300);
+    }
+
+    function playNextSegment() {
+      if (current >= lockedSegments.length) {
+        masterAudio.pause();
+        fadeTo(0,()=>{});
+        stopped = true;
+        return;
+      }
+      let segIdx = lockedSegments[current].idx;
+      videoEl.src = URL.createObjectURL(lockedSegments[current].rec.videoBlob);
+      videoEl.load();
+      videoEl.oncanplay = function() {
+        fadeTo(0, ()=>{});
+        videoEl.play();
+        masterAudio.currentTime = segmentData[segIdx].start;
+        masterAudio.play();
+      };
+    }
+
+    videoEl.onended = function() {
+      fadeTo(1, () => {
+        current++;
+        playNextSegment();
+      });
+    };
+
+    videoEl.ontimeupdate = function() {
+      if (stopped) return;
+      let segIdx = lockedSegments[current].idx;
+      let segStart = segmentData[segIdx].start;
+      if (Math.abs(videoEl.currentTime + segStart - masterAudio.currentTime) > 0.1) {
+        masterAudio.currentTime = videoEl.currentTime + segStart;
+      }
+    };
+
+    // Start the playlist preview
+    masterAudio.play();
+    videoEl.play();
+
+    // When stopping preview, clean up
+    function cleanupPreview() {
+      stopped = true;
+      masterAudio.pause();
+      if (fadeOverlay && fadeOverlay.parentNode) fadeOverlay.parentNode.removeChild(fadeOverlay);
+      if (masterAudio && masterAudio.parentNode) masterAudio.parentNode.removeChild(masterAudio);
+      videoEl.onended = null;
+      videoEl.ontimeupdate = null;
+      videoEl.oncanplay = null;
+    }
+    fullPreviewCleanup = cleanupPreview;
+
+    // Hide full preview when editing other things
+    [lockSegmentBtn, unlockSegmentBtn, previewSegmentBtn, startSegmentRecordingBtn, prevSegmentBtn, nextSegmentBtn].forEach(btn => {
+      btn.addEventListener('click', function() {
+        cleanupPreview();
+        fullEditPreviewVideo.style.display = 'none';
+      });
+    });
+
     exportStatus.textContent = "Previewing full edit. Fades between segments will appear in the exported version.";
   };
-
-  // Hide full edit preview when editing other things
-  function hideFullEditPreview() {
-    fullEditPreviewVideo.style.display = 'none';
-  }
-  // Hide preview on any major UI update
-  [lockSegmentBtn, unlockSegmentBtn, previewSegmentBtn, startSegmentRecordingBtn, prevSegmentBtn, nextSegmentBtn].forEach(btn => {
-    btn.addEventListener('click', hideFullEditPreview);
-  });
 
   // --- EXPORT FINAL VIDEO ---
   const masterOutputVideo = document.getElementById('masterOutputVideo');
