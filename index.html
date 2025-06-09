@@ -262,7 +262,7 @@
       border-width: 5px;
       margin-top: 1.1em;
     }
-    #recordFullEditBtn, #previewFullEditBtn, #stopPreviewBtn, #exportMusicVideoBtn {
+    #recordFullEditBtn, #stopPreviewBtn, #exportMusicVideoBtn {
       margin: 0 1em 1.3em 0;
       padding: 1.13em 2.7em;
       font-size: 1.23em;
@@ -281,7 +281,7 @@
       z-index: 1;
       border-bottom: 5px solid #bb8c0f;
     }
-    #recordFullEditBtn:hover, #previewFullEditBtn:hover, #stopPreviewBtn:hover, #exportMusicVideoBtn:hover {
+    #recordFullEditBtn:hover, #stopPreviewBtn:hover, #exportMusicVideoBtn:hover {
       background: linear-gradient(90deg, #181824 20%, #ffd700 90%);
       color: #ffd700;
       border: 3.5px solid #ffd700;
@@ -373,16 +373,18 @@
     <h2>🎬 Step 3: Live Edit Your Music Video</h2>
     <div class="step-desc">
       <b>Director’s chair:</b> Use the camera switcher below to live-switch between tracks while the music plays.<br>
-      <b>Record</b> the edit, <b>preview</b> your blockbuster, and <b>export</b> your finished cut!
+      <b>Record</b> the edit, and <b>export</b> your finished cut!
     </div>
     <div id="switcherBtnsContainer"></div>
     <canvas id="mixCanvas" width="430" height="242" style="display:none;"></canvas>
-    <!-- Only the main output video remains: -->
     <video id="masterOutputVideo" width="430" height="242" controls style="display:block;"></video>
 
     <div style="margin:10px 0;">
-      <button id="recordFullEditBtn"><span class="clapboard" style="width: 32px; height: 32px; margin-right: 0;"></span>Record Full Edit</button>
-      <button id="previewFullEditBtn">Preview</button>
+      <button id="recordFullEditBtn">
+        <span class="clapboard" style="width: 32px; height: 32px; margin-right: 0;"></span>
+        Record Full Edit
+      </button>
+      <!-- Preview button removed -->
       <button id="stopPreviewBtn">Stop</button>
       <button id="exportMusicVideoBtn">Export Video</button>
       <span id="exportStatus"></span>
@@ -394,7 +396,7 @@
       2. For each track, upload or record a take.<br>
       3. Use the camera switcher to select the active video.<br>
       4. Click <b>Record Full Edit</b> to capture your live camera switching.<br>
-      5. Preview or export your final video.<br>
+      5. Export your final video.<br>
       <i>Tip: Download any take for review or backup.<br>
       <span style="color:#ffd700">Ready? <span style="font-family: 'Bebas Neue', Arial Black,sans-serif;">Lights, Camera, Action!</span></span></i>
     </div>
