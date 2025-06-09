@@ -1,4 +1,4 @@
-// FASTCUT by Bernardo Garcia - Hollywood Theme, Single Preview Output
+// FASTCUT by Bernardo Garcia - Hollywood Theme, Single Preview Output, with Fade-In/Fade-Out
 
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
 const songInput = document.getElementById('songInput');
@@ -200,6 +200,9 @@ document.addEventListener('DOMContentLoaded', function() {
   let drawRequestId = null;
   let lastSync = Array(NUM_TRACKS).fill(0); // for anti-strobe
 
+  // Fade-in and fade-out constants
+  const FADE_DURATION = 1.5; // seconds
+
   function renderSwitcherBtns() {
     if (!switcherBtnsContainer) return;
     switcherBtnsContainer.innerHTML = '';
@@ -311,6 +314,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function draw() {
       if (!isRecording) return;
       let elapsed = audio.currentTime * 1000;
+      let totalDuration = audio.duration;
       let track = switchTimeline[0].track;
       for (let i = 0; i < switchTimeline.length; i++) {
         if (switchTimeline[i].time <= elapsed) {
@@ -336,6 +340,29 @@ document.addEventListener('DOMContentLoaded', function() {
         ctx.fillStyle = "#222";
         ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
       }
+
+      // --- FADE IN ---
+      if (audio.currentTime < FADE_DURATION) {
+        let alpha = 1 - (audio.currentTime / FADE_DURATION);
+        if (alpha > 0) {
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = "#000";
+          ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
+          ctx.globalAlpha = 1.0;
+        }
+      }
+
+      // --- FADE OUT ---
+      if (audio.duration - audio.currentTime < FADE_DURATION) {
+        let alpha = 1 - ((audio.duration - audio.currentTime) / FADE_DURATION);
+        if (alpha > 0) {
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = "#000";
+          ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
+          ctx.globalAlpha = 1.0;
+        }
+      }
+
       if (audio.currentTime >= audio.duration || !isRecording) {
         stopFullRecording();
         return;
@@ -428,6 +455,11 @@ document.addEventListener('DOMContentLoaded', function() {
       ctx.fillStyle = "#111";
       ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
       ctx.drawImage(v, 0, 0, mixCanvas.width, mixCanvas.height);
+
+      // Optional: show a fade-in effect for the single preview
+      ctx.globalAlpha = 0.8;
+      ctx.fillStyle = "#000";
+      ctx.globalAlpha = 1.0;
     } else {
       ctx.fillStyle = "#111";
       ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
