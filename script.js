@@ -182,7 +182,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // === MASTER EDITOR ===
 
   const recordBtn = document.getElementById('recordFullEditBtn');
-  const previewBtn = document.getElementById('previewFullEditBtn');
+  // REMOVED PREVIEW BUTTON: const previewBtn = document.getElementById('previewFullEditBtn');
   const stopPreviewBtn = document.getElementById('stopPreviewBtn');
   const exportStatus = document.getElementById('exportStatus');
   const exportMusicVideoBtn = document.getElementById('exportMusicVideoBtn');
@@ -394,24 +394,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // SIMPLIFIED PREVIEW: Only uses masterOutputVideo!
-
-  if (previewBtn) previewBtn.onclick = function() {
-    if (!recordedUrl) {
-      if (exportStatus) exportStatus.textContent = "Nothing to preview yet. Please record first.";
-      return;
-    }
-    if (mixCanvas) mixCanvas.style.display = 'none';
-    if (masterOutputVideo) {
-      masterOutputVideo.srcObject = null; // Just in case
-      masterOutputVideo.src = recordedUrl;
-      masterOutputVideo.muted = false;
-      masterOutputVideo.style.display = '';
-      masterOutputVideo.currentTime = 0;
-      masterOutputVideo.load();
-      masterOutputVideo.play();
-    }
-    if (exportStatus) exportStatus.textContent = "Previewing your full music video edit.";
-  };
+  // REMOVED previewFullEditBtn logic and any other preview video screen logic
 
   // STOP PREVIEW BUTTON LOGIC
   if (stopPreviewBtn) stopPreviewBtn.onclick = function() {
