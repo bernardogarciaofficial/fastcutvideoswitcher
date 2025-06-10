@@ -1,4 +1,4 @@
-// FASTCUT by Bernardo Garcia - Hollywood Theme, Single Preview Output, with Fade-In/Fade-Out
+// FASTCUT by Bernardo Garcia - Only main output video, NO preview video screen
 
 const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
 const songInput = document.getElementById('songInput');
@@ -182,7 +182,6 @@ document.addEventListener('DOMContentLoaded', function() {
   // === MASTER EDITOR ===
 
   const recordBtn = document.getElementById('recordFullEditBtn');
-  // REMOVED PREVIEW BUTTON: const previewBtn = document.getElementById('previewFullEditBtn');
   const stopPreviewBtn = document.getElementById('stopPreviewBtn');
   const exportStatus = document.getElementById('exportStatus');
   const exportMusicVideoBtn = document.getElementById('exportMusicVideoBtn');
@@ -393,10 +392,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // SIMPLIFIED PREVIEW: Only uses masterOutputVideo!
-  // REMOVED previewFullEditBtn logic and any other preview video screen logic
-
-  // STOP PREVIEW BUTTON LOGIC
+  // STOP BUTTON LOGIC (also works as "stop preview")
   if (stopPreviewBtn) stopPreviewBtn.onclick = function() {
     if (masterOutputVideo) {
       masterOutputVideo.pause();
@@ -428,6 +424,7 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 
   function previewTrackInCanvas(trackIdx) {
+    // No preview video screen: only update the mixCanvas for single track preview
     if (!mixCanvas) return;
     mixCanvas.style.display = '';
     const ctx = mixCanvas.getContext('2d');
@@ -438,10 +435,6 @@ document.addEventListener('DOMContentLoaded', function() {
       ctx.fillStyle = "#111";
       ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
       ctx.drawImage(v, 0, 0, mixCanvas.width, mixCanvas.height);
-
-      // Optional: show a fade-in effect for the single preview
-      ctx.globalAlpha = 0.8;
-      ctx.fillStyle = "#000";
       ctx.globalAlpha = 1.0;
     } else {
       ctx.fillStyle = "#111";
