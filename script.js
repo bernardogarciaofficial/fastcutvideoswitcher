@@ -23,7 +23,6 @@ let isPlaying = false;
 let mediaRecorder = null;
 let recordedChunks = [];
 let animationFrameId = null;
-let currentPreviewVideo = null;
 let audioContext = null;
 
 // ===== SONG UPLOAD =====
@@ -185,17 +184,17 @@ recordFullEditBtn.addEventListener('click', async function () {
   const ctx = canvas.getContext('2d');
   const currentTrack = videoTracks[activeTrackIndex];
 
-  // Video for drawing frames
-  let video = document.createElement('video');
-  video.src = currentTrack.url;
-  video.crossOrigin = "anonymous";
-  video.muted = true;
-  await video.play();
+  // Temporary video for drawing frames (DO NOT append to DOM)
+  let tempVideo = document.createElement('video');
+  tempVideo.src = currentTrack.url;
+  tempVideo.crossOrigin = "anonymous";
+  tempVideo.muted = true;
+  await tempVideo.play();
 
   // Draw loop
   function drawFrame() {
-    if (!isRecording || video.ended) return;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    if (!isRecording || tempVideo.ended) return;
+    ctx.drawImage(tempVideo, 0, 0, canvas.width, canvas.height);
     animationFrameId = requestAnimationFrame(drawFrame);
   }
   drawFrame();
@@ -222,6 +221,7 @@ recordFullEditBtn.addEventListener('click', async function () {
   mediaRecorder.onstop = function() {
     cancelAnimationFrame(animationFrameId);
     const blob = new Blob(recordedChunks, { type: 'video/webm' });
+    // Only update the one output video!
     masterOutputVideo.src = URL.createObjectURL(blob);
     masterOutputVideo.controls = true;
     masterOutputVideo.style.display = 'block';
@@ -238,9 +238,9 @@ recordFullEditBtn.addEventListener('click', async function () {
 
   // Start recording
   audio.currentTime = 0;
-  video.currentTime = 0;
+  tempVideo.currentTime = 0;
   audio.play();
-  video.play();
+  tempVideo.play();
   mediaRecorder.start();
 
   // When audio ends, stop everything
