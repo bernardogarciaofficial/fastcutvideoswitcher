@@ -1,449 +1,280 @@
-// FASTCUT by Bernardo Garcia - Only main output video, NO preview video screen
+// FASTCUT STUDIOS - Hollywood Music Video Editor
+// Author: Bernardo Garcia
 
-const AUDIO_ACCEPTED = ".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*";
+// Elements
 const songInput = document.getElementById('songInput');
-if (songInput) songInput.setAttribute('accept', AUDIO_ACCEPTED);
-
-const audio = document.getElementById('audio');
 const audioStatus = document.getElementById('audioStatus');
-let masterAudioFile = null;
+const audio = document.getElementById('audio');
 
-if (songInput) {
-  songInput.onchange = e => {
+const switcherTracks = document.getElementById('switcherTracks');
+const switcherBtnsContainer = document.getElementById('switcherBtnsContainer');
+const masterOutputVideo = document.getElementById('masterOutputVideo');
+const recIndicator = document.getElementById('recIndicator');
+const recordFullEditBtn = document.getElementById('recordFullEditBtn');
+const stopPreviewBtn = document.getElementById('stopPreviewBtn');
+const exportBtn = document.getElementById('exportMusicVideoBtn');
+const exportStatus = document.getElementById('exportStatus');
+
+// State
+const videoTracks = [];
+let activeTrackIndex = 0;
+let isRecording = false;
+let isPlaying = false;
+let mediaRecorder = null;
+let recordedChunks = [];
+let animationFrameId = null;
+let currentPreviewVideo = null;
+let audioContext = null;
+
+// ===== SONG UPLOAD =====
+songInput.addEventListener('change', function (e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  audio.src = url;
+  audio.style.display = 'block';
+  audioStatus.textContent = `Loaded: ${file.name}`;
+  audio.load();
+});
+
+// ===== VIDEO TAKES UPLOAD & UI =====
+function createTrackCard(index) {
+  const card = document.createElement('div');
+  card.className = 'switcher-track';
+  if (index === 0) card.classList.add('active');
+
+  const title = document.createElement('div');
+  title.className = 'track-title';
+  title.textContent = `Camera ${index + 1}`;
+  card.appendChild(title);
+
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'video/*';
+  input.style.margin = '6px 0';
+  input.addEventListener('change', function (e) {
     const file = e.target.files[0];
-    masterAudioFile = file;
-    if (file) {
-      audio.src = URL.createObjectURL(file);
-      audio.style.display = 'block';
-      audio.load();
-      audioStatus.textContent = `Audio loaded: ${file.name}`;
+    if (!file) return;
+    videoTracks[index] = {
+      file,
+      url: URL.createObjectURL(file),
+      name: file.name
+    };
+    card.update();
+    updateSwitcherBtns();
+    // If this is the first loaded track, show preview
+    if (index === activeTrackIndex) previewInOutput(index);
+  });
+  card.appendChild(input);
+
+  const label = document.createElement('div');
+  label.className = 'upload-video-label';
+  label.textContent = 'No video uploaded';
+  card.appendChild(label);
+
+  const dlBtn = document.createElement('button');
+  dlBtn.className = 'upload-video-btn';
+  dlBtn.textContent = 'Download Take';
+  dlBtn.style.display = 'none';
+  dlBtn.addEventListener('click', function() {
+    if (videoTracks[index]) {
+      const a = document.createElement('a');
+      a.href = videoTracks[index].url;
+      a.download = videoTracks[index].name || `track${index+1}.mp4`;
+      a.click();
+    }
+  });
+  card.appendChild(dlBtn);
+
+  const preview = document.createElement('video');
+  preview.controls = true;
+  preview.style.display = 'none';
+  preview.style.width = '100%';
+  preview.style.borderRadius = '7px';
+  preview.style.marginTop = '6px';
+  card.appendChild(preview);
+
+  card.update = function () {
+    if (videoTracks[index]) {
+      label.textContent = videoTracks[index].name;
+      dlBtn.style.display = '';
+      preview.src = videoTracks[index].url;
+      preview.style.display = 'block';
     } else {
-      audio.style.display = 'none';
-      audioStatus.textContent = "";
+      label.textContent = 'No video uploaded';
+      dlBtn.style.display = 'none';
+      preview.src = '';
+      preview.style.display = 'none';
     }
   };
+
+  card.addEventListener('click', function () {
+    setActiveTrack(index);
+  });
+
+  switcherTracks.appendChild(card);
+  card.update();
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-  const NUM_TRACKS = 6;
-  const TRACK_NAMES = [
-    "Video Track 1",
-    "Video Track 2",
-    "Video Track 3",
-    "Video Track 4",
-    "Video Track 5",
-    "Video Track 6"
-  ];
-  const switcherTracks = document.getElementById("switcherTracks");
-  const uploadedVideos = Array(NUM_TRACKS).fill(null);
-  const recordedBlobs = Array(NUM_TRACKS).fill(null);
-  const recordingStates = Array(NUM_TRACKS).fill(false);
-  const recorders = Array(NUM_TRACKS).fill(null);
-  const tempStreams = Array(NUM_TRACKS).fill(null);
-  const tempVideoURLs = Array(NUM_TRACKS).fill(null);
+// ===== SWITCHER BUTTONS =====
+function updateSwitcherBtns() {
+  switcherBtnsContainer.innerHTML = '';
+  videoTracks.forEach((track, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'switcher-btn' + (i === activeTrackIndex ? ' active' : '');
+    btn.textContent = `Camera ${i + 1}`;
+    btn.disabled = !track;
+    btn.addEventListener('click', function () {
+      setActiveTrack(i);
+    });
+    switcherBtnsContainer.appendChild(btn);
+  });
+}
 
-  // Build the UI for each track
-  if (switcherTracks) {
-    switcherTracks.innerHTML = Array(NUM_TRACKS).fill(0).map((_, i) => `
-      <div class="switcher-track" id="switcher-track-${i}">
-        <div class="track-title">${TRACK_NAMES[i]}</div>
-        <video id="video-${i}" width="220" height="140" controls preload="auto" muted></video>
-        <div class="track-btns">
-          <button class="upload-video-btn" id="uploadVideoBtn-${i}">Upload</button>
-          <input type="file" id="uploadVideoInput-${i}" class="upload-video-input" accept=".mp4,.webm,.mov,.ogg,.mkv,video/*" style="display:none;">
-          <button class="record-take-btn" id="recordTakeBtn-${i}">Record Take</button>
-          <button class="download-take-btn" id="downloadTakeBtn-${i}">Download Take</button>
-        </div>
-      </div>
-    `).join("");
+function setActiveTrack(idx) {
+  activeTrackIndex = idx;
+  document.querySelectorAll('.switcher-track').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+  document.querySelectorAll('.switcher-btn').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+  previewInOutput(idx);
+}
+
+function previewInOutput(idx) {
+  // Only preview if not recording or playing
+  if (isRecording || isPlaying || !videoTracks[idx]) return;
+  masterOutputVideo.src = videoTracks[idx].url;
+  masterOutputVideo.style.display = 'block';
+  masterOutputVideo.currentTime = 0;
+}
+
+// ===== INIT =====
+for (let i = 0; i < 4; i++) createTrackCard(i);
+updateSwitcherBtns();
+masterOutputVideo.style.display = 'none';
+exportBtn.disabled = true;
+
+// ===== RECORDING ("Record Full Edit") =====
+recordFullEditBtn.addEventListener('click', async function () {
+  if (!audio.src) {
+    alert('Please upload a song first.');
+    return;
+  }
+  if (!videoTracks.some(Boolean)) {
+    alert('Please upload at least one video take.');
+    return;
+  }
+  if (!videoTracks[activeTrackIndex]) {
+    alert('Selected camera has no video.');
+    return;
   }
 
-  for (let i = 0; i < NUM_TRACKS; i++) {
-    // Upload button logic
-    const uploadBtn = document.getElementById(`uploadVideoBtn-${i}`);
-    const uploadInput = document.getElementById(`uploadVideoInput-${i}`);
-    const video = document.getElementById(`video-${i}`);
-    if (uploadBtn && uploadInput && video) {
-      uploadBtn.onclick = () => uploadInput.click();
-      uploadInput.onchange = e => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const url = URL.createObjectURL(file);
-        video.src = url;
-        video.controls = true;
-        video.muted = false;
-        video.load();
-        uploadedVideos[i] = url;
-        tempVideoURLs[i] = url;
-        uploadBtn.textContent = "Uploaded!";
-        setTimeout(() => uploadBtn.textContent = "Upload", 2000);
-      };
-    }
+  isRecording = true;
+  isPlaying = true;
+  recordedChunks = [];
+  exportStatus.textContent = '';
+  recIndicator.style.display = 'block';
+  exportBtn.disabled = true;
 
-    // RECORD TAKE
-    const recordBtn = document.getElementById(`recordTakeBtn-${i}`);
-    if (recordBtn && video) {
-      recordBtn.onclick = async () => {
-        if (!recordingStates[i]) {
-          // Start recording
-          recordBtn.textContent = "Stop";
-          recordingStates[i] = true;
-          if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            try {
-              const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-              tempStreams[i] = stream;
-              video.srcObject = stream;
-              video.muted = true;
-              video.play();
-              recordedBlobs[i] = [];
-              const recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
-              recorders[i] = recorder;
-              recorder.ondataavailable = e => { if (e.data.size > 0) recordedBlobs[i].push(e.data); };
-              recorder.onstop = () => {
-                // Stop webcam
-                video.srcObject = null;
-                stream.getTracks().forEach(track => track.stop());
-                const blob = new Blob(recordedBlobs[i], { type: "video/webm" });
-                const url = URL.createObjectURL(blob);
-                video.src = url;
-                video.controls = true;
-                video.muted = false;
-                video.load();
-                uploadedVideos[i] = url;
-                tempVideoURLs[i] = url;
-                recordBtn.textContent = "Record Take";
-              };
-              recorder.start();
-            } catch (err) {
-              alert("Camera/mic access denied or unavailable.");
-              recordBtn.textContent = "Record Take";
-              recordingStates[i] = false;
-            }
-          }
-        } else {
-          // Stop recording
-          if (recorders[i]) {
-            recorders[i].stop();
-            recorders[i] = null;
-            recordingStates[i] = false;
-          }
-        }
-      };
-    }
+  // Set up canvas for video output
+  const canvas = document.createElement('canvas');
+  canvas.width = 640;
+  canvas.height = 360;
+  const ctx = canvas.getContext('2d');
+  const currentTrack = videoTracks[activeTrackIndex];
 
-    // DOWNLOAD TAKE
-    const downloadBtn = document.getElementById(`downloadTakeBtn-${i}`);
-    if (downloadBtn && video) {
-      downloadBtn.onclick = () => {
-        let blob = null;
-        // Prefer download of recorded take if available, else uploaded video blob
-        if (recordedBlobs[i] && recordedBlobs[i].length > 0) {
-          blob = new Blob(recordedBlobs[i], { type: "video/webm" });
-        } else if (video.src && !video.src.startsWith("blob:")) {
-          // For uploaded file, fetch and re-blob it
-          fetch(video.src)
-            .then(resp => resp.blob())
-            .then(_blob => {
-              saveBlob(_blob, `FastCut_Take${i+1}.webm`);
-            });
-          return;
-        } else if (video.src && video.src.startsWith("blob:")) {
-          // For blob url, just download
-          fetch(video.src)
-            .then(resp => resp.blob())
-            .then(_blob => {
-              saveBlob(_blob, `FastCut_Take${i+1}.webm`);
-            });
-          return;
-        }
-        if (blob) {
-          saveBlob(blob, `FastCut_Take${i+1}.webm`);
-        } else {
-          alert("No take available to download.");
-        }
-      };
-    }
+  // Video for drawing frames
+  let video = document.createElement('video');
+  video.src = currentTrack.url;
+  video.crossOrigin = "anonymous";
+  video.muted = true;
+  await video.play();
+
+  // Draw loop
+  function drawFrame() {
+    if (!isRecording || video.ended) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    animationFrameId = requestAnimationFrame(drawFrame);
   }
+  drawFrame();
 
-  function saveBlob(blob, filename) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.style.display = "none";
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 200);
-  }
+  // Prepare audio
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const source = audioContext.createMediaElementSource(audio);
+  const dest = audioContext.createMediaStreamDestination();
+  source.connect(dest);
+  source.connect(audioContext.destination);
 
-  // === MASTER EDITOR ===
+  // Combine canvas (video) and audio
+  const canvasStream = canvas.captureStream(30);
+  const combinedStream = new MediaStream([
+    ...canvasStream.getVideoTracks(),
+    ...dest.stream.getAudioTracks()
+  ]);
 
-  const recordBtn = document.getElementById('recordFullEditBtn');
-  const stopPreviewBtn = document.getElementById('stopPreviewBtn');
-  const exportStatus = document.getElementById('exportStatus');
-  const exportMusicVideoBtn = document.getElementById('exportMusicVideoBtn');
-  const masterOutputVideo = document.getElementById('masterOutputVideo');
-  const switcherBtnsContainer = document.getElementById('switcherBtnsContainer');
-  const mixCanvas = document.getElementById('mixCanvas');
-
-  let isRecording = false;
-  let switchTimeline = [];
-  let currentTrack = 0;
-  let recordedBlob = null;
-  let recordedUrl = null;
-  let mediaRecorder = null;
-  let chunks = [];
-  let drawRequestId = null;
-  let lastSync = Array(NUM_TRACKS).fill(0); // for anti-strobe
-
-  // Fade-in and fade-out constants
-  const FADE_DURATION = 1.5; // seconds
-
-  function renderSwitcherBtns() {
-    if (!switcherBtnsContainer) return;
-    switcherBtnsContainer.innerHTML = '';
-    for (let i = 0; i < NUM_TRACKS; i++) {
-      const btn = document.createElement('button');
-      btn.className = 'switch-btn' + (i === currentTrack ? ' active' : '');
-      btn.textContent = `Cam ${i+1}`;
-      btn.disabled = isRecording ? false : !uploadedVideos[i];
-      btn.onclick = () => {
-        setActiveTrack(i);
-        if (isRecording) {
-          recordSwitch(audio.currentTime * 1000, i);
-        } else {
-          previewTrackInCanvas(i);
-        }
-      };
-      switcherBtnsContainer.appendChild(btn);
-    }
-  }
-  function setActiveTrack(idx) {
-    currentTrack = idx;
-    renderSwitcherBtns();
-  }
-  function recordSwitch(timeMs, trackIdx) {
-    if (switchTimeline.length > 0 && switchTimeline[switchTimeline.length-1].track === trackIdx) return;
-    switchTimeline.push({ time: timeMs, track: trackIdx });
-  }
-
-  if (recordBtn) recordBtn.onclick = function() {
-    if (uploadedVideos.some(v => !v)) {
-      if (exportStatus) exportStatus.textContent = "Please upload or record all 6 takes before recording!";
-      return;
-    }
-    if (!audio.src || audio.src === "") {
-      if (exportStatus) exportStatus.textContent = "Please upload your song file before recording!";
-      return;
-    }
-    switchTimeline = [{ time: 0, track: currentTrack }];
-    isRecording = true;
-    renderSwitcherBtns();
-
-    for (let i = 0; i < NUM_TRACKS; i++) {
-      let v = document.getElementById(`video-${i}`);
-      if (v) {
-        v.currentTime = 0;
-        v.muted = true;
-        v.play();
-      }
-    }
-    audio.currentTime = 0;
-    audio.play();
-
-    if (mixCanvas) mixCanvas.style.display = '';
-    if (typeof fullPreviewCleanup === "function") fullPreviewCleanup();
-
-    // Show live output in masterOutputVideo
-    if (mixCanvas && masterOutputVideo) {
-      masterOutputVideo.style.display = '';
-      const liveStream = mixCanvas.captureStream(30);
-      masterOutputVideo.srcObject = liveStream;
-      masterOutputVideo.muted = true;
-      masterOutputVideo.play();
-    }
-
-    const ctx = mixCanvas.getContext('2d');
-    ctx.fillStyle = "#111";
-    ctx.fillRect(0,0,mixCanvas.width,mixCanvas.height);
-
-    const videoStream = mixCanvas.captureStream(30);
-    let audioStream = null;
-    if (audio.captureStream) {
-      audioStream = audio.captureStream();
-    } else if (audio.mozCaptureStream) {
-      audioStream = audio.mozCaptureStream();
-    }
-    let combinedStream;
-    if (audioStream) {
-      combinedStream = new MediaStream([
-        ...videoStream.getVideoTracks(),
-        ...audioStream.getAudioTracks()
-      ]);
-    } else {
-      combinedStream = videoStream;
-    }
-
-    chunks = [];
-    mediaRecorder = new MediaRecorder(combinedStream, { mimeType: "video/webm" });
-    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-    mediaRecorder.onstop = () => {
-      if (recordedUrl) URL.revokeObjectURL(recordedUrl);
-      recordedBlob = new Blob(chunks, { type: "video/webm" });
-      recordedUrl = URL.createObjectURL(recordedBlob);
-      isRecording = false;
-      renderSwitcherBtns();
-
-      // Show recorded output in masterOutputVideo
-      if (masterOutputVideo) {
-        masterOutputVideo.srcObject = null;
-        masterOutputVideo.src = recordedUrl;
-        masterOutputVideo.muted = false;
-        masterOutputVideo.load();
-        masterOutputVideo.style.display = '';
-      }
-
-      if (exportStatus) exportStatus.textContent = "Recording complete! Preview or export your music video.";
-    };
-    mediaRecorder.start();
-
-    function draw() {
-      if (!isRecording) return;
-      let elapsed = audio.currentTime * 1000;
-      let totalDuration = audio.duration;
-      let track = switchTimeline[0].track;
-      for (let i = 0; i < switchTimeline.length; i++) {
-        if (switchTimeline[i].time <= elapsed) {
-          track = switchTimeline[i].track;
-        } else {
-          break;
-        }
-      }
-      const v = document.getElementById(`video-${track}`);
-      ctx.fillStyle = "#111";
-      ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
-
-      if (v && v.readyState >= 2 && !v.paused && !v.ended) {
-        let drift = v.currentTime - audio.currentTime;
-        let now = performance.now();
-        if (Math.abs(drift) > 0.25 && now - lastSync[track] > 1000) {
-          v.currentTime = audio.currentTime;
-          v.play();
-          lastSync[track] = now;
-        }
-        ctx.drawImage(v, 0, 0, mixCanvas.width, mixCanvas.height);
-      } else {
-        ctx.fillStyle = "#222";
-        ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
-      }
-
-      // --- FADE IN ---
-      if (audio.currentTime < FADE_DURATION) {
-        let alpha = 1 - (audio.currentTime / FADE_DURATION);
-        if (alpha > 0) {
-          ctx.globalAlpha = alpha;
-          ctx.fillStyle = "#000";
-          ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
-          ctx.globalAlpha = 1.0;
-        }
-      }
-
-      // --- FADE OUT ---
-      if (audio.duration - audio.currentTime < FADE_DURATION) {
-        let alpha = 1 - ((audio.duration - audio.currentTime) / FADE_DURATION);
-        if (alpha > 0) {
-          ctx.globalAlpha = alpha;
-          ctx.fillStyle = "#000";
-          ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
-          ctx.globalAlpha = 1.0;
-        }
-      }
-
-      if (audio.currentTime >= audio.duration || !isRecording) {
-        stopFullRecording();
-        return;
-      }
-      drawRequestId = requestAnimationFrame(draw);
-    }
-    draw();
-    if (exportStatus) exportStatus.textContent = "Recording full edit. Use the switcher to change cameras in real time.";
+  // MediaRecorder
+  mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm; codecs=vp9,opus' });
+  mediaRecorder.ondataavailable = function(e) {
+    if (e.data.size > 0) recordedChunks.push(e.data);
   };
-
-  function stopFullRecording() {
-    if (!isRecording) return;
+  mediaRecorder.onstop = function() {
+    cancelAnimationFrame(animationFrameId);
+    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+    masterOutputVideo.src = URL.createObjectURL(blob);
+    masterOutputVideo.controls = true;
+    masterOutputVideo.style.display = 'block';
+    recIndicator.style.display = 'none';
+    exportBtn.disabled = false;
     isRecording = false;
-    audio.pause();
-    for (let i = 0; i < NUM_TRACKS; i++) {
-      let v = document.getElementById(`video-${i}`);
-      if (v) v.pause();
+    isPlaying = false;
+    exportStatus.textContent = 'Recording finished! Preview your cut below.';
+    if (audioContext) {
+      audioContext.close();
+      audioContext = null;
     }
-    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+  };
+
+  // Start recording
+  audio.currentTime = 0;
+  video.currentTime = 0;
+  audio.play();
+  video.play();
+  mediaRecorder.start();
+
+  // When audio ends, stop everything
+  audio.onended = function () {
+    if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
       mediaRecorder.stop();
+      audio.onended = null;
     }
-    if (drawRequestId !== null) cancelAnimationFrame(drawRequestId);
-    drawRequestId = null;
-    // Clean up live stream from masterOutputVideo
-    if (masterOutputVideo) {
-      masterOutputVideo.srcObject = null;
-      masterOutputVideo.pause();
-    }
-  }
-
-  // STOP BUTTON LOGIC (also works as "stop preview")
-  if (stopPreviewBtn) stopPreviewBtn.onclick = function() {
-    if (masterOutputVideo) {
-      masterOutputVideo.pause();
-      masterOutputVideo.currentTime = 0;
-    }
-    if (exportStatus) exportStatus.textContent = "Preview stopped.";
   };
 
-  if (exportMusicVideoBtn) exportMusicVideoBtn.onclick = async function() {
-    if (!recordedBlob) {
-      if (exportStatus) exportStatus.textContent = "Please record your edit first!";
-      return;
+  // Stop button
+  stopPreviewBtn.onclick = function () {
+    if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+      audio.pause();
+      recIndicator.style.display = 'none';
+      exportStatus.textContent = 'Recording stopped.';
     }
-    if (exportStatus) exportStatus.textContent = "Exporting video file...";
-    if (masterOutputVideo) {
-      masterOutputVideo.srcObject = null;
-      masterOutputVideo.src = recordedUrl;
-      masterOutputVideo.muted = false;
-      masterOutputVideo.load();
-      masterOutputVideo.style.display = '';
-    }
-    if (exportStatus) exportStatus.textContent = "Export complete! Download your final video.";
-    const a = document.createElement('a');
-    a.href = recordedUrl;
-    a.download = `fastcut_music_video.webm`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
   };
+});
 
-  function previewTrackInCanvas(trackIdx) {
-    // No preview video screen: only update the mixCanvas for single track preview
-    if (!mixCanvas) return;
-    mixCanvas.style.display = '';
-    const ctx = mixCanvas.getContext('2d');
-    const v = document.getElementById(`video-${trackIdx}`);
-    if (v && v.readyState >= 2) {
-      v.currentTime = 0;
-      v.pause();
-      ctx.fillStyle = "#111";
-      ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
-      ctx.drawImage(v, 0, 0, mixCanvas.width, mixCanvas.height);
-      ctx.globalAlpha = 1.0;
-    } else {
-      ctx.fillStyle = "#111";
-      ctx.fillRect(0, 0, mixCanvas.width, mixCanvas.height);
-      ctx.fillStyle = "#ffe87d";
-      ctx.font = "24px sans-serif";
-      ctx.fillText("Load & play a video", 40, 140);
-    }
+// ===== EXPORT =====
+exportBtn.addEventListener('click', function () {
+  if (!masterOutputVideo.src) {
+    exportStatus.textContent = 'Nothing to export yet!';
+    return;
   }
-
-  renderSwitcherBtns();
+  fetch(masterOutputVideo.src)
+    .then(res => res.blob())
+    .then(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'fastcut-studios-edit.webm';
+      a.click();
+      exportStatus.textContent = 'Video exported – check your downloads!';
+    });
 });
