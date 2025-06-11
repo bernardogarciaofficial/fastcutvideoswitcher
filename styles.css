@@ -1,5 +1,4 @@
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Montserrat:wght@700&display=swap');
-
 body {
   background: radial-gradient(ellipse at 60% 0%, #2c2a4a 20%, #141322 80%);
   color: #f7f6f2;
@@ -288,102 +287,122 @@ input[type="file"] {
   border: 2.5px solid #ffe87d44;
   background: #222;
 }
-#segmentPreviewVideo, #fullEditPreviewVideo {
-  display: block;
-  margin: 20px auto 0 auto;
-  border-radius: 13px;
-  border: 2.5px solid #ffe87d44;
-  box-shadow: 0 2px 18px #ffd70044;
-  background: #191922;
+
+/* Hollywood Style Additions */
+.hollywood-header {
+  background: linear-gradient(90deg, #180f13 0%, #3a2a35 100%);
+  padding: 32px 0 18px 0;
+  border-bottom: 4px solid #ffd700;
+  box-shadow: 0 6px 32px #000a, 0 0 0 #fff;
+  text-align: center;
+  position: relative;
+}
+.marquee-brand {
+  font-family: 'Bebas Neue', 'Orbitron', Arial Black, sans-serif;
+  font-size: 2.35rem;
+  color: #ffd700;
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 26px #fffbe8, 0 2px 0 #d8a900, 0 9px 60px #fff9b1;
+  display: inline-block;
+  padding: 12px 28px;
+  border-radius: 22px;
+  background: #181111e6;
+  border: 2px solid #ffd70055;
+  box-shadow: 0 0 30px #ffd70033 inset;
+  margin-bottom: 7px;
+  position: relative;
+}
+.marquee-lights {
+  display: inline-block;
+  vertical-align: middle;
+}
+.marquee-bulb {
+  display: inline-block;
+  width: 0.6em;
+  height: 0.6em;
+  background: #fffbe8;
+  border-radius: 50%;
+  margin: 0 1.5px;
+  box-shadow: 0 0 8px 2px #ffd700aa, 0 0 18px #fffbe8;
+  animation: bulbTwinkle 1.7s infinite alternate;
+}
+.marquee-bulb:nth-child(2) { animation-delay: 0.7s; }
+.marquee-bulb:nth-child(3) { animation-delay: 1.1s; }
+@keyframes bulbTwinkle {
+  0%   { opacity: 1; filter: brightness(1); }
+  100% { opacity: 0.7; filter: brightness(1.9); }
+}
+.subtitle {
+  font-family: 'Dancing Script', cursive;
+  color: #ffe87d;
+  font-size: 1.35em;
+  text-shadow: 0 1px 10px #ffd70066;
+  margin-top: 8px;
+  margin-bottom: 0;
+  letter-spacing: 0.04em;
 }
 
-.overlay {
+.filmgrain, .spotlight, .hollywood-watermark { pointer-events: none; }
+
+/* Output Section Hollywood Frame */
+.hollywood-output {
+  text-align: center;
+  margin: 28px auto 36px auto;
+}
+.marquee-lights-frame {
+  position: relative;
+  display: inline-block;
+  padding: 22px;
+  border-radius: 30px;
+  background: #1a161c;
+  box-shadow: 0 0 60px 8px #ffd70055, 0 0 0 12px #ffd70022 inset;
+  margin: 0 auto;
+}
+.marquee-lights-frame::before, .marquee-lights-frame::after {
+  content: "";
   position: absolute;
-  top: 0; left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 30;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  left: 50%; top: 50%;
+  width: 110%; height: 110%;
+  border-radius: 35px;
+  transform: translate(-50%, -50%);
   pointer-events: none;
-  background: radial-gradient(ellipse at center, #ffd70038 20%, #23243c00 80%);
+  box-shadow:
+    0 0 14px 4px #ffd70088,
+    0 0 32px 12px #fffbe888 inset;
+  opacity: 0.8;
+  z-index: 1;
+  animation: marqueeTwinkle 2s infinite alternate;
 }
-.countdown {
-  font-size: 5.2rem;
-  font-family: 'Orbitron', 'Montserrat', Arial, sans-serif;
-  font-weight: bold;
-  color: #fff2b1;
-  background: rgba(30, 30, 30, 0.82);
-  border-radius: 25px;
-  padding: 22px 60px;
-  box-shadow: 0 8px 30px #ffe87d66, 0 2px 30px #fff2b1aa;
-  margin-bottom: 44px;
-  letter-spacing: 3px;
-  border: 2.5px solid #fff2b1;
-  animation: countdown-scale 1s linear;
-  text-shadow: 0 2px 22px #ffd700, 0 12px 48px #fff;
-}
-@keyframes countdown-scale {
-  0% { transform: scale(1.3); }
-  100% { transform: scale(1); }
-}
-.rec-indicator {
-  font-size: 2.7rem;
-  font-family: 'Orbitron', 'Montserrat', Arial, sans-serif;
-  font-weight: 900;
-  color: #ff4040;
-  background: rgba(8,8,8,0.83);
-  border-radius: 16px;
-  padding: 10px 34px;
-  letter-spacing: 2.5px;
-  border: 2.5px solid #ff4040;
-  box-shadow: 0 2px 25px #ff404088, 0 0 4px #fff;
-  animation: blinkRec 0.89s step-end infinite;
-  display: none;
-  text-shadow: 0 2px 12px #fff2, 0 0 20px #ff4040;
-}
-.rec-indicator.blinking {
-  display: block;
-}
-@keyframes blinkRec {
-  0%, 49% { opacity: 1; }
-  50%, 100% { opacity: 0.2; }
+@keyframes marqueeTwinkle {
+  0%   { box-shadow: 0 0 14px 4px #ffd70088, 0 0 32px 12px #fffbe888 inset; }
+  100% { box-shadow: 0 0 24px 8px #fffbe8cc, 0 0 42px 24px #ffd70099 inset; }
 }
 
-.master-output-section video {
-  margin-bottom: 10px;
-  border-radius: 13px;
-  border: 2.5px solid #ffe87d44;
-  background: #212134;
-  box-shadow: 0 2px 20px #ffe87d33, 0 0 2px #fff;
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
+.spotlight-overlay {
+  position: absolute;
+  left: 50%; top: 0;
+  width: 200px; height: 300px;
+  background: radial-gradient(ellipse at center, #ffe87d33 60%, transparent 100%);
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 2;
+  animation: spotlightSweep 8s infinite linear alternate;
 }
-.master-output-section button {
-  margin-top: 15px;
-  background: linear-gradient(90deg, #ffcf57 30%, #ffe87d 100%);
-  color: #181b22;
-  font-weight: 900;
-  font-size: 1.13rem;
-  border: none;
-  border-radius: 14px;
-  padding: 12px 32px;
-  font-family: 'Orbitron', 'Montserrat', Arial, sans-serif;
-  letter-spacing: 1.5px;
-  box-shadow: 0 2px 13px #ffe87d55;
-  cursor: pointer;
-  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
-}
-.master-output-section button:hover {
-  background: linear-gradient(90deg, #ffe87d 40%, #fff2b1 100%);
-  color: #232434;
-  box-shadow: 0 2px 22px #ffd70088;
+@keyframes spotlightSweep {
+  0%   { left: 10%; opacity: 0.45; }
+  100% { left: 70%; opacity: 0.65; }
 }
 
-footer {
+.clapboard {
+  display: inline-block;
+  width: 38px;
+  height: 38px;
+  background: url('https://raw.githubusercontent.com/bernardogarciaofficial/fastcut-assets/main/clapboard.png') no-repeat center/contain;
+  margin-right: 10px;
+  vertical-align: middle;
+}
+
+.footer {
   text-align: center;
   padding: 23px 0 13px 0;
   background: linear-gradient(90deg, #0b0c1c 0%, #23243c 100%);
@@ -415,7 +434,7 @@ footer {
 }
 @media (max-width: 600px) {
   section { padding: 12px 3vw 10px 3vw; }
-  .master-output-section video, #segmentPreviewVideo, #segmentMixCanvas, #fullEditPreviewVideo {
+  .hollywood-output video, #segmentMixCanvas {
     width: 97vw !important;
     max-width: 99vw;
     height: auto;
