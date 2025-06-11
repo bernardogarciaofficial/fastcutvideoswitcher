@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <title>FastCut Studios: Hollywood Music Video Editor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="https://fonts.googleapis.com/css?family=Bebas+Neue:700,400|Montserrat:400,700|Dancing+Script:700&display=swap" rel="stylesheet">
+  <!-- Fonts for cinematic and modern look -->
+  <link href="https://fonts.googleapis.com/css?family=Bebas+Neue:700,400|Montserrat:400,700|Dancing+Script:700|Orbitron:700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <style>
     .filmgrain { pointer-events: none; position: fixed; top:0; left:0; width:100vw; height:100vh; z-index: 999; opacity: 0.10; background: url('https://raw.githubusercontent.com/bernardogarciaofficial/fastcut-assets/main/filmgrain.png') repeat; mix-blend-mode: luminosity; animation: grainmove 2s infinite linear alternate; }
@@ -63,16 +64,30 @@
     </div>
     <div id="switcherBtnsContainer"></div>
     <canvas id="mixCanvas" width="430" height="242" style="display:none;"></canvas>
-    <!-- ALL video screens removed for this step -->
 
-    <div style="margin:10px 0;">
+    <!-- Hollywood styled output card -->
+    <div class="hollywood-output">
+      <div class="hollywood-card video-output-card">
+        <div class="marquee-lights-frame">
+          <div class="video-frame-lights">
+            <video id="masterOutputVideo" controls></video>
+            <div class="spotlight-overlay"></div>
+            <div class="rec-indicator" id="recIndicator" style="display:none;">● REC</div>
+          </div>
+        </div>
+        <button class="export-btn" id="exportMusicVideoBtn">
+          <span class="film-reel-icon"></span> Export Video
+        </button>
+        <span id="exportStatus"></span>
+      </div>
+    </div>
+
+    <div class="controls-section">
       <button id="recordFullEditBtn">
         <span class="clapboard" style="width: 32px; height: 32px; margin-right: 0;"></span>
         Record Full Edit
       </button>
       <button id="stopPreviewBtn">Stop</button>
-      <button id="exportMusicVideoBtn">Export Video</button>
-      <span id="exportStatus"></span>
     </div>
 
     <div style="margin:24px 0 0 0; font-size:1.12em; color:#fffbe8;">
