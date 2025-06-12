@@ -1,7 +1,6 @@
 // FASTCUT STUDIOS - Hollywood Music Video Editor
 // Author: Bernardo Garcia
 
-// Elements
 const songInput = document.getElementById('songInput');
 const audioStatus = document.getElementById('audioStatus');
 const audio = document.getElementById('audio');
@@ -18,6 +17,7 @@ const exportStatus = document.getElementById('exportStatus');
 // State
 const videoTracks = [];
 let activeTrackIndex = 0;
+let tempVideos = []; // Keep video elements for each track
 let isRecording = false;
 let isPlaying = false;
 let mediaRecorder = null;
@@ -59,9 +59,14 @@ function createTrackCard(index) {
       url: URL.createObjectURL(file),
       name: file.name
     };
+    // Prepare temp video element for drawing (not in DOM)
+    tempVideos[index] = document.createElement('video');
+    tempVideos[index].src = videoTracks[index].url;
+    tempVideos[index].crossOrigin = "anonymous";
+    tempVideos[index].muted = true;
+    tempVideos[index].preload = "auto";
     card.update();
     updateSwitcherBtns();
-    // If this is the first loaded track, show preview
     if (index === activeTrackIndex) previewInOutput(index);
   });
   card.appendChild(input);
@@ -115,10 +120,10 @@ function createTrackCard(index) {
   card.update();
 }
 
-// ===== SWITCHER BUTTONS =====
 function updateSwitcherBtns() {
   switcherBtnsContainer.innerHTML = '';
-  videoTracks.forEach((track, i) => {
+  for (let i = 0; i < videoTracks.length; i++) {
+    const track = videoTracks[i];
     const btn = document.createElement('button');
     btn.className = 'switcher-btn' + (i === activeTrackIndex ? ' active' : '');
     btn.textContent = `Camera ${i + 1}`;
@@ -127,7 +132,7 @@ function updateSwitcherBtns() {
       setActiveTrack(i);
     });
     switcherBtnsContainer.appendChild(btn);
-  });
+  }
 }
 
 function setActiveTrack(idx) {
@@ -150,10 +155,21 @@ function previewInOutput(idx) {
 }
 
 // ===== INIT =====
-for (let i = 0; i < 4; i++) createTrackCard(i);
+for (let i = 0; i < 6; i++) createTrackCard(i);
 updateSwitcherBtns();
 masterOutputVideo.style.display = 'none';
 exportBtn.disabled = true;
+
+// ===== LIVE SWITCHER LOGIC FOR RECORDING =====
+let currentDrawVideoIndex = 0;
+function getCurrentDrawVideo() {
+  // If track is missing, fallback to the first available video
+  if (tempVideos[activeTrackIndex]) return tempVideos[activeTrackIndex];
+  for (let i = 0; i < tempVideos.length; i++) {
+    if (tempVideos[i]) return tempVideos[i];
+  }
+  return null;
+}
 
 // ===== RECORDING ("Record Full Edit") =====
 recordFullEditBtn.addEventListener('click', async function () {
@@ -165,7 +181,7 @@ recordFullEditBtn.addEventListener('click', async function () {
     alert('Please upload at least one video take.');
     return;
   }
-  if (!videoTracks[activeTrackIndex]) {
+  if (!tempVideos[activeTrackIndex]) {
     alert('Selected camera has no video.');
     return;
   }
@@ -176,28 +192,46 @@ recordFullEditBtn.addEventListener('click', async function () {
   exportStatus.textContent = '';
   recIndicator.style.display = 'block';
   exportBtn.disabled = true;
+  masterOutputVideo.style.display = 'none';
 
   // Set up canvas for video output
   const canvas = document.createElement('canvas');
   canvas.width = 640;
   canvas.height = 360;
   const ctx = canvas.getContext('2d');
-  const currentTrack = videoTracks[activeTrackIndex];
 
-  // Temporary video for drawing frames (DO NOT append to DOM)
-  let tempVideo = document.createElement('video');
-  tempVideo.src = currentTrack.url;
-  tempVideo.crossOrigin = "anonymous";
-  tempVideo.muted = true;
-  await tempVideo.play();
+  // Prepare all temp videos for frame syncing
+  for (let i = 0; i < tempVideos.length; i++) {
+    if (tempVideos[i]) {
+      try { tempVideos[i].pause(); tempVideos[i].currentTime = 0; } catch(e) {}
+    }
+  }
+  let currentVideo = getCurrentDrawVideo();
+  if (!currentVideo) {
+    alert('Please upload at least one video take.');
+    isRecording = false; isPlaying = false; recIndicator.style.display = 'none'; return;
+  }
+  await currentVideo.play();
 
-  // Draw loop
+  // Draw loop, always using the currently selected camera
   function drawFrame() {
-    if (!isRecording || tempVideo.ended) return;
-    ctx.drawImage(tempVideo, 0, 0, canvas.width, canvas.height);
+    if (!isRecording) return;
+    const vid = getCurrentDrawVideo();
+    if (vid && !vid.ended && vid.readyState >= 2) {
+      ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+    }
     animationFrameId = requestAnimationFrame(drawFrame);
   }
   drawFrame();
+
+  // Listen for live camera switching
+  switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((btn, idx) => {
+    btn.onclick = function() {
+      setActiveTrack(idx);
+      const vid = getCurrentDrawVideo();
+      if (vid) vid.play();
+    };
+  });
 
   // Prepare audio
   audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -221,7 +255,6 @@ recordFullEditBtn.addEventListener('click', async function () {
   mediaRecorder.onstop = function() {
     cancelAnimationFrame(animationFrameId);
     const blob = new Blob(recordedChunks, { type: 'video/webm' });
-    // Only update the one output video!
     masterOutputVideo.src = URL.createObjectURL(blob);
     masterOutputVideo.controls = true;
     masterOutputVideo.style.display = 'block';
@@ -236,11 +269,12 @@ recordFullEditBtn.addEventListener('click', async function () {
     }
   };
 
-  // Start recording
+  // Start everything
   audio.currentTime = 0;
-  tempVideo.currentTime = 0;
   audio.play();
-  tempVideo.play();
+  for (let i = 0; i < tempVideos.length; i++) {
+    if (tempVideos[i]) { try { tempVideos[i].currentTime = 0; tempVideos[i].play(); } catch(e) {} }
+  }
   mediaRecorder.start();
 
   // When audio ends, stop everything
