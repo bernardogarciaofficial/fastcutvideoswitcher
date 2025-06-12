@@ -207,7 +207,7 @@ function previewInOutput(idx) {
 // ===== INIT =====
 for (let i = 0; i < NUM_TRACKS; i++) createTrackCard(i);
 updateSwitcherBtns();
-masterOutputVideo.style.display = 'none';
+masterOutputVideo.style.display = 'block';
 exportBtn.disabled = true;
 
 // ===== LIVE RECORDING LOGIC =====
@@ -239,7 +239,7 @@ recordFullEditBtn.addEventListener('click', async function () {
   exportStatus.textContent = '';
   recIndicator.style.display = 'block';
   exportBtn.disabled = true;
-  masterOutputVideo.style.display = 'none';
+  // masterOutputVideo.style.display = 'none'; // <-- removed this line
 
   const canvas = document.createElement('canvas');
   canvas.width = 640;
