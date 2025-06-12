@@ -239,7 +239,7 @@ recordFullEditBtn.addEventListener('click', async function () {
   exportStatus.textContent = '';
   recIndicator.style.display = 'block';
   exportBtn.disabled = true;
-  // masterOutputVideo.style.display = 'none'; // <-- removed this line
+  // masterOutputVideo.style.display = 'none'; // <-- This line is now removed!
 
   const canvas = document.createElement('canvas');
   canvas.width = 640;
