@@ -13,6 +13,7 @@ const recordFullEditBtn = document.getElementById('recordFullEditBtn');
 const stopPreviewBtn = document.getElementById('stopPreviewBtn');
 const exportBtn = document.getElementById('exportMusicVideoBtn');
 const exportStatus = document.getElementById('exportStatus');
+const hiddenVideos = document.getElementById('hiddenVideos');
 
 const videoTracks = Array(NUM_TRACKS).fill(null);
 const tempVideos = Array(NUM_TRACKS).fill(null); // For playback/drawing
@@ -169,6 +170,12 @@ function prepareTempVideo(idx, url) {
   tempVideos[idx].crossOrigin = "anonymous";
   tempVideos[idx].muted = true;
   tempVideos[idx].preload = "auto";
+  tempVideos[idx].setAttribute('playsinline', '');
+  tempVideos[idx].setAttribute('webkit-playsinline', '');
+  // Attach to DOM so browser will actually play the video
+  if (!tempVideos[idx].parentNode) {
+    hiddenVideos.appendChild(tempVideos[idx]);
+  }
 }
 
 function updateSwitcherBtns() {
@@ -239,15 +246,16 @@ recordFullEditBtn.addEventListener('click', async function () {
   exportStatus.textContent = '';
   recIndicator.style.display = 'block';
   exportBtn.disabled = true;
-  // masterOutputVideo.style.display = 'none'; // <-- This line is now removed!
 
   const canvas = document.createElement('canvas');
   canvas.width = 640;
   canvas.height = 360;
   const ctx = canvas.getContext('2d');
 
+  // Make sure all tempVideos are attached to the DOM and ready to play
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
+      if (!tempVideos[i].parentNode) hiddenVideos.appendChild(tempVideos[i]);
       try { tempVideos[i].pause(); tempVideos[i].currentTime = 0; } catch(e) {}
     }
   }
@@ -312,7 +320,9 @@ recordFullEditBtn.addEventListener('click', async function () {
   audio.currentTime = 0;
   audio.play();
   for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) { try { tempVideos[i].currentTime = 0; tempVideos[i].play(); } catch(e) {} }
+    if (tempVideos[i]) { 
+      try { tempVideos[i].currentTime = 0; tempVideos[i].play(); } catch(e) {} 
+    }
   }
   mediaRecorder.start();
 
