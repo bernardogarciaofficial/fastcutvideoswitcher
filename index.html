@@ -17,7 +17,7 @@
     .switcher-btn.active { background: #ffd700; color: #231f39; font-weight: bold; }
     .hollywood-output { margin: 32px 0 12px 0; }
     .hollywood-card { background: #1a1930; border-radius: 13px; box-shadow: 0 4px 32px #0005; padding: 30px 20px; text-align: center; }
-    #masterOutputVideo { width: 82%; max-width: 640px; min-height: 180px; border-radius: 11px; background: #232323; margin: 12px 0; }
+    #masterOutputVideo { width: 82%; max-width: 640px; min-height: 180px; border-radius: 11px; background: #232323; margin: 12px 0; display: block; }
     .export-btn, #recordFullEditBtn, #stopPreviewBtn { margin: 8px 12px 0 0; padding: 8px 28px; font-size: 1.15em; background: #ffd700; color: #231f39; border: none; border-radius: 7px; font-family: 'Bebas Neue', Arial Black, sans-serif; cursor: pointer; }
     .export-btn:disabled { opacity: 0.5; pointer-events: none; }
     .rec-indicator { color: #ff2b2b; font-weight: bold; font-size: 1.15em; margin-bottom: 8px; }
@@ -47,7 +47,7 @@
     <div id="switcherBtnsContainer" style="margin-bottom:12px;"></div>
     <div class="hollywood-output">
       <div class="hollywood-card video-output-card">
-        <video id="masterOutputVideo" controls style="display:none;"></video>
+        <video id="masterOutputVideo" controls></video>
         <div class="rec-indicator" id="recIndicator" style="display:none;">● REC</div>
         <br>
         <button class="export-btn" id="exportMusicVideoBtn" disabled>Export Video</button>
