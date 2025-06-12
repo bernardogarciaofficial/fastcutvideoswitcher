@@ -4,109 +4,76 @@
   <meta charset="UTF-8">
   <title>FastCut Studios: Hollywood Music Video Editor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Fonts for cinematic and modern look -->
   <link href="https://fonts.googleapis.com/css?family=Bebas+Neue:700,400|Montserrat:400,700|Dancing+Script:700|Orbitron:700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <style>
-    .filmgrain { pointer-events: none; position: fixed; top:0; left:0; width:100vw; height:100vh; z-index: 999; opacity: 0.10; background: url('https://raw.githubusercontent.com/bernardogarciaofficial/fastcut-assets/main/filmgrain.png') repeat; mix-blend-mode: luminosity; animation: grainmove 2s infinite linear alternate; }
-    @keyframes grainmove { 0% { background-position: 0 0; } 100% { background-position: 60px 40px; } }
-    .spotlight { position: absolute; width: 200px; height: 200px; pointer-events: none; z-index: 2; filter: blur(9px) brightness(1.2); }
-    .spotlight.left { left:-70px; top: -65px; transform: rotate(-17deg);}
-    .spotlight.right { right: -70px; top: -65px; transform: rotate(17deg);}
-    .hollywood-watermark { position: fixed; bottom: 19px; right: 36px; color: #fffbe8cc; font-size: 1.3em; font-family: 'Bebas Neue', Arial Black, sans-serif; letter-spacing: 0.08em; opacity: 0.08; pointer-events: none; z-index: 1000; text-shadow: 0 0 18px #ffd700bb, 0 2px 12px #231f3bcc; }
+    body { background: #181820; color: #fffbe8; font-family: 'Montserrat', Arial, sans-serif; }
+    .container { max-width: 900px; margin: 0 auto; padding: 32px 8px; }
+    h2 { font-family: 'Bebas Neue', Arial Black, sans-serif; letter-spacing: 0.04em; color: #ffd700; margin-top: 36px; }
+    .switcher-track { background: #222234; border-radius: 8px; margin-bottom: 24px; padding: 18px 12px; }
+    .switcher-track.active { border: 2px solid #ffd700; box-shadow: 0 0 9px #ffd70080; }
+    .track-title { font-size: 1.22em; font-family: 'Bebas Neue', Arial Black, sans-serif; margin-bottom: 7px; color: #fffbe8; }
+    .switcher-btn { margin: 0 6px 12px 0; padding: 7px 18px; font-size: 1em; background: #231f39; color: #ffd700; border: 1.5px solid #ffd700; border-radius: 6px; cursor: pointer; }
+    .switcher-btn.active { background: #ffd700; color: #231f39; font-weight: bold; }
+    .hollywood-output { margin: 32px 0 12px 0; }
+    .hollywood-card { background: #1a1930; border-radius: 13px; box-shadow: 0 4px 32px #0005; padding: 30px 20px; text-align: center; }
+    #masterOutputVideo { width: 82%; max-width: 640px; min-height: 180px; border-radius: 11px; background: #232323; margin: 12px 0; }
+    .export-btn, #recordFullEditBtn, #stopPreviewBtn { margin: 8px 12px 0 0; padding: 8px 28px; font-size: 1.15em; background: #ffd700; color: #231f39; border: none; border-radius: 7px; font-family: 'Bebas Neue', Arial Black, sans-serif; cursor: pointer; }
+    .export-btn:disabled { opacity: 0.5; pointer-events: none; }
+    .rec-indicator { color: #ff2b2b; font-weight: bold; font-size: 1.15em; margin-bottom: 8px; }
+    .controls-section { margin: 30px 0 0 0; }
+    .track-preview { margin-top: 10px; border-radius: 7px; width: 85%; max-width: 330px; min-height: 80px; background: #151419; }
+    .upload-video-label { color: #ffd700a0; font-size: 0.99em; margin-top: 6px; }
+    .footer { text-align: center; margin: 30px 0 0 0; font-size: 1em; color: #ffd70088; }
+    .creator-credit { font-size: 0.9em; color: #fffbe8bb; }
   </style>
 </head>
 <body>
-  <div class="filmgrain"></div>
-  <img src="https://raw.githubusercontent.com/bernardogarciaofficial/fastcut-assets/main/spotlight.png" class="spotlight left" alt="spotlight">
-  <img src="https://raw.githubusercontent.com/bernardogarciaofficial/fastcut-assets/main/spotlight.png" class="spotlight right" alt="spotlight">
-  <div class="hollywood-header">
-    <div class="clapboard"></div>
-    <div class="marquee-brand">
-      <span class="marquee-lights">
-        <span class="marquee-bulb"></span>
-        <span class="marquee-bulb"></span>
-        <span class="marquee-bulb"></span>
-      </span>
-      FASTCUT STUDIOS
-      <span style="font-size:0.41em; font-family:Montserrat,Arial,sans-serif; font-weight:400; vertical-align:middle; margin-left:10px; color:#fffbe8ee; letter-spacing:0.01em;">
-        Hollywood Music Video Editor
-      </span>
-      <span class="marquee-lights">
-        <span class="marquee-bulb"></span>
-        <span class="marquee-bulb"></span>
-        <span class="marquee-bulb"></span>
-      </span>
-    </div>
-    <div class="subtitle">🎥 Lights. Camera. Action! — Direct Your Own Blockbuster 🎬</div>
-  </div>
   <div class="container">
+    <h1 style="font-family:'Bebas Neue',Arial Black,sans-serif; letter-spacing:0.09em; color:#ffd700; text-align:center; margin-bottom:10px;">FASTCUT STUDIOS</h1>
+    <div style="text-align:center; margin-bottom:20px; color:#fffbe8cc; font-family:'Bebas Neue',Arial,sans-serif; font-size:1.2em;">Hollywood Music Video Editor</div>
+
     <h2>🎵 Step 1: Upload Your Song</h2>
-    <div class="step-desc">
-      <b>Star of the show:</b> Select your main audio track (your song or backing track). This will be used for syncing and editing your music video.
-    </div>
-    <div class="main-controls">
+    <div>
       <input type="file" id="songInput">
       <span id="audioStatus"></span>
       <audio id="audio" style="display:none;" controls></audio>
     </div>
 
     <h2>🎥 Step 2: Video Takes</h2>
-    <div class="step-desc">
-      <b>Roll camera!</b> For each angle, upload a video or record a take. Download takes for review, and get ready to direct your masterpiece.
-    </div>
     <div id="switcherTracks"></div>
 
     <h2>🎬 Step 3: Live Edit Your Music Video</h2>
-    <div class="step-desc">
-      <b>Director’s chair:</b> Use the camera switcher below to live-switch between tracks while the music plays.<br>
-      <b>Record</b> the edit, and <b>export</b> your finished cut!
-    </div>
-    <div id="switcherBtnsContainer"></div>
-    <canvas id="mixCanvas" width="430" height="242" style="display:none;"></canvas>
-
-    <!-- Hollywood styled output card -->
+    <div id="switcherBtnsContainer" style="margin-bottom:12px;"></div>
     <div class="hollywood-output">
       <div class="hollywood-card video-output-card">
-        <div class="marquee-lights-frame">
-          <div class="video-frame-lights">
-            <video id="masterOutputVideo" controls style="display:none;"></video>
-            <div class="spotlight-overlay"></div>
-            <div class="rec-indicator" id="recIndicator" style="display:none;">● REC</div>
-          </div>
-        </div>
-        <button class="export-btn" id="exportMusicVideoBtn" disabled>
-          <span class="film-reel-icon"></span> Export Video
-        </button>
+        <video id="masterOutputVideo" controls style="display:none;"></video>
+        <div class="rec-indicator" id="recIndicator" style="display:none;">● REC</div>
+        <br>
+        <button class="export-btn" id="exportMusicVideoBtn" disabled>Export Video</button>
         <span id="exportStatus"></span>
       </div>
     </div>
-
     <div class="controls-section">
-      <button id="recordFullEditBtn">
-        <span class="clapboard" style="width: 32px; height: 32px; margin-right: 0;"></span>
-        Record Full Edit
-      </button>
+      <button id="recordFullEditBtn">Record Full Edit</button>
       <button id="stopPreviewBtn">Stop</button>
     </div>
-
-    <div style="margin:24px 0 0 0; font-size:1.12em; color:#fffbe8;">
-      <b>Hollywood Workflow:</b><br>
-      1. Upload your main song file.<br>
+    <div style="margin:32px 0 0 0; font-size:1.12em; color:#fffbe8;">
+      <b>Workflow:</b><br>
+      1. Upload your song.<br>
       2. For each track, upload or record a take.<br>
-      3. Use the camera switcher to select the active video.<br>
+      3. Use the camera switcher below to select the active video.<br>
       4. Click <b>Record Full Edit</b> to capture your live camera switching.<br>
       5. Export your final video.<br>
       <i>Tip: Download any take for review or backup.<br>
       <span style="color:#ffd700">Ready? <span style="font-family: 'Bebas Neue', Arial Black,sans-serif;">Lights, Camera, Action!</span></span></i>
     </div>
+    <div class="footer">
+      &copy; 2025 FastCut Studios — <a href="mailto:bernardogarciagarcia441@gmail.com" style="color:#ffd700;">bernardogarciagarcia441@gmail.com</a><br>
+      <span style="font-size:0.99em; color:#fffbe8bb;">Hollywood Music Video Editor</span><br>
+      <span class="creator-credit">Created by Bernardo Garcia</span>
+    </div>
   </div>
-  <div class="footer">
-    &copy; 2025 FastCut Studios — <a href="mailto:bernardogarciagarcia441@gmail.com">bernardogarciagarcia441@gmail.com</a><br>
-    <span style="font-size:0.99em; color:#fffbe8bb;">Hollywood Music Video Editor</span><br>
-    <span class="creator-credit">Created by Bernardo Garcia</span>
-  </div>
-  <div class="hollywood-watermark">FASTCUT STUDIOS</div>
   <script src="script.js"></script>
 </body>
 </html>
