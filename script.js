@@ -172,9 +172,19 @@ function prepareTempVideo(idx, url) {
   tempVideos[idx].preload = "auto";
   tempVideos[idx].setAttribute('playsinline', '');
   tempVideos[idx].setAttribute('webkit-playsinline', '');
-  // Attach to DOM so browser will actually play the video
+  tempVideos[idx].load();
+
+  tempVideos[idx].addEventListener('loadeddata', () => {
+    console.log('Temp video', idx, 'is loaded and ready for playback. readyState:', tempVideos[idx].readyState);
+  });
+
+  tempVideos[idx].addEventListener('error', (e) => {
+    console.error('Temp video', idx, 'error:', e);
+  });
+
   if (!tempVideos[idx].parentNode) {
     hiddenVideos.appendChild(tempVideos[idx]);
+    console.log('Attached temp video', idx, 'to DOM');
   }
 }
 
@@ -252,11 +262,27 @@ recordFullEditBtn.addEventListener('click', async function () {
   canvas.height = 360;
   const ctx = canvas.getContext('2d');
 
+  // Debug: Log tempVideos readyState and errors before starting
+  for (let i = 0; i < tempVideos.length; i++) {
+    if (tempVideos[i]) {
+      console.log(`Track ${i} readyState:`, tempVideos[i].readyState);
+      tempVideos[i].onerror = (e) => {
+        console.log(`Video ${i} error:`, e);
+      };
+    }
+  }
+
   // Make sure all tempVideos are attached to the DOM and ready to play
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
       if (!tempVideos[i].parentNode) hiddenVideos.appendChild(tempVideos[i]);
-      try { tempVideos[i].pause(); tempVideos[i].currentTime = 0; } catch(e) {}
+      try { 
+        tempVideos[i].pause(); 
+        tempVideos[i].currentTime = 0; 
+        tempVideos[i].load(); 
+      } catch(e) { 
+        console.warn("Could not reset tempVideo", i, e); 
+      }
     }
   }
   let currentVideo = getCurrentDrawVideo();
@@ -264,14 +290,50 @@ recordFullEditBtn.addEventListener('click', async function () {
     alert('Please upload or record at least one video take.');
     isRecording = false; isPlaying = false; recIndicator.style.display = 'none'; return;
   }
-  await currentVideo.play();
+
+  // Wait for all tempVideos to be loaded before playing
+  for (let i = 0; i < tempVideos.length; i++) {
+    if (tempVideos[i]) {
+      if (tempVideos[i].readyState < 2) {
+        await new Promise(resolve => {
+          tempVideos[i].addEventListener('loadeddata', resolve, { once: true });
+        });
+      }
+    }
+  }
+
+  // Try to play all tempVideos
+  for (let i = 0; i < tempVideos.length; i++) {
+    if (tempVideos[i]) {
+      try {
+        tempVideos[i].currentTime = 0;
+        await tempVideos[i].play();
+        console.log('Playing tempVideo', i);
+      } catch (err) {
+        console.error('Error playing tempVideo', i, err);
+      }
+    }
+  }
+
+  // Also play the currentVideo again to be sure
+  try {
+    await currentVideo.play();
+  } catch (e) {
+    console.error('Error playing initial currentVideo', e);
+  }
 
   function drawFrame() {
     if (!isRecording) return;
     const vid = getCurrentDrawVideo();
     if (vid && !vid.ended && vid.readyState >= 2) {
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+    } else {
+      // Optionally fill with black if no valid video
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
+    // Debug: show frame time and current camera
+    // console.log('drawing frame, camera', activeTrackIndex, 'time', vid ? vid.currentTime : '--');
     animationFrameId = requestAnimationFrame(drawFrame);
   }
   drawFrame();
@@ -280,7 +342,15 @@ recordFullEditBtn.addEventListener('click', async function () {
     btn.onclick = function() {
       setActiveTrack(idx);
       const vid = getCurrentDrawVideo();
-      if (vid) vid.play();
+      if (vid) {
+        vid.play()
+          .then(() => {
+            console.log('Switched & played tempVideo', idx);
+          })
+          .catch(err => {
+            console.error('Error playing tempVideo after switch', idx, err);
+          });
+      }
     };
   });
 
@@ -319,9 +389,15 @@ recordFullEditBtn.addEventListener('click', async function () {
 
   audio.currentTime = 0;
   audio.play();
+  // Play all tempVideos
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) { 
-      try { tempVideos[i].currentTime = 0; tempVideos[i].play(); } catch(e) {} 
+      try { 
+        tempVideos[i].currentTime = 0; 
+        await tempVideos[i].play(); 
+      } catch(e) { 
+        console.warn("Could not play tempVideo", i, e); 
+      }
     }
   }
   mediaRecorder.start();
