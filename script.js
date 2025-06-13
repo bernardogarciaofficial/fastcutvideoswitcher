@@ -87,7 +87,7 @@ function createTrackCard(index) {
     recBtn.disabled = true;
     recBtn.textContent = 'Recording...';
     const preview = card.querySelector('.track-preview');
-    preview.style.display = 'none';
+    preview.style.display = 'block';
 
     try {
       recStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -143,10 +143,32 @@ function createTrackCard(index) {
   const preview = document.createElement('video');
   preview.className = 'track-preview';
   preview.controls = true;
-  preview.style.display = 'none';
+  preview.style.display = 'block'; // always visible!
+  preview.style.background = "#000";
   preview.style.width = '80%';
   preview.style.marginTop = '6px';
   card.appendChild(preview);
+
+  // Show error and load events for preview video
+  preview.addEventListener('error', (e) => {
+    logDebug(`Preview video for Camera ${index+1} error: (code ${preview.error && preview.error.code})`);
+    let msg = "Unknown error";
+    if (preview.error) {
+      switch (preview.error.code) {
+        case 1: msg = "MEDIA_ERR_ABORTED: Video fetching process aborted by user."; break;
+        case 2: msg = "MEDIA_ERR_NETWORK: Error occurred when downloading."; break;
+        case 3: msg = "MEDIA_ERR_DECODE: Error occurred when decoding."; break;
+        case 4: msg = "MEDIA_ERR_SRC_NOT_SUPPORTED: Video format is not supported."; break;
+      }
+    }
+    logDebug(`Camera ${index+1} thumbnail: ${msg}`);
+    preview.poster = ""; // Remove any old poster
+    preview.style.background = "#900";
+  });
+  preview.addEventListener('loadeddata', () => {
+    logDebug(`Preview video for Camera ${index+1} loaded: ${preview.src}`);
+    preview.style.background = "#000";
+  });
 
   // Status label
   const label = document.createElement('div');
@@ -160,11 +182,14 @@ function createTrackCard(index) {
       dlBtn.style.display = '';
       preview.src = videoTracks[index].url;
       preview.style.display = 'block';
+      preview.load();
     } else {
       label.textContent = 'No video uploaded or recorded';
       dlBtn.style.display = 'none';
       preview.src = '';
-      preview.style.display = 'none';
+      preview.style.display = 'block';
+      preview.poster = "";
+      preview.style.background = "#000";
     }
   };
 
