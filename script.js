@@ -119,7 +119,6 @@ function createTrackCard(index) {
     setTimeout(() => {
       if (trackRecorder.state === 'recording') trackRecorder.stop();
     }, 120000); // Auto-stop after 2 min
-    // Add a stop button for each track if desired
   });
   card.appendChild(recBtn);
 
@@ -356,11 +355,9 @@ recordFullEditBtn.addEventListener('click', async function () {
     const vid = getCurrentDrawVideo();
     if (vid && !vid.ended && vid.readyState >= 2) {
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
-      // logDebug(`Drawing frame from camera ${activeTrackIndex}, time ${vid.currentTime}`);
     } else {
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      // logDebug('No video to draw or video not ready.');
     }
     animationFrameId = requestAnimationFrame(drawFrame);
   }
