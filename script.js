@@ -31,6 +31,7 @@ let mediaRecorder = null;
 let recordedChunks = [];
 let animationFrameId = null;
 let audioContext = null;
+let livePreviewStream = null;  // for live canvas preview
 
 // ===== SONG UPLOAD =====
 songInput.addEventListener('change', function (e) {
@@ -247,7 +248,10 @@ function setActiveTrack(idx) {
 }
 
 function previewInOutput(idx) {
-  if (isRecording || isPlaying || !videoTracks[idx]) return;
+  // If we are recording, the output video is showing the canvas stream.
+  if (isRecording || isPlaying) return;
+  if (!videoTracks[idx]) return;
+  masterOutputVideo.srcObject = null;
   masterOutputVideo.src = videoTracks[idx].url;
   masterOutputVideo.style.display = 'block';
   masterOutputVideo.currentTime = 0;
@@ -363,6 +367,16 @@ recordFullEditBtn.addEventListener('click', async function () {
   }
   drawFrame();
 
+  // Live preview in main output video
+  try {
+    livePreviewStream = canvas.captureStream(30);
+    masterOutputVideo.srcObject = livePreviewStream;
+    masterOutputVideo.src = "";
+    masterOutputVideo.play();
+  } catch (e) {
+    logDebug("Live preview error: " + e.message);
+  }
+
   switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((btn, idx) => {
     btn.onclick = function() {
       setActiveTrack(idx);
@@ -399,12 +413,14 @@ recordFullEditBtn.addEventListener('click', async function () {
     cancelAnimationFrame(animationFrameId);
     const blob = new Blob(recordedChunks, { type: 'video/webm' });
     masterOutputVideo.src = URL.createObjectURL(blob);
+    masterOutputVideo.srcObject = null;
     masterOutputVideo.controls = true;
     masterOutputVideo.style.display = 'block';
     recIndicator.style.display = 'none';
     exportBtn.disabled = false;
     isRecording = false;
     isPlaying = false;
+    livePreviewStream = null;
     exportStatus.textContent = 'Recording finished! Preview your cut below.';
     if (audioContext) {
       audioContext.close();
