@@ -101,6 +101,12 @@ function createTrackCard(index) {
     }
     trackRecorder = new MediaRecorder(recStream, { mimeType: 'video/webm; codecs=vp9,opus' });
     recChunks = [];
+    // Show webcam live in the preview
+    preview.srcObject = recStream;
+    preview.muted = true;
+    preview.autoplay = true;
+    preview.loop = false;
+    preview.play().catch(()=>{});
     trackRecorder.ondataavailable = function(e) {
       if (e.data.size > 0) recChunks.push(e.data);
     };
@@ -109,6 +115,14 @@ function createTrackCard(index) {
       const url = URL.createObjectURL(blob);
       videoTracks[index] = { file: null, url, name: `Camera${index+1}-take.webm`, recordedBlob: blob };
       prepareTempVideo(index, url, `Camera${index+1}-take.webm`);
+      // Replace webcam preview with recorded video and autoplay
+      preview.srcObject = null;
+      preview.src = url;
+      preview.autoplay = true;
+      preview.muted = true;
+      preview.loop = true;
+      preview.load();
+      preview.play().catch(()=>{});
       card.update();
       updateSwitcherBtns();
       recBtn.disabled = false;
@@ -147,6 +161,11 @@ function createTrackCard(index) {
   preview.style.background = "#000";
   preview.style.width = '80%';
   preview.style.marginTop = '6px';
+  // Always autoplay/mute/loop for seamless preview and live switching
+  preview.autoplay = true;
+  preview.muted = true;
+  preview.loop = true;
+  preview.playsInline = true;
   card.appendChild(preview);
 
   // Show error and load events for preview video
@@ -168,6 +187,8 @@ function createTrackCard(index) {
   preview.addEventListener('loadeddata', () => {
     logDebug(`Preview video for Camera ${index+1} loaded: ${preview.src}`);
     preview.style.background = "#000";
+    // Always try to autoplay (in case browser paused)
+    preview.play().catch(()=>{});
   });
 
   // Status label
@@ -180,12 +201,17 @@ function createTrackCard(index) {
     if (videoTracks[index]) {
       label.textContent = videoTracks[index].name || 'Recorded Take';
       dlBtn.style.display = '';
+      preview.srcObject = null;
       preview.src = videoTracks[index].url;
-      preview.style.display = 'block';
+      preview.autoplay = true;
+      preview.muted = true;
+      preview.loop = true;
       preview.load();
+      preview.play().catch(()=>{});
     } else {
       label.textContent = 'No video uploaded or recorded';
       dlBtn.style.display = 'none';
+      preview.srcObject = null;
       preview.src = '';
       preview.style.display = 'block';
       preview.poster = "";
@@ -354,6 +380,9 @@ recordFullEditBtn.addEventListener('click', async function () {
     logDebug(`Error playing initial currentVideo: ${e.message || e}`);
   }
 
+  // Fade-in/out config
+  const FADE_DURATION = 1.5; // seconds
+
   function drawFrame() {
     if (!isRecording) return;
     const vid = getCurrentDrawVideo();
@@ -361,6 +390,20 @@ recordFullEditBtn.addEventListener('click', async function () {
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
     } else {
       ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    // Fade-in/out logic
+    const currentTime = audio.currentTime;
+    const totalDuration = audio.duration || (audio.seekable && audio.seekable.length ? audio.seekable.end(0) : 0);
+    if (currentTime < FADE_DURATION) {
+      // Fade in
+      let alpha = 1 - (currentTime / FADE_DURATION);
+      ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    } else if (totalDuration && currentTime > totalDuration - FADE_DURATION) {
+      // Fade out
+      let alpha = (currentTime - (totalDuration - FADE_DURATION)) / FADE_DURATION;
+      ctx.fillStyle = `rgba(0,0,0,${alpha})`;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
     animationFrameId = requestAnimationFrame(drawFrame);
