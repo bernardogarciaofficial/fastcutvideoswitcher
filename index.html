@@ -2,64 +2,47 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>FASTCUT STUDIOS - Hollywood Music Video Editor</title>
-  <style>
-    body { font-family: sans-serif; background: #20232a; color: #f7f7f7; }
-    .hollywood-card { background: #282c34; border-radius: 10px; padding: 16px; margin: 18px 0; }
-    .upload-section { margin-bottom: 30px; }
-    .switcher-track { background: #23272f; border-radius: 6px; margin-bottom: 10px; }
-    .switcher-track.active { border: 2px solid #6fffbf; }
-    .switcher-btn { margin: 0 5px 8px 0; padding: 7px 13px; background: #181920; color: #fff; border: none; border-radius: 5px; }
-    .switcher-btn.active { background: #6fffbf; color: #181920; font-weight: bold; }
-    .controls-section { margin: 18px 0 22px 0; }
-    .hollywood-output { margin-top: 32px; }
-    .video-output-card { text-align: center; }
-    .track-title { font-weight: bold; color: #6fffbf; margin-bottom: 4px; }
-    .track-preview { width: 100%; max-width: 300px; background: #000; border-radius: 6px; }
-    .rec-indicator { color: #f00; font-weight: bold; margin-top: 7px; }
-    .export-btn { margin-top: 12px; background: #6fffbf; color: #181920; font-weight: bold; border: none; border-radius: 5px; padding: 10px 18px; }
-    .upload-video-label { font-size: 13px; color: #aaa; margin: 6px 0 0 0; }
-    #hiddenVideos { display: none; }
-  </style>
+  <title>FastCut Studios</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>FASTCUT STUDIOS - Hollywood Music Video Editor</h1>
-
-  <!-- Step 1: Song Upload -->
-  <div class="hollywood-card upload-section">
-    <h2>🎵 Step 1: Upload Your Song</h2>
-    <input type="file" id="songInput" accept="audio/*">
-    <span id="audioStatus"></span>
-    <audio id="audio" style="display:none;" controls></audio>
-  </div>
-
-  <!-- Step 2: Camera Takes -->
   <div class="hollywood-card">
-    <h2>🎥 Step 2: Upload or Record Camera Takes</h2>
-    <div id="switcherTracks"></div>
-  </div>
-
-  <!-- Step 3: Live Edit -->
-  <div class="hollywood-card">
-    <h2>🎬 Step 3: Live Edit Your Music Video</h2>
-    <div id="switcherBtnsContainer" style="margin-bottom:12px;"></div>
-    <div class="controls-section">
-      <button id="recordFullEditBtn">Record Full Edit</button>
-      <button id="stopPreviewBtn">Stop</button>
+    <h1>FastCut Studios</h1>
+    <h2>Welcome to your music video editing platform!</h2>
+    <form class="upload-section">
+      <label class="upload-video-label" for="videoUpload">Upload Video</label>
+      <input type="file" id="videoUpload" accept="video/*">
+    </form>
+    <div class="switcher-track active">
+      <button class="switcher-btn active" type="button">Video Mode</button>
+      <button class="switcher-btn" type="button">Audio Mode</button>
+      <button class="switcher-btn" type="button">Export</button>
     </div>
-    <div class="hollywood-output">
-      <div class="hollywood-card video-output-card">
-        <video id="masterOutputVideo" controls></video>
-        <div class="rec-indicator" id="recIndicator" style="display:none;">● REC</div>
-        <br>
-        <button class="export-btn" id="exportMusicVideoBtn" disabled>Export Video</button>
-        <span id="exportStatus"></span>
+    <div>
+      <div class="track-title">Track Preview</div>
+      <video class="track-preview" controls poster="">
+        <source src="" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
+    </div>
+  </div>
+  <div class="hollywood-output">
+    <div class="video-output-card">
+      <div class="rec-indicator">● Recording</div>
+      <video id="masterOutputVideo" controls>
+        <source src="" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
+      <div class="controls-section">
+        <button class="export-btn" type="button">Export Final Video</button>
+        <span id="audioStatus">Audio: Ready</span>
       </div>
+      <audio controls>
+        <source src="" type="audio/mp3">
+        Your browser does not support the audio element.
+      </audio>
     </div>
   </div>
-
-  <div id="hiddenVideos"></div>
-
-  <script src="script.js"></script>
 </body>
 </html>
