@@ -82,11 +82,20 @@ function createTrackCard(index) {
   let trackRecorder = null;
   let recStream = null;
   let recChunks = [];
+  // Stop Recording button (new)
+  const stopRecBtn = document.createElement('button');
+  stopRecBtn.textContent = 'Stop';
+  stopRecBtn.style.marginLeft = '8px';
+  stopRecBtn.style.display = 'none'; // Only show while recording
+  card.appendChild(recBtn);
+  card.appendChild(stopRecBtn);
+
   recBtn.addEventListener('click', async function () {
     if (trackRecorder && trackRecorder.state === 'recording') return; // Already recording
 
     recBtn.disabled = true;
     recBtn.textContent = 'Recording...';
+    stopRecBtn.style.display = '';
     const preview = card.querySelector('.track-preview');
     preview.style.display = 'block';
 
@@ -96,6 +105,7 @@ function createTrackCard(index) {
       alert('Cannot access camera/microphone.');
       recBtn.disabled = false;
       recBtn.textContent = 'Record';
+      stopRecBtn.style.display = 'none';
       logDebug(`Camera ${index + 1} - access denied to webcam/mic.`);
       return;
     }
@@ -115,27 +125,34 @@ function createTrackCard(index) {
       const url = URL.createObjectURL(blob);
       videoTracks[index] = { file: null, url, name: `Camera${index+1}-take.webm`, recordedBlob: blob };
       prepareTempVideo(index, url, `Camera${index+1}-take.webm`);
-      // Replace webcam preview with recorded video and autoplay
+      // Replace webcam preview with recorded video (but do not autoplay)
       preview.srcObject = null;
       preview.src = url;
-      preview.autoplay = true;
+      preview.autoplay = false;
       preview.muted = true;
-      preview.loop = true;
+      preview.loop = false;
       preview.load();
-      preview.play().catch(()=>{});
+      // Do NOT call preview.play(); -- for sync!
       card.update();
       updateSwitcherBtns();
+      stopRecBtn.style.display = 'none';
       recBtn.disabled = false;
       recBtn.textContent = 'Record';
       if (recStream) recStream.getTracks().forEach(track => track.stop());
       logDebug(`Camera ${index + 1} - video recorded and loaded.`);
     };
     trackRecorder.start();
-    setTimeout(() => {
-      if (trackRecorder.state === 'recording') trackRecorder.stop();
-    }, 120000); // Auto-stop after 2 min
+    // No auto-stop timeout; user must click stop!
   });
-  card.appendChild(recBtn);
+
+  stopRecBtn.addEventListener('click', function() {
+    if (trackRecorder && trackRecorder.state === 'recording') {
+      trackRecorder.stop();
+      stopRecBtn.style.display = 'none';
+      recBtn.disabled = false;
+      recBtn.textContent = 'Record';
+    }
+  });
 
   // Download button
   const dlBtn = document.createElement('button');
@@ -161,10 +178,9 @@ function createTrackCard(index) {
   preview.style.background = "#000";
   preview.style.width = '80%';
   preview.style.marginTop = '6px';
-  // Always autoplay/mute/loop for seamless preview and live switching
-  preview.autoplay = true;
+  preview.autoplay = false; // Do not autoplay on uploaded videos!
   preview.muted = true;
-  preview.loop = true;
+  preview.loop = false;
   preview.playsInline = true;
   card.appendChild(preview);
 
@@ -187,8 +203,7 @@ function createTrackCard(index) {
   preview.addEventListener('loadeddata', () => {
     logDebug(`Preview video for Camera ${index+1} loaded: ${preview.src}`);
     preview.style.background = "#000";
-    // Always try to autoplay (in case browser paused)
-    preview.play().catch(()=>{});
+    // Do NOT autoplay here for uploaded videos!
   });
 
   // Status label
@@ -203,11 +218,11 @@ function createTrackCard(index) {
       dlBtn.style.display = '';
       preview.srcObject = null;
       preview.src = videoTracks[index].url;
-      preview.autoplay = true;
+      preview.autoplay = false; // Do not autoplay!
       preview.muted = true;
-      preview.loop = true;
+      preview.loop = false;
       preview.load();
-      preview.play().catch(()=>{});
+      // Do NOT call preview.play();
     } else {
       label.textContent = 'No video uploaded or recorded';
       dlBtn.style.display = 'none';
