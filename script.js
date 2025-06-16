@@ -79,6 +79,10 @@ function createTrackCard(index) {
   card.appendChild(stopRecBtn);
 
   recBtn.addEventListener('click', async function () {
+    // --- FIX: ensure music starts right after click (before any await) ---
+    audio.currentTime = 0;
+    audio.play().catch(()=>{});
+
     if (trackRecorder && trackRecorder.state === 'recording') return; // Already recording
 
     recBtn.disabled = true;
@@ -129,9 +133,6 @@ function createTrackCard(index) {
       audio.pause();
     };
     trackRecorder.start();
-    // Start music from the beginning when recording a take
-    audio.currentTime = 0;
-    audio.play().catch(()=>{});
   });
 
   stopRecBtn.addEventListener('click', function() {
