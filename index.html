@@ -10,7 +10,7 @@
   <div class="hollywood-card">
     <h1>FastCut Studios</h1>
     <h2>Welcome to your music video editing platform!</h2>
-    <form class="upload-section">
+    <form class="upload-section" onsubmit="return false;">
       <label class="upload-video-label" for="videoUpload">Upload Video</label>
       <input type="file" id="videoUpload" accept="video/*">
     </form>
@@ -21,8 +21,8 @@
     </div>
     <div>
       <div class="track-title">Track Preview</div>
-      <video class="track-preview" controls poster="">
-        <source src="" type="video/mp4">
+      <video class="track-preview" id="previewVideo" controls poster="">
+        <source id="previewSource" src="" type="video/mp4">
         Your browser does not support the video tag.
       </video>
     </div>
@@ -44,5 +44,18 @@
       </audio>
     </div>
   </div>
+  <script>
+    // Simple video preview functionality
+    document.getElementById('videoUpload').addEventListener('change', function(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const url = URL.createObjectURL(file);
+        const video = document.getElementById('previewVideo');
+        video.src = url;
+        video.load();
+        video.play();
+      }
+    });
+  </script>
 </body>
 </html>
