@@ -17,8 +17,10 @@ const hiddenVideos = document.getElementById('hiddenVideos');
 const debuglog = document.getElementById('debuglog');
 
 function logDebug(msg) {
-  debuglog.textContent += msg + "\n";
-  debuglog.scrollTop = debuglog.scrollHeight;
+  if (debuglog) {
+    debuglog.textContent += msg + "\n";
+    debuglog.scrollTop = debuglog.scrollHeight;
+  }
   console.log(msg);
 }
 
@@ -90,6 +92,10 @@ function createTrackCard(index) {
   card.appendChild(recBtn);
   card.appendChild(stopRecBtn);
 
+  // --- MUSIC SYNC FEATURE: Play song during camera take recording ---
+  let prevAudioTime = 0;
+  let prevAudioPaused = true;
+
   recBtn.addEventListener('click', async function () {
     if (trackRecorder && trackRecorder.state === 'recording') return; // Already recording
 
@@ -140,7 +146,23 @@ function createTrackCard(index) {
       recBtn.textContent = 'Record';
       if (recStream) recStream.getTracks().forEach(track => track.stop());
       logDebug(`Camera ${index + 1} - video recorded and loaded.`);
+      // --- MUSIC SYNC FEATURE: Stop song after camera recording ---
+      if (!isRecording) { // Only pause if not live-editing
+        audio.pause();
+        audio.currentTime = 0;
+      }
     };
+
+    // --- MUSIC SYNC FEATURE: Play song while recording camera take ---
+    if (audio.src) {
+      prevAudioTime = audio.currentTime;
+      prevAudioPaused = audio.paused;
+      audio.currentTime = 0;
+      audio.volume = 0.4; // Lower volume so user can hear themselves
+      audio.play().catch(()=>{});
+      logDebug("Song playback started for camera take recording.");
+    }
+
     trackRecorder.start();
     // No auto-stop timeout; user must click stop!
   });
