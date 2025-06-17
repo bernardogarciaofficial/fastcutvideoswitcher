@@ -1,4 +1,4 @@
-// FASTCUT STUDIOS - Hollywood Music Video Editor
+// FASTCUT STUDIOS - Hollywood Music Video Editor (Instant & Synced Switching)
 // Author: Bernardo Garcia
 
 const NUM_TRACKS = 6;
@@ -25,7 +25,7 @@ function logDebug(msg) {
 }
 
 const videoTracks = Array(NUM_TRACKS).fill(null);
-const tempVideos = Array(NUM_TRACKS).fill(null); // For playback/drawing
+const tempVideos = Array(NUM_TRACKS).fill(null); // Hidden, preloaded, synced
 let activeTrackIndex = 0;
 let isRecording = false;
 let isPlaying = false;
@@ -90,16 +90,15 @@ function createTrackCard(index) {
   const stopRecBtn = document.createElement('button');
   stopRecBtn.textContent = 'Stop';
   stopRecBtn.style.marginLeft = '8px';
-  stopRecBtn.style.display = 'none'; // Only show while recording
+  stopRecBtn.style.display = 'none';
   card.appendChild(recBtn);
   card.appendChild(stopRecBtn);
 
-  // --- MUSIC SYNC FEATURE: Play song during camera take recording ---
   let prevAudioTime = 0;
   let prevAudioPaused = true;
 
   recBtn.addEventListener('click', async function () {
-    if (trackRecorder && trackRecorder.state === 'recording') return; // Already recording
+    if (trackRecorder && trackRecorder.state === 'recording') return;
 
     recBtn.disabled = true;
     recBtn.textContent = 'Recording...';
@@ -133,7 +132,6 @@ function createTrackCard(index) {
       const url = URL.createObjectURL(blob);
       videoTracks[index] = { file: null, url, name: `Camera${index+1}-take.webm`, recordedBlob: blob };
       prepareTempVideo(index, url, `Camera${index+1}-take.webm`);
-      // Replace webcam preview with recorded video (but do not autoplay)
       preview.srcObject = null;
       preview.src = url;
       preview.autoplay = false;
@@ -147,25 +145,23 @@ function createTrackCard(index) {
       recBtn.textContent = 'Record';
       if (recStream) recStream.getTracks().forEach(track => track.stop());
       logDebug(`Camera ${index + 1} - video recorded and loaded.`);
-      // --- MUSIC SYNC FEATURE: Stop song after camera recording ---
-      if (!isRecording) { // Only pause if not live-editing
+      if (!isRecording) {
         audio.pause();
         audio.currentTime = 0;
       }
     };
 
-    // --- MUSIC SYNC FEATURE: Play song while recording camera take ---
+    // Music sync: Play song during camera take recording
     if (audio.src) {
       prevAudioTime = audio.currentTime;
       prevAudioPaused = audio.paused;
       audio.currentTime = 0;
-      audio.volume = 0.4; // Lower volume so user can hear themselves
+      audio.volume = 0.4;
       audio.play().catch(()=>{});
       logDebug("Song playback started for camera take recording.");
     }
 
     trackRecorder.start();
-    // No auto-stop timeout; user must click stop!
   });
 
   stopRecBtn.addEventListener('click', function() {
@@ -207,7 +203,6 @@ function createTrackCard(index) {
   preview.playsInline = true;
   card.appendChild(preview);
 
-  // Show error and load events for preview video
   preview.addEventListener('error', (e) => {
     logDebug(`Preview video for Camera ${index+1} error: (code ${preview.error && preview.error.code})`);
     let msg = "Unknown error";
@@ -263,25 +258,28 @@ function createTrackCard(index) {
   card.update();
 }
 
+// Preload/prep hidden video for each track
 function prepareTempVideo(idx, url, name = "") {
   tempVideos[idx] = document.createElement('video');
-  tempVideos[idx].src = url;
-  tempVideos[idx].crossOrigin = "anonymous";
-  tempVideos[idx].muted = true;
-  tempVideos[idx].preload = "auto";
-  tempVideos[idx].setAttribute('playsinline', '');
-  tempVideos[idx].setAttribute('webkit-playsinline', '');
-  tempVideos[idx].style.display = "none";
-  tempVideos[idx].load();
-  tempVideos[idx].addEventListener('loadeddata', () => {
+  let el = tempVideos[idx];
+  el.src = url;
+  el.crossOrigin = "anonymous";
+  el.muted = true;
+  el.preload = "auto";
+  el.setAttribute('playsinline', '');
+  el.setAttribute('webkit-playsinline', '');
+  el.style.display = "none";
+  el.load();
+  el.addEventListener('loadeddata', () => {
     logDebug(`tempVideos[${idx}] loaded: ${name}`);
   });
-  tempVideos[idx].addEventListener('error', (e) => {
+  el.addEventListener('error', (e) => {
     logDebug(`tempVideos[${idx}] failed to load: ${e.message || e}`);
   });
-  if (!tempVideos[idx].parentNode) hiddenVideos.appendChild(tempVideos[idx]);
+  if (!el.parentNode) hiddenVideos.appendChild(el);
 }
 
+// Switcher buttons logic
 function updateSwitcherBtns() {
   switcherBtnsContainer.innerHTML = '';
   for (let i = 0; i < NUM_TRACKS; i++) {
@@ -298,6 +296,7 @@ function updateSwitcherBtns() {
   }
 }
 
+// Synchronized, instant switching
 function setActiveTrack(idx) {
   activeTrackIndex = idx;
   document.querySelectorAll('.switcher-track').forEach((el, i) => {
@@ -306,9 +305,34 @@ function setActiveTrack(idx) {
   document.querySelectorAll('.switcher-btn').forEach((el, i) => {
     el.classList.toggle('active', i === idx);
   });
-  previewInOutput(idx);
+
+  // If live preview/recording, sync all videos to audio time; otherwise update output
+  if (isRecording || isPlaying) {
+    synchronizeVideosToAudio();
+  } else {
+    previewInOutput(idx);
+  }
 }
 
+// Synchronize all tempVideos to audio's current time
+function synchronizeVideosToAudio() {
+  const syncTime = audio.currentTime;
+  // Pause all videos and sync time
+  tempVideos.forEach((v, i) => {
+    if (v) {
+      v.pause();
+      v.currentTime = syncTime;
+    }
+  });
+  // Only play the new active video
+  const vid = tempVideos[activeTrackIndex];
+  if (vid) {
+    vid.currentTime = syncTime;
+    vid.play().catch(()=>{});
+  }
+}
+
+// For preview when not recording
 function previewInOutput(idx) {
   if (isRecording || isPlaying) return;
   if (!videoTracks[idx]) return;
@@ -316,6 +340,7 @@ function previewInOutput(idx) {
   masterOutputVideo.src = videoTracks[idx].url;
   masterOutputVideo.style.display = 'block';
   masterOutputVideo.currentTime = 0;
+  masterOutputVideo.play().catch(()=>{});
 }
 
 // ===== INIT =====
@@ -326,11 +351,7 @@ exportBtn.disabled = true;
 
 // ===== LIVE RECORDING LOGIC =====
 function getCurrentDrawVideo() {
-  if (tempVideos[activeTrackIndex]) return tempVideos[activeTrackIndex];
-  for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) return tempVideos[i];
-  }
-  return null;
+  return tempVideos[activeTrackIndex] || tempVideos.find(v=>v) || null;
 }
 
 recordFullEditBtn.addEventListener('click', async function () {
@@ -375,6 +396,7 @@ recordFullEditBtn.addEventListener('click', async function () {
       }
     }
   }
+
   let currentVideo = getCurrentDrawVideo();
   if (!currentVideo) {
     alert('Please upload or record at least one video take.');
@@ -383,6 +405,7 @@ recordFullEditBtn.addEventListener('click', async function () {
     return;
   }
 
+  // Wait for all tempVideos to be loaded before playing
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
       if (tempVideos[i].readyState < 2) {
@@ -393,50 +416,37 @@ recordFullEditBtn.addEventListener('click', async function () {
     }
   }
 
+  // Play all tempVideos (muted, offscreen)
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
       try {
         tempVideos[i].currentTime = 0;
         await tempVideos[i].play();
-        logDebug(`Playing tempVideo ${i}`);
+        tempVideos[i].pause();
       } catch (err) {
-        logDebug(`Error playing tempVideo ${i}: ${err.message || err}`);
+        logDebug(`Error prepping tempVideo ${i}: ${err.message || err}`);
       }
     }
   }
 
-  try {
-    await currentVideo.play();
-  } catch (e) {
-    logDebug(`Error playing initial currentVideo: ${e.message || e}`);
-  }
+  // Play only the current one and sync time
+  synchronizeVideosToAudio();
 
-  const FADE_DURATION = 1.5; // seconds
-
+  // Draw frame loop: always draw the active video
   function drawFrame() {
     if (!isRecording) return;
     const vid = getCurrentDrawVideo();
-    if (vid && !vid.ended && vid.readyState >= 2) {
+    if (vid && vid.readyState >= 2 && !vid.ended) {
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
     } else {
       ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    const currentTime = audio.currentTime;
-    const totalDuration = audio.duration || (audio.seekable && audio.seekable.length ? audio.seekable.end(0) : 0);
-    if (currentTime < FADE_DURATION) {
-      let alpha = 1 - (currentTime / FADE_DURATION);
-      ctx.fillStyle = `rgba(0,0,0,${alpha})`;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    } else if (totalDuration && currentTime > totalDuration - FADE_DURATION) {
-      let alpha = (currentTime - (totalDuration - FADE_DURATION)) / FADE_DURATION;
-      ctx.fillStyle = `rgba(0,0,0,${alpha})`;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
     animationFrameId = requestAnimationFrame(drawFrame);
   }
   drawFrame();
 
+  // Live preview in main output video
   try {
     livePreviewStream = canvas.captureStream(30);
     masterOutputVideo.srcObject = livePreviewStream;
@@ -446,22 +456,15 @@ recordFullEditBtn.addEventListener('click', async function () {
     logDebug("Live preview error: " + e.message);
   }
 
+  // Camera switching: instant, synced
   switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((btn, idx) => {
     btn.onclick = function() {
       setActiveTrack(idx);
-      const vid = getCurrentDrawVideo();
-      if (vid) {
-        vid.play()
-          .then(() => {
-            logDebug(`Switched & played tempVideo ${idx}`);
-          })
-          .catch(err => {
-            logDebug(`Error playing tempVideo after switch ${idx}: ${err.message || err}`);
-          });
-      }
+      synchronizeVideosToAudio();
     };
   });
 
+  // Audio context for audio recording
   audioContext = new (window.AudioContext || window.webkitAudioContext)();
   const source = audioContext.createMediaElementSource(audio);
   const dest = audioContext.createMediaStreamDestination();
@@ -505,11 +508,13 @@ recordFullEditBtn.addEventListener('click', async function () {
       try {
         tempVideos[i].currentTime = 0;
         await tempVideos[i].play();
+        tempVideos[i].pause();
       } catch(e) {
         logDebug(`Could not play tempVideo ${i}: ${e.message || e}`);
       }
     }
   }
+  synchronizeVideosToAudio();
   mediaRecorder.start();
 
   audio.onended = function () {
