@@ -3,62 +3,72 @@
 <head>
   <meta charset="UTF-8">
   <title>FASTCUT STUDIOS - Hollywood Music Video Editor</title>
-  <style>
-    body { font-family: sans-serif; background: #20232a; color: #f7f7f7; }
-    .hollywood-card { background: #282c34; border-radius: 10px; padding: 16px; margin: 18px 0; }
-    .upload-section { margin-bottom: 30px; }
-    .switcher-track { background: #23272f; border-radius: 6px; margin-bottom: 10px; }
-    .switcher-track.active { border: 2px solid #6fffbf; }
-    .switcher-btn { margin: 0 5px 8px 0; padding: 7px 13px; background: #181920; color: #fff; border: none; border-radius: 5px; }
-    .switcher-btn.active { background: #6fffbf; color: #181920; font-weight: bold; }
-    .controls-section { margin: 18px 0 22px 0; }
-    .hollywood-output { margin-top: 32px; }
-    .video-output-card { text-align: center; }
-    .track-title { font-weight: bold; color: #6fffbf; margin-bottom: 4px; }
-    .track-preview { width: 100%; max-width: 300px; background: #000; border-radius: 6px; }
-    .rec-indicator { color: #f00; font-weight: bold; margin-top: 7px; }
-    .export-btn { margin-top: 12px; background: #6fffbf; color: #181920; font-weight: bold; border: none; border-radius: 5px; padding: 10px 18px; }
-    .upload-video-label { font-size: 13px; color: #aaa; margin: 6px 0 0 0; }
-    #hiddenVideos { display: none; }
-  </style>
+  <!-- Cinematic Font & Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>FASTCUT STUDIOS - Hollywood Music Video Editor</h1>
-
-  <!-- Step 1: Song Upload -->
-  <div class="hollywood-card upload-section">
-    <h2>🎵 Step 1: Upload Your Song</h2>
-    <input type="file" id="songInput" accept="audio/*">
-    <span id="audioStatus"></span>
-    <audio id="audio" style="display:none;" controls></audio>
-  </div>
-
-  <!-- Step 2: Camera Takes -->
-  <div class="hollywood-card">
-    <h2>🎥 Step 2: Upload or Record Camera Takes</h2>
-    <div id="switcherTracks"></div>
-  </div>
-
-  <!-- Step 3: Live Edit -->
-  <div class="hollywood-card">
-    <h2>🎬 Step 3: Live Edit Your Music Video</h2>
-    <div id="switcherBtnsContainer" style="margin-bottom:12px;"></div>
-    <div class="controls-section">
-      <button id="recordFullEditBtn">Record Full Edit</button>
-      <button id="stopPreviewBtn">Stop</button>
+  <header>
+    <div class="logo-area">
+      <!-- Example SVG logo (replace with your own for production!) -->
+      <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+        <circle cx="30" cy="30" r="29" stroke="#6fffbf" stroke-width="2"/>
+        <rect x="16" y="18" width="28" height="24" rx="6" fill="#23a6d5" fill-opacity="0.2"/>
+        <polygon points="26,24 40,30 26,36" fill="#6fffbf"/>
+      </svg>
+      <span class="brand-name">FASTCUT STUDIOS</span>
     </div>
-    <div class="hollywood-output">
-      <div class="hollywood-card video-output-card">
-        <video id="masterOutputVideo" controls></video>
-        <div class="rec-indicator" id="recIndicator" style="display:none;">● REC</div>
-        <br>
-        <button class="export-btn" id="exportMusicVideoBtn" disabled>Export Video</button>
-        <span id="exportStatus"></span>
+    <h1>Hollywood Music Video Editor</h1>
+  </header>
+
+  <main>
+    <!-- Step 1: Song Upload -->
+    <section class="hollywood-card upload-section" aria-label="Upload Your Song">
+      <h2>🎵 Step 1: Upload Your Song</h2>
+      <input type="file" id="songInput" accept="audio/*">
+      <span id="audioStatus"></span>
+      <audio id="audio" style="display:none;" controls></audio>
+    </section>
+
+    <!-- Step 2: Camera Takes -->
+    <section class="hollywood-card" aria-label="Upload or Record Camera Takes">
+      <h2>🎥 Step 2: Upload or Record Camera Takes</h2>
+      <div id="switcherTracks"></div>
+    </section>
+
+    <!-- Step 3: Live Edit -->
+    <section class="hollywood-card" aria-label="Live Edit Your Music Video">
+      <h2>🎬 Step 3: Live Edit Your Music Video</h2>
+      <div id="switcherBtnsContainer" style="margin-bottom:12px;"></div>
+      <div class="controls-section">
+        <button id="recordFullEditBtn" title="Record Your Live Edit">🎬 Record Full Edit</button>
+        <button id="stopPreviewBtn" title="Stop Recording or Preview">⏹️ Stop</button>
       </div>
-    </div>
-  </div>
+      <div class="hollywood-output">
+        <div class="hollywood-card video-output-card">
+          <video id="masterOutputVideo" controls></video>
+          <div class="rec-indicator" id="recIndicator" style="display:none;">● REC</div>
+          <br>
+          <button class="export-btn" id="exportMusicVideoBtn" disabled title="Export Your Final Video">⬇️ Export Video</button>
+          <span id="exportStatus"></span>
+        </div>
+      </div>
+    </section>
+    <div id="hiddenVideos"></div>
+  </main>
 
-  <div id="hiddenVideos"></div>
+  <!-- Debug log (hidden by default, enable for dev) -->
+  <!-- <pre id="debuglog" style="display:none;"></pre> -->
+
+  <footer>
+    <div class="footer-content">
+      <span>Made with <span style="color:#ff4d6d;">♥</span> by Bernardo Garcia</span>
+      <span class="footer-links">
+        <a href="#" title="Contact">Contact</a> | 
+        <a href="#" title="GitHub">GitHub</a>
+      </span>
+    </div>
+  </footer>
 
   <script src="script.js"></script>
 </body>
