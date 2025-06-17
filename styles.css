@@ -6,8 +6,8 @@
   inset: 0;
   z-index: -2;
   background: radial-gradient(ellipse 60% 35% at 60% 0%, #fff8 0%, #ffd70044 30%, #0000 75%),
-    radial-gradient(ellipse 40% 30% at 35% 20%, #17c3b2 0%, #ffd70022 55%, #0000 100%), /* replaced purple with teal/cyan */
-    radial-gradient(ellipse 60% 17% at 50% 100%, #ffd70033 0%, #17c3b299 60%, #0000 100%), /* replaced purple with teal/cyan */
+    radial-gradient(ellipse 40% 30% at 35% 20%, #17c3b2 0%, #ffd70022 55%, #0000 100%),
+    radial-gradient(ellipse 60% 17% at 50% 100%, #ffd70033 0%, #17c3b299 60%, #0000 100%),
     linear-gradient(-45deg, #140c1d 0%, #0e1c26 60%, #1a1a2e 100%);
   pointer-events: none;
 }
@@ -45,7 +45,7 @@ header {
   letter-spacing: 0.13em;
   color: #ffd700;
   font-weight: 900;
-  text-shadow: 0 3px 38px #17c3b2b0, 0 0 12px #ffd700bb; /* replaced purple with teal */
+  text-shadow: 0 3px 38px #17c3b2b0, 0 0 12px #ffd700bb;
 }
 .gala-title {
   font-family: 'Bebas Neue', 'Inter', Arial, sans-serif;
@@ -82,7 +82,7 @@ header {
   font-family: 'Bebas Neue','Inter',sans-serif;
   letter-spacing: 0.11em;
   color: #ffd700;
-  text-shadow: 0 2px 12px #fffbe899, 0 0 8px #17c3b2aa; /* replaced purple with teal */
+  text-shadow: 0 2px 12px #fffbe899, 0 0 8px #17c3b2aa;
   display: flex;
   gap: 1.6em;
   justify-content: center;
@@ -130,8 +130,9 @@ header {
   margin: 0 3px 7px 0;
   min-width: 0;
   padding: 9px 16px;
-  background: linear-gradient(90deg, #17c3b2 0%, #ffd700 100%);
-  color: #1a122c;
+  /* Royal blue to turquoise gradient */
+  background: linear-gradient(90deg, #0066ff 0%, #00e0c6 100%);
+  color: #fff;
   border: none;
   border-radius: 18px;
   font-size: 1.03rem;
@@ -139,7 +140,7 @@ header {
   letter-spacing: 0.03em;
   cursor: pointer;
   transition: background 0.18s, color 0.18s, transform 0.15s, box-shadow 0.22s;
-  box-shadow: 0 1px 7px 0 #17c3b21a, 0 0px 9px #ffd70033;
+  box-shadow: 0 1px 7px 0 #00e0c61a, 0 0px 9px #0066ff33;
   display: inline-block;
   line-height: 1.1;
   text-shadow: 0 1px 7px #fff2;
@@ -151,16 +152,16 @@ header {
 .switcher-btn.active,
 .switcher-btn:hover,
 .switcher-btn:focus {
-  background: linear-gradient(90deg, #ffd700 0%, #17c3b2 100%);
+  background: linear-gradient(90deg, #00e0c6 0%, #0066ff 100%);
   color: #fff;
   transform: scale(1.09) rotate(-2deg);
-  box-shadow: 0 7px 18px 0 #ffd70077, 0 0px 18px #fffbe833;
-  text-shadow: 0 1px 10px #ffd70098, 0 0 8px #fff7;
+  box-shadow: 0 7px 18px 0 #00e0c677, 0 0px 18px #0066ff33;
+  text-shadow: 0 1px 10px #00e0c698, 0 0 8px #fff7;
 }
 .switcher-btn.active::after, .switcher-btn:hover::after {
   content: '';
   position: absolute; left: 0; top: 0; right: 0; bottom: 0;
-  background: radial-gradient(circle at 60% 20%, #fffbe833 0%, #ffd70022 55%, transparent 100%);
+  background: radial-gradient(circle at 60% 20%, #fffbe833 0%, #00e0c622 55%, transparent 100%);
   pointer-events: none;
   animation: btnGlow 1.7s infinite alternate;
 }
@@ -169,35 +170,36 @@ header {
   100% { opacity: 0.9;}
 }
 
-/* ----------- Controls ----------- */
-.controls-section { 
-  margin: 32px 0 38px 0; 
-  display: flex; 
-  gap: 34px; 
+/* ----------- Controls (Action Buttons) ----------- */
+.controls-section {
+  margin: 32px 0 38px 0;
+  display: flex;
+  gap: 34px;
   justify-content: center;
 }
-.controls-section button {
+.action-btn {
   font-size: 1.21rem;
   font-weight: 700;
   border-radius: 36px;
   padding: 16px 38px;
-  background: linear-gradient(90deg, #ffd700 0%, #17c3b2 100%);
+  /* Orange to yellow gradient for Hollywood action */
+  background: linear-gradient(90deg, #ff8800 0%, #ffe600 100%);
   color: #181022;
   border: none;
   margin-right: 12px;
   cursor: pointer;
   transition: background 0.25s, transform 0.15s, box-shadow 0.19s;
-  box-shadow: 0 3px 13px 0 #17c3b21a;
+  box-shadow: 0 3px 13px 0 #ff88001a;
   display: flex;
   align-items: center;
   gap: 0.5em;
 }
-.controls-section button:active,
-.controls-section button:hover {
-  background: linear-gradient(90deg, #17c3b2 0%, #ffd700 100%);
+.action-btn:active,
+.action-btn:hover {
+  background: linear-gradient(90deg, #ffe600 0%, #ff8800 100%);
   color: #181022;
   transform: scale(1.10);
-  box-shadow: 0 8px 28px 0 #ffd70055;
+  box-shadow: 0 8px 28px 0 #ff880055;
 }
 
 /* ----------- Track Card & Previews ----------- */
