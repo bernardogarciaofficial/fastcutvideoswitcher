@@ -1,22 +1,37 @@
-// FASTCUT STUDIOS - Minimal Sync Edition (Switcher Buttons Restored)
+// FASTCUT STUDIOS - Minimal, Reliable Version
 
 const NUM_TRACKS = 6;
 const audio = document.getElementById('audio');
+const songInput = document.getElementById('songInput');
 const masterOutputVideo = document.getElementById('masterOutputVideo');
 const hiddenVideos = document.getElementById('hiddenVideos');
 const switcherTracks = document.getElementById('switcherTracks');
-const switcherBtnsContainer = document.getElementById('switcherBtnsContainer'); // Make sure this exists in HTML
-const stopSwitchingBtn = document.getElementById('stopSwitchingBtn'); // Add this in HTML
+const recordFullEditBtn = document.getElementById('recordFullEditBtn');
+const recIndicator = document.getElementById('recIndicator');
+const stopPreviewBtn = document.getElementById('stopPreviewBtn');
+const exportBtn = document.getElementById('exportMusicVideoBtn');
+const exportStatus = document.getElementById('exportStatus');
 
 const videoTracks = Array(NUM_TRACKS).fill(null);
 const tempVideos = Array(NUM_TRACKS).fill(null);
 let activeTrackIndex = 0;
-let isSwitching = false; // Track if switching is active
+let isRecording = false;
 let animationFrameId = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+let audioContext = null;
 
-// --- Set up UI for 6 plain thumbnail video screens with upload, record, download ---
+// SONG UPLOAD
+songInput.addEventListener('change', function (e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  audio.src = url;
+  audio.load();
+});
+
+// CAMERA SLOT UI
 for (let i = 0; i < NUM_TRACKS; i++) createTrackCard(i);
-createSwitcherBtns();
 
 function createTrackCard(index) {
   const card = document.createElement('div');
@@ -26,7 +41,6 @@ function createTrackCard(index) {
   card.style.width = '160px';
   card.style.display = 'inline-block';
   card.style.verticalAlign = 'top';
-  card.style.fontSize = '12px';
 
   // Title
   const title = document.createElement('div');
@@ -37,7 +51,6 @@ function createTrackCard(index) {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'video/*';
-  input.style.display = 'block';
   input.addEventListener('change', function (e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -53,7 +66,6 @@ function createTrackCard(index) {
   // Record
   const recBtn = document.createElement('button');
   recBtn.textContent = 'Record';
-  recBtn.style.display = 'inline-block';
   recBtn.style.marginTop = '4px';
   card.appendChild(recBtn);
 
@@ -125,7 +137,7 @@ function createTrackCard(index) {
   });
   card.appendChild(dlBtn);
 
-  // Plain video preview (thumbnail)
+  // Video preview (thumbnail)
   const preview = document.createElement('video');
   preview.controls = true;
   preview.style.width = '100%';
@@ -135,10 +147,15 @@ function createTrackCard(index) {
   preview.playsInline = true;
   card.appendChild(preview);
 
+  // Click to select
+  card.addEventListener('click', function () {
+    activeTrackIndex = index;
+  });
+
   switcherTracks.appendChild(card);
 }
 
-// --- Hidden, preloaded video for sync ---
+// Hidden/preloaded video for sync
 function prepareTempVideo(idx, url) {
   if (tempVideos[idx]) {
     tempVideos[idx].pause();
@@ -156,7 +173,7 @@ function prepareTempVideo(idx, url) {
   tempVideos[idx] = v;
 }
 
-// --- Core sync logic ---
+// Core sync logic
 function synchronizeVideosToAudio() {
   const syncTime = audio.currentTime;
   tempVideos.forEach((v, i) => {
@@ -171,44 +188,138 @@ function synchronizeVideosToAudio() {
     vid.play().catch(()=>{});
   }
 }
-
-// --- Create six plain switcher buttons ---
-function createSwitcherBtns() {
-  switcherBtnsContainer.innerHTML = '';
-  for (let i = 0; i < NUM_TRACKS; i++) {
-    const btn = document.createElement('button');
-    btn.textContent = `Camera ${i + 1}`;
-    btn.style.margin = '4px';
-    btn.disabled = false;
-    btn.onclick = function () {
-      if (!isSwitching) return;
-      setActiveTrack(i);
-      Array.from(switcherBtnsContainer.children).forEach((b, idx) =>
-        b.style.background = idx === i ? "#ddd" : "");
-    };
-    switcherBtnsContainer.appendChild(btn);
-  }
-}
-
-function setActiveTrack(idx) {
-  activeTrackIndex = idx;
-  masterOutputVideo.srcObject = null;
-  masterOutputVideo.src = videoTracks[idx] ? videoTracks[idx].url : "";
-  masterOutputVideo.currentTime = 0;
-  masterOutputVideo.pause(); // Never auto-play
-}
-
-// --- Stop switching process ---
-if (stopSwitchingBtn) {
-  stopSwitchingBtn.onclick = function () {
-    isSwitching = false;
-    Array.from(switcherBtnsContainer.children).forEach((b) => b.style.background = "");
-  };
-}
-
-// To start switching, set isSwitching = true (e.g., from a Start button or programmatically).
-// To stop, click the "Stop" button.
-
 audio.addEventListener('seeked', synchronizeVideosToAudio);
 
-// drawFrame for live recording/preview can be implemented as in previous versions if needed.
+// --- RECORD FULL EDIT ---
+recordFullEditBtn.addEventListener('click', async function () {
+  // Check requirements
+  if (!audio.src) {
+    alert('Please upload a song first.');
+    return;
+  }
+  if (!videoTracks.some(Boolean)) {
+    alert('Please upload or record at least one video.');
+    return;
+  }
+  if (!tempVideos[activeTrackIndex]) {
+    alert('Selected camera has no video.');
+    return;
+  }
+  isRecording = true;
+  recordedChunks = [];
+  exportStatus.textContent = '';
+  if (recIndicator) recIndicator.style.display = 'block';
+  if (exportBtn) exportBtn.disabled = true;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 640;
+  canvas.height = 360;
+  const ctx = canvas.getContext('2d');
+
+  // Ensure all temp videos are loaded & sync
+  for (let i = 0; i < tempVideos.length; i++) {
+    if (tempVideos[i]) {
+      if (!tempVideos[i].parentNode) hiddenVideos.appendChild(tempVideos[i]);
+      try {
+        tempVideos[i].pause();
+        tempVideos[i].currentTime = 0;
+        tempVideos[i].load();
+      } catch(e) {}
+    }
+  }
+  for (let i = 0; i < tempVideos.length; i++) {
+    if (tempVideos[i]) {
+      if (tempVideos[i].readyState < 2) {
+        await new Promise(resolve => {
+          tempVideos[i].addEventListener('loadeddata', resolve, { once: true });
+        });
+      }
+    }
+  }
+
+  synchronizeVideosToAudio();
+
+  function drawFrame() {
+    if (!isRecording) return;
+    const vid = tempVideos[activeTrackIndex];
+    if (!(vid && vid.readyState >= 2 && !vid.ended)) {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    } else {
+      if (Math.abs(vid.currentTime - audio.currentTime) > 0.01) {
+        vid.currentTime = audio.currentTime;
+      }
+      ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+    }
+    animationFrameId = requestAnimationFrame(drawFrame);
+  }
+  drawFrame();
+
+  // Live preview
+  try {
+    masterOutputVideo.srcObject = canvas.captureStream(30);
+    masterOutputVideo.src = "";
+    masterOutputVideo.play();
+  } catch (e) {}
+
+  // Audio context for audio recording
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const source = audioContext.createMediaElementSource(audio);
+  const dest = audioContext.createMediaStreamDestination();
+  source.connect(dest);
+  source.connect(audioContext.destination);
+
+  const canvasStream = canvas.captureStream(30);
+  const combinedStream = new MediaStream([
+    ...canvasStream.getVideoTracks(),
+    ...dest.stream.getAudioTracks()
+  ]);
+
+  mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm; codecs=vp9,opus' });
+  mediaRecorder.ondataavailable = function(e) {
+    if (e.data.size > 0) recordedChunks.push(e.data);
+  };
+  mediaRecorder.onstop = function() {
+    cancelAnimationFrame(animationFrameId);
+    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+    masterOutputVideo.src = URL.createObjectURL(blob);
+    masterOutputVideo.srcObject = null;
+    masterOutputVideo.controls = true;
+    masterOutputVideo.style.display = 'block';
+    if (recIndicator) recIndicator.style.display = 'none';
+    if (exportBtn) exportBtn.disabled = false;
+    isRecording = false;
+    exportStatus.textContent = 'Recording finished! Preview your cut below.';
+    if (audioContext) {
+      audioContext.close();
+      audioContext = null;
+    }
+  };
+
+  audio.currentTime = 0;
+  audio.play();
+  synchronizeVideosToAudio();
+  mediaRecorder.start();
+
+  audio.onended = function () {
+    if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+      audio.onended = null;
+    }
+  };
+
+  if (stopPreviewBtn) {
+    stopPreviewBtn.onclick = function () {
+      if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        audio.pause();
+        if (recIndicator) recIndicator.style.display = 'none';
+        exportStatus.textContent = 'Recording stopped.';
+      }
+    };
+  }
+});
+
+// --- Remove "Add Camera" Button: Just delete it from your HTML file ---
+
+// Export, etc, can be added as before
