@@ -1,4 +1,4 @@
-// FASTCUT STUDIOS - Minimal, Reliable Version
+// FASTCUT STUDIOS - Minimal, Reliable Version with Smooth Switching
 
 const NUM_TRACKS = 6;
 const audio = document.getElementById('audio');
@@ -23,6 +23,9 @@ let animationFrameId = null;
 let mediaRecorder = null;
 let recordedChunks = [];
 let audioContext = null;
+
+// Keep track of last camera for smooth switching
+let lastActiveTrackIndex = -1;
 
 // SONG UPLOAD
 songInput.addEventListener('change', function (e) {
@@ -233,11 +236,14 @@ audio.addEventListener('seeked', synchronizeVideosToAudio);
 
 function setActiveTrack(idx) {
   activeTrackIndex = idx;
-  synchronizeVideosToAudio();
-  masterOutputVideo.srcObject = null;
-  masterOutputVideo.src = videoTracks[idx] ? videoTracks[idx].url : "";
-  masterOutputVideo.currentTime = 0;
-  masterOutputVideo.pause();
+  // On next drawFrame, the video will be synced and played if recording
+  if (!isRecording) {
+    // For previewing, update masterOutputVideo
+    masterOutputVideo.srcObject = null;
+    masterOutputVideo.src = videoTracks[idx] ? videoTracks[idx].url : "";
+    masterOutputVideo.currentTime = 0;
+    masterOutputVideo.pause();
+  }
 }
 
 // --- RECORD FULL EDIT ---
@@ -289,18 +295,28 @@ recordFullEditBtn.addEventListener('click', async function () {
 
   synchronizeVideosToAudio();
 
+  // --- This is the improved drawFrame logic (your snippet) ---
+  lastActiveTrackIndex = -1; // reset on recording start
   function drawFrame() {
     if (!isRecording) return;
+
+    // If camera changed, sync new video to audio and play
+    if (activeTrackIndex !== lastActiveTrackIndex) {
+      const vid = tempVideos[activeTrackIndex];
+      if (vid) {
+        vid.currentTime = audio.currentTime;
+        vid.play().catch(()=>{});
+      }
+      lastActiveTrackIndex = activeTrackIndex;
+    }
+
     const vid = tempVideos[activeTrackIndex];
     if (vid && vid.readyState >= 2 && !vid.ended) {
-      // Sync to audio
-      if (Math.abs(vid.currentTime - audio.currentTime) > 0.03) {
+      // Only sync currentTime if a large difference is detected (e.g. user seeks)
+      if (Math.abs(vid.currentTime - audio.currentTime) > 0.2) {
         vid.currentTime = audio.currentTime;
       }
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
-    } else {
-      // Instead of black frame, hold previous
-      // Optionally: Don't clear canvas if no valid video
     }
     animationFrameId = requestAnimationFrame(drawFrame);
   }
