@@ -1,19 +1,22 @@
-// FASTCUT STUDIOS - Minimal Sync Edition
+// FASTCUT STUDIOS - Minimal Sync Edition (Switcher Buttons Restored)
 
 const NUM_TRACKS = 6;
 const audio = document.getElementById('audio');
 const masterOutputVideo = document.getElementById('masterOutputVideo');
 const hiddenVideos = document.getElementById('hiddenVideos');
 const switcherTracks = document.getElementById('switcherTracks');
+const switcherBtnsContainer = document.getElementById('switcherBtnsContainer'); // Make sure this exists in HTML
+const stopSwitchingBtn = document.getElementById('stopSwitchingBtn'); // Add this in HTML
 
-const videoTracks = Array(NUM_TRACKS).fill(null); // {url, name, recordedBlob}
-const tempVideos = Array(NUM_TRACKS).fill(null);  // <video>
+const videoTracks = Array(NUM_TRACKS).fill(null);
+const tempVideos = Array(NUM_TRACKS).fill(null);
 let activeTrackIndex = 0;
-let isRecording = false;
+let isSwitching = false; // Track if switching is active
 let animationFrameId = null;
 
 // --- Set up UI for 6 plain thumbnail video screens with upload, record, download ---
 for (let i = 0; i < NUM_TRACKS; i++) createTrackCard(i);
+createSwitcherBtns();
 
 function createTrackCard(index) {
   const card = document.createElement('div');
@@ -132,13 +135,6 @@ function createTrackCard(index) {
   preview.playsInline = true;
   card.appendChild(preview);
 
-  // Click to select for switching
-  card.addEventListener('click', function () {
-    setActiveTrack(index);
-    Array.from(switcherTracks.children).forEach((c, i) =>
-      c.style.background = i === index ? "#eee" : "");
-  });
-
   switcherTracks.appendChild(card);
 }
 
@@ -176,7 +172,24 @@ function synchronizeVideosToAudio() {
   }
 }
 
-// --- Switch camera ---
+// --- Create six plain switcher buttons ---
+function createSwitcherBtns() {
+  switcherBtnsContainer.innerHTML = '';
+  for (let i = 0; i < NUM_TRACKS; i++) {
+    const btn = document.createElement('button');
+    btn.textContent = `Camera ${i + 1}`;
+    btn.style.margin = '4px';
+    btn.disabled = false;
+    btn.onclick = function () {
+      if (!isSwitching) return;
+      setActiveTrack(i);
+      Array.from(switcherBtnsContainer.children).forEach((b, idx) =>
+        b.style.background = idx === i ? "#ddd" : "");
+    };
+    switcherBtnsContainer.appendChild(btn);
+  }
+}
+
 function setActiveTrack(idx) {
   activeTrackIndex = idx;
   masterOutputVideo.srcObject = null;
@@ -185,21 +198,17 @@ function setActiveTrack(idx) {
   masterOutputVideo.pause(); // Never auto-play
 }
 
-// --- Always re-sync after seeking audio ---
+// --- Stop switching process ---
+if (stopSwitchingBtn) {
+  stopSwitchingBtn.onclick = function () {
+    isSwitching = false;
+    Array.from(switcherBtnsContainer.children).forEach((b) => b.style.background = "");
+  };
+}
+
+// To start switching, set isSwitching = true (e.g., from a Start button or programmatically).
+// To stop, click the "Stop" button.
+
 audio.addEventListener('seeked', synchronizeVideosToAudio);
 
-// --- Live recording/preview draw loop, if you want to implement ---
-function drawFrame(canvas, ctx) {
-  if (!isRecording) return;
-  const vid = tempVideos[activeTrackIndex];
-  if (!(vid && vid.readyState >= 2 && !vid.ended)) {
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  } else {
-    if (Math.abs(vid.currentTime - audio.currentTime) > 0.01) {
-      vid.currentTime = audio.currentTime;
-    }
-    ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
-  }
-  animationFrameId = requestAnimationFrame(() => drawFrame(canvas, ctx));
-}
+// drawFrame for live recording/preview can be implemented as in previous versions if needed.
