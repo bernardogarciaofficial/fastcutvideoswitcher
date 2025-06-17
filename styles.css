@@ -207,11 +207,11 @@ header {
   background: rgba(31,24,60,0.96);
   border-radius: 18px;
   margin-bottom: 22px;
-  box-shadow: 0 2px 20px 0 #17c3b21a;
+  box-shadow: 0 2px 20px 0 #e639461a;
   padding: 20px 22px 16px 24px;
   transition: box-shadow .18s, transform .16s;
   position: relative;
-  border: 2.5px solid #17c3b2;
+  border: 2.5px solid #e63946; /* RED ACCENT */
   cursor: pointer;
 }
 .switcher-track.active {
@@ -225,19 +225,19 @@ header {
   margin-bottom: 10px;
   font-size: 1.17rem;
   letter-spacing: 0.01em;
-  text-shadow: 0 1px 8px #17c3b255;
+  text-shadow: 0 1px 8px #e6394655;
 }
 .track-preview {
   width: 98%;
   max-width: 370px;
   background: #1a122c;
   border-radius: 12px;
-  box-shadow: 0 2px 13px 0 #17c3b21b;
+  box-shadow: 0 2px 13px 0 #e639461b;
   margin: 14px auto 0 auto;
   display: block;
   transition: transform 0.19s, box-shadow 0.19s;
   cursor: pointer;
-  border: 1.8px solid #17c3b2;
+  border: 1.8px solid #e63946; /* RED ACCENT */
 }
 .track-preview:hover {
   transform: scale(1.045);
@@ -248,15 +248,16 @@ header {
   color: #ffd700;
   margin: 8px 0 5px 0;
   letter-spacing: 0.01em;
-  text-shadow: 0 1px 8px #17c3b231;
+  text-shadow: 0 1px 8px #e6394631;
 }
 .hollywood-output { margin-top: 36px; }
 .video-output-card {
   text-align: center;
   background: rgba(34, 21, 51, 0.96);
   border-radius: 24px;
-  box-shadow: 0 2px 32px 0 #17c3b21c;
+  box-shadow: 0 2px 32px 0 #e639461c;
   padding: 50px 14px;
+  border: 2.5px solid #e63946; /* RED ACCENT */
 }
 #masterOutputVideo {
   width: 92%;
@@ -286,7 +287,7 @@ header {
 }
 @keyframes galaRecShine {
   0% { filter: drop-shadow(0 0 11px #ffd70055);}
-  100% { filter: drop-shadow(0 0 16px #17c3b277);}
+  100% { filter: drop-shadow(0 0 16px #e6394677);}
 }
 
 .export-btn {
@@ -314,14 +315,14 @@ header {
   margin-left: 15px;
   font-size: 1.15rem;
   font-weight: 700;
-  text-shadow: 0 1px 8px #17c3b233;
+  text-shadow: 0 1px 8px #e6394633;
 }
 audio {
   margin-top: 13px;
   width: 98%;
   border-radius: 10px;
   background: #241845;
-  border: 1.5px solid #17c3b2;
+  border: 1.5px solid #e63946;
 }
 
 /* ----------- Footer ----------- */
@@ -381,7 +382,7 @@ footer {
   font-family: 'Bebas Neue', 'Inter', Arial, sans-serif;
   letter-spacing: 0.06em;
   opacity: 0.83;
-  text-shadow: 0 1px 10px #17c3b244, 0 2px 6px #ffd70044;
+  text-shadow: 0 1px 10px #e6394644, 0 2px 6px #ffd70044;
 }
 /* ----------- Custom Scrollbar ----------- */
 body::-webkit-scrollbar {
