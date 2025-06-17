@@ -1,4 +1,4 @@
-// FASTCUT STUDIOS - Hollywood Music Video Editor (Instant & Synced Switching)
+// FASTCUT STUDIOS - Hollywood Music Video Editor (Smooth, Perfect Sync Edition)
 // Author: Bernardo Garcia
 
 const NUM_TRACKS = 6;
@@ -35,7 +35,7 @@ let animationFrameId = null;
 let audioContext = null;
 let livePreviewStream = null;
 
-// ===== SONG UPLOAD =====
+// ========== SONG UPLOAD ==========
 songInput.addEventListener('change', function (e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -47,7 +47,7 @@ songInput.addEventListener('change', function (e) {
   logDebug(`Audio file loaded: ${file.name}`);
 });
 
-// ===== VIDEO TAKES UPLOAD, RECORD, DOWNLOAD & UI =====
+// ========== VIDEO UPLOAD/RECORD/THUMBNAIL UI ==========
 function createTrackCard(index) {
   const card = document.createElement('div');
   card.className = 'switcher-track';
@@ -86,7 +86,6 @@ function createTrackCard(index) {
   let trackRecorder = null;
   let recStream = null;
   let recChunks = [];
-  // Stop Recording button (new)
   const stopRecBtn = document.createElement('button');
   stopRecBtn.textContent = 'Stop';
   stopRecBtn.style.marginLeft = '8px';
@@ -94,12 +93,8 @@ function createTrackCard(index) {
   card.appendChild(recBtn);
   card.appendChild(stopRecBtn);
 
-  let prevAudioTime = 0;
-  let prevAudioPaused = true;
-
   recBtn.addEventListener('click', async function () {
     if (trackRecorder && trackRecorder.state === 'recording') return;
-
     recBtn.disabled = true;
     recBtn.textContent = 'Recording...';
     stopRecBtn.style.display = '';
@@ -118,7 +113,6 @@ function createTrackCard(index) {
     }
     trackRecorder = new MediaRecorder(recStream, { mimeType: 'video/webm; codecs=vp9,opus' });
     recChunks = [];
-    // Show webcam live in the preview
     preview.srcObject = recStream;
     preview.muted = true;
     preview.autoplay = true;
@@ -150,17 +144,12 @@ function createTrackCard(index) {
         audio.currentTime = 0;
       }
     };
-
-    // Music sync: Play song during camera take recording
     if (audio.src) {
-      prevAudioTime = audio.currentTime;
-      prevAudioPaused = audio.paused;
       audio.currentTime = 0;
       audio.volume = 0.4;
       audio.play().catch(()=>{});
       logDebug("Song playback started for camera take recording.");
     }
-
     trackRecorder.start();
   });
 
@@ -258,7 +247,6 @@ function createTrackCard(index) {
   card.update();
 }
 
-// Preload/prep hidden video for each track
 function prepareTempVideo(idx, url, name = "") {
   tempVideos[idx] = document.createElement('video');
   let el = tempVideos[idx];
@@ -279,7 +267,7 @@ function prepareTempVideo(idx, url, name = "") {
   if (!el.parentNode) hiddenVideos.appendChild(el);
 }
 
-// Switcher buttons logic
+// ========== SWITCHER BUTTONS ==========
 function updateSwitcherBtns() {
   switcherBtnsContainer.innerHTML = '';
   for (let i = 0; i < NUM_TRACKS; i++) {
@@ -296,7 +284,6 @@ function updateSwitcherBtns() {
   }
 }
 
-// Synchronized, instant switching
 function setActiveTrack(idx) {
   activeTrackIndex = idx;
   document.querySelectorAll('.switcher-track').forEach((el, i) => {
@@ -306,7 +293,6 @@ function setActiveTrack(idx) {
     el.classList.toggle('active', i === idx);
   });
 
-  // If live preview/recording, sync all videos to audio time; otherwise update output
   if (isRecording || isPlaying) {
     synchronizeVideosToAudio();
   } else {
@@ -314,14 +300,19 @@ function setActiveTrack(idx) {
   }
 }
 
-// Synchronize all tempVideos to audio's current time
+// The core of smooth, flawless synchronization
 function synchronizeVideosToAudio() {
   const syncTime = audio.currentTime;
-  // Pause all videos and sync time
+  // Pause all videos, sync time
   tempVideos.forEach((v, i) => {
     if (v) {
       v.pause();
-      v.currentTime = syncTime;
+      // Seek time, but only if it's not in the "ended" state
+      if (syncTime < v.duration - 0.1) {
+        v.currentTime = syncTime;
+      } else {
+        v.currentTime = v.duration - 0.05;
+      }
     }
   });
   // Only play the new active video
@@ -332,7 +323,6 @@ function synchronizeVideosToAudio() {
   }
 }
 
-// For preview when not recording
 function previewInOutput(idx) {
   if (isRecording || isPlaying) return;
   if (!videoTracks[idx]) return;
@@ -343,17 +333,37 @@ function previewInOutput(idx) {
   masterOutputVideo.play().catch(()=>{});
 }
 
-// ===== INIT =====
+// ========== INIT ==========
 for (let i = 0; i < NUM_TRACKS; i++) createTrackCard(i);
 updateSwitcherBtns();
 masterOutputVideo.style.display = 'block';
 exportBtn.disabled = true;
 
-// ===== LIVE RECORDING LOGIC =====
+// ========== LIVE RECORDING LOGIC ==========
 function getCurrentDrawVideo() {
   return tempVideos[activeTrackIndex] || tempVideos.find(v=>v) || null;
 }
 
+let lastDrawnTime = -1;
+function drawFrame(canvas, ctx) {
+  if (!isRecording) return;
+  const vid = getCurrentDrawVideo();
+  // If video is not ready, just fill with black
+  if (!(vid && vid.readyState >= 2 && !vid.ended)) {
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  } else {
+    // If the video is not exactly at the audio time, sync it
+    let diff = Math.abs(vid.currentTime - audio.currentTime);
+    if (diff > 0.05) {
+      vid.currentTime = audio.currentTime;
+    }
+    ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+  }
+  animationFrameId = requestAnimationFrame(() => drawFrame(canvas, ctx));
+}
+
+// ========== RECORD ACTION ==========
 recordFullEditBtn.addEventListener('click', async function () {
   if (!audio.src) {
     alert('Please upload a song first.');
@@ -384,6 +394,7 @@ recordFullEditBtn.addEventListener('click', async function () {
   canvas.height = 360;
   const ctx = canvas.getContext('2d');
 
+  // Ensure all temp videos are loaded & sync
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
       if (!tempVideos[i].parentNode) hiddenVideos.appendChild(tempVideos[i]);
@@ -397,14 +408,6 @@ recordFullEditBtn.addEventListener('click', async function () {
     }
   }
 
-  let currentVideo = getCurrentDrawVideo();
-  if (!currentVideo) {
-    alert('Please upload or record at least one video take.');
-    isRecording = false; isPlaying = false; recIndicator.style.display = 'none';
-    logDebug('No tempVideos available for drawing.');
-    return;
-  }
-
   // Wait for all tempVideos to be loaded before playing
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
@@ -416,35 +419,10 @@ recordFullEditBtn.addEventListener('click', async function () {
     }
   }
 
-  // Play all tempVideos (muted, offscreen)
-  for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) {
-      try {
-        tempVideos[i].currentTime = 0;
-        await tempVideos[i].play();
-        tempVideos[i].pause();
-      } catch (err) {
-        logDebug(`Error prepping tempVideo ${i}: ${err.message || err}`);
-      }
-    }
-  }
-
-  // Play only the current one and sync time
   synchronizeVideosToAudio();
 
-  // Draw frame loop: always draw the active video
-  function drawFrame() {
-    if (!isRecording) return;
-    const vid = getCurrentDrawVideo();
-    if (vid && vid.readyState >= 2 && !vid.ended) {
-      ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
-    } else {
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    animationFrameId = requestAnimationFrame(drawFrame);
-  }
-  drawFrame();
+  // Draw loop: always draw the active, synced video
+  drawFrame(canvas, ctx);
 
   // Live preview in main output video
   try {
@@ -503,17 +481,6 @@ recordFullEditBtn.addEventListener('click', async function () {
 
   audio.currentTime = 0;
   audio.play();
-  for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) {
-      try {
-        tempVideos[i].currentTime = 0;
-        await tempVideos[i].play();
-        tempVideos[i].pause();
-      } catch(e) {
-        logDebug(`Could not play tempVideo ${i}: ${e.message || e}`);
-      }
-    }
-  }
   synchronizeVideosToAudio();
   mediaRecorder.start();
 
@@ -536,7 +503,7 @@ recordFullEditBtn.addEventListener('click', async function () {
   };
 });
 
-// ===== EXPORT =====
+// ========== EXPORT ==========
 exportBtn.addEventListener('click', function () {
   if (!masterOutputVideo.src) {
     exportStatus.textContent = 'Nothing to export yet!';
