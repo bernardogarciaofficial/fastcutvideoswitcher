@@ -33,7 +33,7 @@ let mediaRecorder = null;
 let recordedChunks = [];
 let animationFrameId = null;
 let audioContext = null;
-let livePreviewStream = null;  // for live canvas preview
+let livePreviewStream = null;
 
 // ===== SONG UPLOAD =====
 songInput.addEventListener('change', function (e) {
@@ -52,7 +52,9 @@ function createTrackCard(index) {
   const card = document.createElement('div');
   card.className = 'switcher-track';
   if (index === 0) card.classList.add('active');
-  card.style.border = '2px solid #222'; card.style.marginBottom = '16px'; card.style.padding = '10px';
+  card.style.border = '2px solid #e63946';
+  card.style.marginBottom = '16px';
+  card.style.padding = '10px';
 
   const title = document.createElement('div');
   title.className = 'track-title';
@@ -138,7 +140,6 @@ function createTrackCard(index) {
       preview.muted = true;
       preview.loop = false;
       preview.load();
-      // Do NOT call preview.play(); -- for sync!
       card.update();
       updateSwitcherBtns();
       stopRecBtn.style.display = 'none';
@@ -196,11 +197,11 @@ function createTrackCard(index) {
   const preview = document.createElement('video');
   preview.className = 'track-preview';
   preview.controls = true;
-  preview.style.display = 'block'; // always visible!
+  preview.style.display = 'block';
   preview.style.background = "#000";
   preview.style.width = '80%';
   preview.style.marginTop = '6px';
-  preview.autoplay = false; // Do not autoplay on uploaded videos!
+  preview.autoplay = false;
   preview.muted = true;
   preview.loop = false;
   preview.playsInline = true;
@@ -219,13 +220,12 @@ function createTrackCard(index) {
       }
     }
     logDebug(`Camera ${index+1} thumbnail: ${msg}`);
-    preview.poster = ""; // Remove any old poster
+    preview.poster = "";
     preview.style.background = "#900";
   });
   preview.addEventListener('loadeddata', () => {
     logDebug(`Preview video for Camera ${index+1} loaded: ${preview.src}`);
     preview.style.background = "#000";
-    // Do NOT autoplay here for uploaded videos!
   });
 
   // Status label
@@ -240,11 +240,10 @@ function createTrackCard(index) {
       dlBtn.style.display = '';
       preview.srcObject = null;
       preview.src = videoTracks[index].url;
-      preview.autoplay = false; // Do not autoplay!
+      preview.autoplay = false;
       preview.muted = true;
       preview.loop = false;
       preview.load();
-      // Do NOT call preview.play();
     } else {
       label.textContent = 'No video uploaded or recorded';
       dlBtn.style.display = 'none';
@@ -311,7 +310,6 @@ function setActiveTrack(idx) {
 }
 
 function previewInOutput(idx) {
-  // If we are recording, the output video is showing the canvas stream.
   if (isRecording || isPlaying) return;
   if (!videoTracks[idx]) return;
   masterOutputVideo.srcObject = null;
@@ -365,16 +363,15 @@ recordFullEditBtn.addEventListener('click', async function () {
   canvas.height = 360;
   const ctx = canvas.getContext('2d');
 
-  // Ensure tempVideos are loaded and ready
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
       if (!tempVideos[i].parentNode) hiddenVideos.appendChild(tempVideos[i]);
-      try { 
-        tempVideos[i].pause(); 
-        tempVideos[i].currentTime = 0; 
-        tempVideos[i].load(); 
-      } catch(e) { 
-        logDebug(`Could not reset tempVideo ${i}: ${e.message || e}`); 
+      try {
+        tempVideos[i].pause();
+        tempVideos[i].currentTime = 0;
+        tempVideos[i].load();
+      } catch(e) {
+        logDebug(`Could not reset tempVideo ${i}: ${e.message || e}`);
       }
     }
   }
@@ -386,7 +383,6 @@ recordFullEditBtn.addEventListener('click', async function () {
     return;
   }
 
-  // Wait for all tempVideos to be loaded before playing
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
       if (tempVideos[i].readyState < 2) {
@@ -397,7 +393,6 @@ recordFullEditBtn.addEventListener('click', async function () {
     }
   }
 
-  // Try to play all tempVideos
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
       try {
@@ -410,14 +405,12 @@ recordFullEditBtn.addEventListener('click', async function () {
     }
   }
 
-  // Also play the currentVideo again to be sure
   try {
     await currentVideo.play();
   } catch (e) {
     logDebug(`Error playing initial currentVideo: ${e.message || e}`);
   }
 
-  // Fade-in/out config
   const FADE_DURATION = 1.5; // seconds
 
   function drawFrame() {
@@ -429,16 +422,13 @@ recordFullEditBtn.addEventListener('click', async function () {
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
-    // Fade-in/out logic
     const currentTime = audio.currentTime;
     const totalDuration = audio.duration || (audio.seekable && audio.seekable.length ? audio.seekable.end(0) : 0);
     if (currentTime < FADE_DURATION) {
-      // Fade in
       let alpha = 1 - (currentTime / FADE_DURATION);
       ctx.fillStyle = `rgba(0,0,0,${alpha})`;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     } else if (totalDuration && currentTime > totalDuration - FADE_DURATION) {
-      // Fade out
       let alpha = (currentTime - (totalDuration - FADE_DURATION)) / FADE_DURATION;
       ctx.fillStyle = `rgba(0,0,0,${alpha})`;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -447,7 +437,6 @@ recordFullEditBtn.addEventListener('click', async function () {
   }
   drawFrame();
 
-  // Live preview in main output video
   try {
     livePreviewStream = canvas.captureStream(30);
     masterOutputVideo.srcObject = livePreviewStream;
@@ -511,13 +500,12 @@ recordFullEditBtn.addEventListener('click', async function () {
 
   audio.currentTime = 0;
   audio.play();
-  // Play all tempVideos again to be sure
   for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) { 
-      try { 
-        tempVideos[i].currentTime = 0; 
-        await tempVideos[i].play(); 
-      } catch(e) { 
+    if (tempVideos[i]) {
+      try {
+        tempVideos[i].currentTime = 0;
+        await tempVideos[i].play();
+      } catch(e) {
         logDebug(`Could not play tempVideo ${i}: ${e.message || e}`);
       }
     }
