@@ -12,10 +12,14 @@ const stopPreviewBtn = document.getElementById('stopPreviewBtn');
 const exportBtn = document.getElementById('exportMusicVideoBtn');
 const exportStatus = document.getElementById('exportStatus');
 
+const switcherBtnsContainer = document.getElementById('switcherBtnsContainer');
+const stopSwitchingBtn = document.getElementById('stopSwitchingBtn');
+
 const videoTracks = Array(NUM_TRACKS).fill(null);
 const tempVideos = Array(NUM_TRACKS).fill(null);
 let activeTrackIndex = 0;
 let isRecording = false;
+let isSwitching = false;
 let animationFrameId = null;
 let mediaRecorder = null;
 let recordedChunks = [];
@@ -33,6 +37,41 @@ songInput.addEventListener('change', function (e) {
 // CAMERA SLOT UI
 for (let i = 0; i < NUM_TRACKS; i++) createTrackCard(i);
 
+// CREATE SIX SIMPLE SWITCHER BUTTONS
+createSwitcherBtns();
+
+function createSwitcherBtns() {
+  if (!switcherBtnsContainer) return;
+  switcherBtnsContainer.innerHTML = '';
+  for (let i = 0; i < NUM_TRACKS; i++) {
+    const btn = document.createElement('button');
+    btn.textContent = `Camera ${i + 1}`;
+    btn.style.margin = '4px';
+    btn.onclick = function () {
+      if (!isSwitching) return;
+      setActiveTrack(i);
+      Array.from(switcherBtnsContainer.children).forEach((b, idx) =>
+        b.style.background = idx === i ? "#ddd" : ""
+      );
+    };
+    switcherBtnsContainer.appendChild(btn);
+  }
+}
+
+// STOP BUTTON FOR SWITCHING
+if (stopSwitchingBtn) {
+  stopSwitchingBtn.onclick = function () {
+    isSwitching = false;
+    Array.from(switcherBtnsContainer.children).forEach((b) => b.style.background = "");
+  };
+}
+
+// Function to start switching process (call this when you want to enable switching)
+function startSwitching() {
+  isSwitching = true;
+}
+
+// CAMERA CARD LOGIC
 function createTrackCard(index) {
   const card = document.createElement('div');
   card.style.border = '1px solid #888';
@@ -147,11 +186,6 @@ function createTrackCard(index) {
   preview.playsInline = true;
   card.appendChild(preview);
 
-  // Click to select
-  card.addEventListener('click', function () {
-    activeTrackIndex = index;
-  });
-
   switcherTracks.appendChild(card);
 }
 
@@ -189,6 +223,14 @@ function synchronizeVideosToAudio() {
   }
 }
 audio.addEventListener('seeked', synchronizeVideosToAudio);
+
+function setActiveTrack(idx) {
+  activeTrackIndex = idx;
+  masterOutputVideo.srcObject = null;
+  masterOutputVideo.src = videoTracks[idx] ? videoTracks[idx].url : "";
+  masterOutputVideo.currentTime = 0;
+  masterOutputVideo.pause(); // Never auto-play
+}
 
 // --- RECORD FULL EDIT ---
 recordFullEditBtn.addEventListener('click', async function () {
@@ -320,6 +362,8 @@ recordFullEditBtn.addEventListener('click', async function () {
   }
 });
 
-// --- Remove "Add Camera" Button: Just delete it from your HTML file ---
+// --- Remove "Add Camera" Button from your HTML ---
 
-// Export, etc, can be added as before
+// Add to your HTML (where appropriate):
+// <div id="switcherBtnsContainer"></div>
+// <button id="stopSwitchingBtn">Stop</button>
