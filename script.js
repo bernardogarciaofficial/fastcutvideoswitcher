@@ -303,11 +303,9 @@ function setActiveTrack(idx) {
 // The core of smooth, flawless synchronization
 function synchronizeVideosToAudio() {
   const syncTime = audio.currentTime;
-  // Pause all videos, sync time
   tempVideos.forEach((v, i) => {
     if (v) {
       v.pause();
-      // Seek time, but only if it's not in the "ended" state
       if (syncTime < v.duration - 0.1) {
         v.currentTime = syncTime;
       } else {
@@ -315,7 +313,6 @@ function synchronizeVideosToAudio() {
       }
     }
   });
-  // Only play the new active video
   const vid = tempVideos[activeTrackIndex];
   if (vid) {
     vid.currentTime = syncTime;
@@ -348,12 +345,10 @@ let lastDrawnTime = -1;
 function drawFrame(canvas, ctx) {
   if (!isRecording) return;
   const vid = getCurrentDrawVideo();
-  // If video is not ready, just fill with black
   if (!(vid && vid.readyState >= 2 && !vid.ended)) {
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   } else {
-    // If the video is not exactly at the audio time, sync it
     let diff = Math.abs(vid.currentTime - audio.currentTime);
     if (diff > 0.05) {
       vid.currentTime = audio.currentTime;
@@ -394,7 +389,6 @@ recordFullEditBtn.addEventListener('click', async function () {
   canvas.height = 360;
   const ctx = canvas.getContext('2d');
 
-  // Ensure all temp videos are loaded & sync
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
       if (!tempVideos[i].parentNode) hiddenVideos.appendChild(tempVideos[i]);
@@ -408,7 +402,6 @@ recordFullEditBtn.addEventListener('click', async function () {
     }
   }
 
-  // Wait for all tempVideos to be loaded before playing
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
       if (tempVideos[i].readyState < 2) {
@@ -421,10 +414,8 @@ recordFullEditBtn.addEventListener('click', async function () {
 
   synchronizeVideosToAudio();
 
-  // Draw loop: always draw the active, synced video
   drawFrame(canvas, ctx);
 
-  // Live preview in main output video
   try {
     livePreviewStream = canvas.captureStream(30);
     masterOutputVideo.srcObject = livePreviewStream;
@@ -434,7 +425,6 @@ recordFullEditBtn.addEventListener('click', async function () {
     logDebug("Live preview error: " + e.message);
   }
 
-  // Camera switching: instant, synced
   switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((btn, idx) => {
     btn.onclick = function() {
       setActiveTrack(idx);
@@ -442,7 +432,6 @@ recordFullEditBtn.addEventListener('click', async function () {
     };
   });
 
-  // Audio context for audio recording
   audioContext = new (window.AudioContext || window.webkitAudioContext)();
   const source = audioContext.createMediaElementSource(audio);
   const dest = audioContext.createMediaStreamDestination();
@@ -502,6 +491,9 @@ recordFullEditBtn.addEventListener('click', async function () {
     }
   };
 });
+
+// ========== TIGHTER SYNC ON SEEK ==========
+audio.addEventListener('seeked', synchronizeVideosToAudio);
 
 // ========== EXPORT ==========
 exportBtn.addEventListener('click', function () {
