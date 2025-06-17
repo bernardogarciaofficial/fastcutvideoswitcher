@@ -11,7 +11,6 @@ const recIndicator = document.getElementById('recIndicator');
 const stopPreviewBtn = document.getElementById('stopPreviewBtn');
 const exportBtn = document.getElementById('exportMusicVideoBtn');
 const exportStatus = document.getElementById('exportStatus');
-
 const switcherBtnsContainer = document.getElementById('switcherBtnsContainer');
 const stopSwitchingBtn = document.getElementById('stopSwitchingBtn');
 
@@ -71,7 +70,6 @@ function startSwitching() {
   isSwitching = true;
 }
 
-// CAMERA CARD LOGIC
 function createTrackCard(index) {
   const card = document.createElement('div');
   card.style.border = '1px solid #888';
@@ -189,7 +187,8 @@ function createTrackCard(index) {
   switcherTracks.appendChild(card);
 }
 
-// Hidden/preloaded video for sync
+// Remove "Add Video" button from your HTML!
+
 function prepareTempVideo(idx, url) {
   if (tempVideos[idx]) {
     tempVideos[idx].pause();
@@ -207,29 +206,38 @@ function prepareTempVideo(idx, url) {
   tempVideos[idx] = v;
 }
 
-// Core sync logic
+// --- Improved Core sync logic (no black frames during switching) ---
 function synchronizeVideosToAudio() {
   const syncTime = audio.currentTime;
-  tempVideos.forEach((v, i) => {
+  tempVideos.forEach((v) => {
     if (v) {
       v.pause();
-      v.currentTime = Math.min(syncTime, v.duration ? v.duration - 0.02 : syncTime);
+      v.currentTime = Math.min(syncTime, v.duration ? v.duration - 0.04 : syncTime);
     }
   });
   const vid = tempVideos[activeTrackIndex];
   if (vid) {
-    vid.currentTime = syncTime;
-    vid.play().catch(()=>{});
+    // Wait for seeked before playing to avoid black/blank frames
+    if (Math.abs(vid.currentTime - syncTime) > 0.02) {
+      vid.currentTime = syncTime;
+      vid.addEventListener('seeked', playAndDraw, { once: true });
+    } else {
+      playAndDraw();
+    }
+    function playAndDraw() {
+      vid.play().catch(()=>{});
+    }
   }
 }
 audio.addEventListener('seeked', synchronizeVideosToAudio);
 
 function setActiveTrack(idx) {
   activeTrackIndex = idx;
+  synchronizeVideosToAudio();
   masterOutputVideo.srcObject = null;
   masterOutputVideo.src = videoTracks[idx] ? videoTracks[idx].url : "";
   masterOutputVideo.currentTime = 0;
-  masterOutputVideo.pause(); // Never auto-play
+  masterOutputVideo.pause();
 }
 
 // --- RECORD FULL EDIT ---
@@ -284,14 +292,15 @@ recordFullEditBtn.addEventListener('click', async function () {
   function drawFrame() {
     if (!isRecording) return;
     const vid = tempVideos[activeTrackIndex];
-    if (!(vid && vid.readyState >= 2 && !vid.ended)) {
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    } else {
-      if (Math.abs(vid.currentTime - audio.currentTime) > 0.01) {
+    if (vid && vid.readyState >= 2 && !vid.ended) {
+      // Sync to audio
+      if (Math.abs(vid.currentTime - audio.currentTime) > 0.03) {
         vid.currentTime = audio.currentTime;
       }
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+    } else {
+      // Instead of black frame, hold previous
+      // Optionally: Don't clear canvas if no valid video
     }
     animationFrameId = requestAnimationFrame(drawFrame);
   }
@@ -361,9 +370,3 @@ recordFullEditBtn.addEventListener('click', async function () {
     };
   }
 });
-
-// --- Remove "Add Camera" Button from your HTML ---
-
-// Add to your HTML (where appropriate):
-// <div id="switcherBtnsContainer"></div>
-// <button id="stopSwitchingBtn">Stop</button>
