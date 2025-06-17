@@ -1,23 +1,28 @@
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;900&display=swap');
 
-/* ----------- Background & Body ----------- */
+/* ----------- SPOTLIGHT BACKGROUND GALA NIGHT ----------- */
+.spotlight-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background: radial-gradient(ellipse 60% 35% at 60% 0%, #fff8 0%, #ffd70044 30%, #0000 75%),
+    radial-gradient(ellipse 40% 30% at 35% 20%, #a259f766 0%, #ffd70022 55%, #0000 100%),
+    radial-gradient(ellipse 60% 17% at 50% 100%, #ffd70033 0%, #a259f733 60%, #0000 100%),
+    linear-gradient(-45deg, #140c1d 0%, #210d31 60%, #1a1a2e 100%);
+  pointer-events: none;
+}
+
+/* ----------- Body & General ----------- */
 body {
   font-family: 'Inter', Arial, sans-serif;
-  background: linear-gradient(-45deg, #15151b 0%, #2a2040 35%, #3f1c62 70%, #0a1330 100%);
-  background-size: 400% 400%;
-  animation: gradientBG 22s ease-in-out infinite;
-  color: #f9f8ef;
+  background: #140c1d;
+  color: #fffbea;
   margin: 0; padding: 0;
   min-height: 100vh;
   overflow-x: hidden;
 }
-@keyframes gradientBG {
-  0% {background-position: 0% 50%;}
-  50% {background-position: 100% 50%;}
-  100% {background-position: 0% 50%;}
-}
 
-/* ----------- Header & Logo ----------- */
+/* ----------- Gala Header & Logo ----------- */
 header {
   display: flex;
   flex-direction: column;
@@ -29,119 +34,150 @@ header {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 0.18em;
+  margin-bottom: 0.1em;
 }
 .logo-area svg {
-  filter: drop-shadow(0 2px 16px #ffd700aa);
+  filter: drop-shadow(0 0 32px #ffd700aa);
 }
 .brand-name {
   font-family: 'Bebas Neue', 'Inter', Arial, sans-serif;
-  font-size: 2.25rem;
-  letter-spacing: 0.12em;
+  font-size: 2.8rem;
+  letter-spacing: 0.13em;
   color: #ffd700;
   font-weight: 900;
-  text-shadow: 0 2px 30px #a259f7aa, 0 0 8px #ffd70055;
+  text-shadow: 0 3px 38px #a259f7b0, 0 0 12px #ffd700bb;
 }
-h1 {
+.gala-title {
   font-family: 'Bebas Neue', 'Inter', Arial, sans-serif;
-  font-size: 3.15rem;
+  font-size: 3.6rem;
   letter-spacing: 0.09em;
   text-align: center;
-  margin: 0.4em 0 1.1em 0;
+  margin: 0.5em 0 0.8em 0;
   font-weight: 900;
-  background: linear-gradient(90deg, #ffd700 10%, #fff 45%, #a259f7 90%);
-  background-size: 320% 100%;
-  animation: shimmer 5.5s linear infinite;
+  line-height: 1.05;
+  background: linear-gradient(90deg, #ffd700 10%, #fffbe8 45%, #a259f7 90%);
+  background-size: 350% 100%;
+  animation: shimmer 5s linear infinite;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  filter: drop-shadow(0 4px 32px #ffd70088);
+}
+.gala-title .movie {
+  font-size: 1.1em;
+  letter-spacing: 0.16em;
+  text-shadow: 0 2px 24px #ffd70099, 0 0 10px #fffbe877;
+}
+.gala-title .editor {
+  font-size: 0.8em;
+  letter-spacing: 0.07em;
 }
 @keyframes shimmer {
   0% {background-position: 0% 50%;}
   100% {background-position: 100% 50%;}
 }
-h2 {
-  font-size: 1.55rem;
-  margin: 1.2rem 0 1.2rem 0;
-  font-weight: 700;
+.lights-camera-action {
+  margin-top: 6px;
+  font-size: 1.28rem;
+  font-family: 'Bebas Neue','Inter',sans-serif;
+  letter-spacing: 0.11em;
   color: #ffd700;
-  letter-spacing: 0.04em;
-  text-shadow: 0 2px 10px #a259f722;
+  text-shadow: 0 2px 12px #fffbe899, 0 0 8px #a259f7aa;
+  display: flex;
+  gap: 1.6em;
+  justify-content: center;
+  animation: flicker 2.9s infinite alternate;
+}
+@keyframes flicker {
+  0% { opacity: 1;}
+  50% { opacity: 0.8;}
+  100% { opacity: 1;}
 }
 
-/* ----------- Cards (Glassmorphism) ----------- */
+/* ----------- Cards (Movie Night Glassmorphism) ----------- */
 .hollywood-card {
-  background: rgba(33, 25, 53, 0.62);
-  backdrop-filter: blur(14px);
-  border-radius: 26px;
+  background: rgba(25, 18, 38, 0.74);
+  backdrop-filter: blur(18px);
+  border-radius: 25px;
   padding: 34px 2vw;
-  margin: 30px auto;
-  max-width: 740px;
-  box-shadow: 0 10px 38px 0 rgba(162, 89, 247, 0.18), 0 4px 0 0 #ffd70044;
-  border: 1.5px solid #a259f7;
-  transition: box-shadow 0.26s, transform 0.19s;
+  margin: 36px auto;
+  max-width: 750px;
+  box-shadow: 0 16px 44px 0 #a259f74a, 0 6px 0 0 #ffd70077;
+  border: 2px solid #ffd700cc;
+  transition: box-shadow 0.28s, transform 0.18s;
   position: relative;
 }
 .hollywood-card:hover {
-  transform: scale(1.025);
-  box-shadow: 0 16px 60px 0 #a259f744, 0 4px 0 0 #ffd700aa;
+  transform: scale(1.032);
+  box-shadow: 0 24px 80px 0 #ffd70033, 0 6px 0 0 #fffbe877;
 }
+.upload-section { margin-bottom: 40px; }
 
-/* ----------- Switcher (Track Cards) ----------- */
-.switcher-track {
-  background: rgba(31,24,60,0.94);
-  border-radius: 16px;
-  margin-bottom: 22px;
-  box-shadow: 0 2px 20px 0 #a259f71a;
-  padding: 20px 22px 16px 24px;
-  transition: box-shadow .18s, transform .16s;
-  position: relative;
-  border: 2px solid #15151b;
-  cursor: pointer;
+/* ----------- Switcher Buttons ----------- */
+.gala-switcher-btns {
+  margin-bottom: 16px;
+  margin-top: 7px;
+  white-space: nowrap;
+  overflow-x: auto;
+  text-align: center;
+  padding-bottom: 6px;
+  scrollbar-width: none;
 }
-.switcher-track.active {
-  border: 2.5px solid #ffd700;
-  box-shadow: 0 2px 28px 0 #ffd70055;
-  transform: scale(1.03);
+.gala-switcher-btns::-webkit-scrollbar {
+  display: none;
 }
-
-/* ----------- Buttons ----------- */
 .switcher-btn {
-  margin: 0 3px 10px 0;
+  margin: 0 3px 7px 0;
   min-width: 0;
   padding: 9px 16px;
   background: linear-gradient(90deg, #a259f7 0%, #ffd700 100%);
-  color: #181022;
+  color: #1a122c;
   border: none;
   border-radius: 18px;
   font-size: 1.03rem;
   font-weight: 700;
   letter-spacing: 0.03em;
   cursor: pointer;
-  transition: background 0.18s, color 0.18s, transform 0.14s, box-shadow 0.19s;
-  box-shadow: 0 1px 7px 0 #a259f71a;
+  transition: background 0.18s, color 0.18s, transform 0.15s, box-shadow 0.22s;
+  box-shadow: 0 1px 7px 0 #a259f71a, 0 0px 9px #ffd70033;
   display: inline-block;
   line-height: 1.1;
   text-shadow: 0 1px 7px #fff2;
+  outline: none;
+  border: 1.5px solid #fffbe850;
+  position: relative;
+  overflow: hidden;
 }
 .switcher-btn.active,
 .switcher-btn:hover,
 .switcher-btn:focus {
   background: linear-gradient(90deg, #ffd700 0%, #a259f7 100%);
   color: #fff;
-  transform: scale(1.07);
-  outline: none;
-  box-shadow: 0 4px 16px 0 #ffd70055;
-  text-shadow: 0 1px 10px #ffd70088, 0 0 8px #fff5;
+  transform: scale(1.09) rotate(-2deg);
+  box-shadow: 0 7px 18px 0 #ffd70077, 0 0px 18px #fffbe833;
+  text-shadow: 0 1px 10px #ffd70098, 0 0 8px #fff7;
 }
+.switcher-btn.active::after, .switcher-btn:hover::after {
+  content: '';
+  position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+  background: radial-gradient(circle at 60% 20%, #fffbe833 0%, #ffd70022 55%, transparent 100%);
+  pointer-events: none;
+  animation: btnGlow 1.7s infinite alternate;
+}
+@keyframes btnGlow {
+  0% { opacity: 0.6;}
+  100% { opacity: 0.9;}
+}
+
+/* ----------- Controls ----------- */
 .controls-section { 
-  margin: 28px 0 34px 0; 
+  margin: 32px 0 38px 0; 
   display: flex; 
-  gap: 28px; 
+  gap: 34px; 
   justify-content: center;
 }
 .controls-section button {
-  font-size: 1.19rem;
+  font-size: 1.21rem;
   font-weight: 700;
   border-radius: 36px;
   padding: 16px 38px;
@@ -150,7 +186,7 @@ h2 {
   border: none;
   margin-right: 12px;
   cursor: pointer;
-  transition: background 0.22s, transform 0.15s, box-shadow 0.19s;
+  transition: background 0.25s, transform 0.15s, box-shadow 0.19s;
   box-shadow: 0 3px 13px 0 #a259f71a;
   display: flex;
   align-items: center;
@@ -160,25 +196,31 @@ h2 {
 .controls-section button:hover {
   background: linear-gradient(90deg, #a259f7 0%, #ffd700 100%);
   color: #181022;
-  transform: scale(1.09);
-  box-shadow: 0 8px 28px 0 #ffd70033;
-}
-input[type="file"] {
-  background: #221a33;
-  color: #ffd700;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid #a259f7;
-  margin-top: 8px;
-  font-size: 0.99rem;
-  cursor: pointer;
+  transform: scale(1.10);
+  box-shadow: 0 8px 28px 0 #ffd70055;
 }
 
-/* ----------- Video & Track Previews ----------- */
+/* ----------- Track Card & Previews ----------- */
+.switcher-track {
+  background: rgba(31,24,60,0.96);
+  border-radius: 18px;
+  margin-bottom: 22px;
+  box-shadow: 0 2px 20px 0 #a259f71a;
+  padding: 20px 22px 16px 24px;
+  transition: box-shadow .18s, transform .16s;
+  position: relative;
+  border: 2.5px solid #a259f7;
+  cursor: pointer;
+}
+.switcher-track.active {
+  border: 2.8px solid #ffd700;
+  box-shadow: 0 2px 32px 0 #ffd70055;
+  transform: scale(1.025);
+}
 .track-title {
   font-weight: bold;
   color: #ffd700;
-  margin-bottom: 9px;
+  margin-bottom: 10px;
   font-size: 1.17rem;
   letter-spacing: 0.01em;
   text-shadow: 0 1px 8px #a259f755;
@@ -196,7 +238,7 @@ input[type="file"] {
   border: 1.8px solid #a259f7;
 }
 .track-preview:hover {
-  transform: scale(1.04);
+  transform: scale(1.045);
   box-shadow: 0 12px 32px 0 #ffd70033;
 }
 .upload-video-label {
@@ -210,8 +252,8 @@ input[type="file"] {
 .video-output-card {
   text-align: center;
   background: rgba(34, 21, 51, 0.96);
-  border-radius: 26px;
-  box-shadow: 0 2px 22px 0 #a259f71c;
+  border-radius: 24px;
+  box-shadow: 0 2px 32px 0 #a259f71c;
   padding: 50px 14px;
 }
 #masterOutputVideo {
@@ -220,18 +262,19 @@ input[type="file"] {
   min-height: 260px;
   border-radius: 16px;
   background: #0d0c13;
-  box-shadow: 0 4px 18px 0 #a259f719;
+  box-shadow: 0 4px 24px 0 #ffd70029;
   margin-bottom: 10px;
-  border: 2px solid #ffd70055;
+  border: 2px solid #ffd70070;
 }
+
 /* ----------- REC Indicator ----------- */
 .rec-indicator {
   color: #ff4d6d;
   font-weight: bold;
-  font-size: 1.25rem;
+  font-size: 1.32rem;
   letter-spacing: 0.12em;
   margin: 22px 0 14px 0;
-  animation: recPulse 1.2s cubic-bezier(.4,0,.6,1) infinite;
+  animation: recPulse 1.2s cubic-bezier(.4,0,.6,1) infinite, galaRecShine 2.4s infinite alternate;
   text-shadow: 0 0 16px #ff4d6daa;
 }
 @keyframes recPulse {
@@ -239,6 +282,11 @@ input[type="file"] {
   50% { opacity: 0.58; text-shadow: 0 0 28px #ff4d6dcc;}
   100% { opacity: 1; text-shadow: 0 0 12px #ff4d6daa;}
 }
+@keyframes galaRecShine {
+  0% { filter: drop-shadow(0 0 11px #ffd70055);}
+  100% { filter: drop-shadow(0 0 16px #a259f777);}
+}
+
 .export-btn {
   margin-top: 21px;
   background: linear-gradient(90deg, #ffd700 0%, #a259f7 100%);
@@ -256,8 +304,8 @@ input[type="file"] {
 .export-btn:active, .export-btn:hover {
   background: linear-gradient(90deg, #a259f7 0%, #ffd700 100%);
   color: #181022;
-  transform: scale(1.10);
-  box-shadow: 0 10px 32px 0 #ffd70044;
+  transform: scale(1.13);
+  box-shadow: 0 12px 32px 0 #ffd70044;
 }
 #audioStatus {
   color: #ffd700;
@@ -273,29 +321,54 @@ audio {
   background: #241845;
   border: 1.5px solid #a259f7;
 }
+
 /* ----------- Footer ----------- */
+.gala-footer-bar {
+  width: 100vw;
+  height: 12px;
+  background: linear-gradient(90deg, #ffd700 0%, #a259f7 100%);
+  margin-bottom: 0.6em;
+  filter: blur(0.5px) brightness(0.98);
+  box-shadow: 0 0 22px #ffd70044, 0 0 22px #a259f744;
+}
 footer {
   margin-top: 2.6rem;
   padding: 2rem 0 1rem 0;
   text-align: center;
-  background: none;
-  color: #a259f7;
-  font-size: 1.13rem;
-  opacity: 0.85;
+  color: #ffd700;
+  font-size: 1.17rem;
+  opacity: 0.91;
   letter-spacing: 0.03em;
 }
 .footer-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.7em;
+  gap: 0.9em;
 }
-.footer-links a {
-  color: #ffd700;
+.footer-links {
+  margin-top: 0.6em;
+}
+.ticket-badge {
+  display: inline-block;
+  background: linear-gradient(90deg, #ffd700 70%, #a259f7 100%);
+  color: #181022;
+  padding: 6px 16px 6px 10px;
+  border-radius: 24px;
+  font-family: 'Bebas Neue','Inter',sans-serif;
+  font-weight: 900;
+  font-size: 1.1em;
+  letter-spacing: 0.08em;
+  box-shadow: 0 1px 9px #ffd70055;
+  border: 1.5px solid #fffbe899;
+  text-shadow: 0 1px 8px #fff7;
+}
+.ticket-badge a {
+  color: #181022;
   text-decoration: none;
-  transition: color 0.17s;
+  font-weight: bold;
 }
-.footer-links a:hover {
+.ticket-badge a:hover {
   color: #a259f7;
   text-decoration: underline;
 }
@@ -322,4 +395,7 @@ body::-webkit-scrollbar-thumb {
   .hollywood-card, .video-output-card { padding: 9px; }
   .brand-name { font-size: 1.4rem; }
   h1 { font-size: 1.18rem; }
+  .gala-title { font-size: 1.6rem; }
+  .lights-camera-action { font-size: 1.01rem;}
+  .ticket-badge { font-size: 0.95em; padding: 6px 7px 6px 6px;}
 }
