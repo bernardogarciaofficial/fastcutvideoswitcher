@@ -3,15 +3,14 @@
 /* ----------- Background & Body ----------- */
 body {
   font-family: 'Inter', Arial, sans-serif;
-  background: linear-gradient(-45deg, #20232a 0%, #23a6d5 33%, #6fffbf 66%, #2b2d42 100%);
+  background: linear-gradient(-45deg, #15151b 0%, #2a2040 35%, #3f1c62 70%, #0a1330 100%);
   background-size: 400% 400%;
-  animation: gradientBG 18s ease-in-out infinite;
-  color: #f7f7f7;
+  animation: gradientBG 22s ease-in-out infinite;
+  color: #f9f8ef;
   margin: 0; padding: 0;
   min-height: 100vh;
   overflow-x: hidden;
 }
-
 @keyframes gradientBG {
   0% {background-position: 0% 50%;}
   50% {background-position: 100% 50%;}
@@ -26,37 +25,33 @@ header {
   margin-top: 2.3rem;
   margin-bottom: 1.2rem;
 }
-
 .logo-area {
   display: flex;
   align-items: center;
   gap: 16px;
   margin-bottom: 0.18em;
 }
-
 .logo-area svg {
-  filter: drop-shadow(0 2px 12px #23a6d588);
+  filter: drop-shadow(0 2px 16px #ffd700aa);
 }
-
 .brand-name {
   font-family: 'Bebas Neue', 'Inter', Arial, sans-serif;
-  font-size: 2.1rem;
-  letter-spacing: 0.09em;
-  color: #6fffbf;
+  font-size: 2.25rem;
+  letter-spacing: 0.12em;
+  color: #ffd700;
   font-weight: 900;
-  text-shadow: 0 2px 20px #23a6d5a1;
+  text-shadow: 0 2px 30px #a259f7aa, 0 0 8px #ffd70055;
 }
-
 h1 {
   font-family: 'Bebas Neue', 'Inter', Arial, sans-serif;
-  font-size: 3.1rem;
-  letter-spacing: 0.08em;
+  font-size: 3.15rem;
+  letter-spacing: 0.09em;
   text-align: center;
-  margin: 0.5em 0 0.8em 0;
+  margin: 0.4em 0 1.1em 0;
   font-weight: 900;
-  background: linear-gradient(90deg, #6fffbf 10%, #fff 45%, #23a6d5 90%);
-  background-size: 300% 100%;
-  animation: shimmer 7s linear infinite;
+  background: linear-gradient(90deg, #ffd700 10%, #fff 45%, #a259f7 90%);
+  background-size: 320% 100%;
+  animation: shimmer 5.5s linear infinite;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -65,277 +60,258 @@ h1 {
   0% {background-position: 0% 50%;}
   100% {background-position: 100% 50%;}
 }
-
 h2 {
-  font-size: 1.45rem;
+  font-size: 1.55rem;
   margin: 1.2rem 0 1.2rem 0;
-  font-weight: 600;
-  color: #6fffbf;
-  letter-spacing: 0.03em;
+  font-weight: 700;
+  color: #ffd700;
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 10px #a259f722;
 }
 
 /* ----------- Cards (Glassmorphism) ----------- */
 .hollywood-card {
-  background: rgba(40,44,52,0.58);
-  backdrop-filter: blur(10px);
-  border-radius: 22px;
-  padding: 32px;
-  margin: 26px auto;
-  box-shadow: 0 8px 36px 0 rgba(35,166,213,0.13), 0 2.5px 0 0 #23a6d5;
-  max-width: 730px;
-  transition: box-shadow 0.25s, transform 0.18s;
+  background: rgba(33, 25, 53, 0.62);
+  backdrop-filter: blur(14px);
+  border-radius: 26px;
+  padding: 34px 2vw;
+  margin: 30px auto;
+  max-width: 740px;
+  box-shadow: 0 10px 38px 0 rgba(162, 89, 247, 0.18), 0 4px 0 0 #ffd70044;
+  border: 1.5px solid #a259f7;
+  transition: box-shadow 0.26s, transform 0.19s;
   position: relative;
 }
-
 .hollywood-card:hover {
-  transform: scale(1.02);
-  box-shadow: 0 16px 60px 0 rgba(111,255,191,0.20), 0 3.5px 0 0 #6fffbf;
+  transform: scale(1.025);
+  box-shadow: 0 16px 60px 0 #a259f744, 0 4px 0 0 #ffd700aa;
 }
-
-.upload-section { margin-bottom: 40px; }
 
 /* ----------- Switcher (Track Cards) ----------- */
 .switcher-track {
-  background: rgba(35,39,47,0.92);
-  border-radius: 14px;
-  margin-bottom: 18px;
-  box-shadow: 0 2px 16px 0 rgba(35, 166, 213, 0.08);
-  padding: 18px 18px 14px 18px;
-  transition: box-shadow .18s, transform .14s;
+  background: rgba(31,24,60,0.94);
+  border-radius: 16px;
+  margin-bottom: 22px;
+  box-shadow: 0 2px 20px 0 #a259f71a;
+  padding: 20px 22px 16px 24px;
+  transition: box-shadow .18s, transform .16s;
   position: relative;
-  border: 2px solid #23272f;
+  border: 2px solid #15151b;
   cursor: pointer;
 }
-
 .switcher-track.active {
-  border: 2px solid #6fffbf;
-  box-shadow: 0 2px 20px 0 rgba(111,255,191,0.13);
-  transform: scale(1.02);
+  border: 2.5px solid #ffd700;
+  box-shadow: 0 2px 28px 0 #ffd70055;
+  transform: scale(1.03);
 }
 
+/* ----------- Buttons ----------- */
 .switcher-btn {
   margin: 0 8px 12px 0;
-  padding: 10px 24px;
-  background: linear-gradient(90deg, #23a6d5 0%, #6fffbf 100%);
-  color: #181920;
+  padding: 10px 26px;
+  background: linear-gradient(90deg, #a259f7 0%, #ffd700 100%);
+  color: #1a122c;
   border: none;
   border-radius: 30px;
-  font-size: 1.08rem;
+  font-size: 1.09rem;
   font-weight: 600;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   cursor: pointer;
-  transition: background 0.22s, color 0.2s, transform 0.18s;
-  box-shadow: 0 1px 6px 0 rgba(35, 166, 213, 0.07);
+  transition: background 0.22s, color 0.2s, transform 0.18s, box-shadow 0.18s;
+  box-shadow: 0 1px 8px 0 #a259f71a;
 }
-
 .switcher-btn.active, .switcher-btn:hover, .switcher-btn:focus {
-  background: linear-gradient(90deg, #6fffbf 0%, #23a6d5 100%);
-  color: #23272f;
+  background: linear-gradient(90deg, #ffd700 0%, #a259f7 100%);
+  color: #1a122c;
   transform: scale(1.09);
   outline: none;
+  box-shadow: 0 6px 20px 0 #ffd70030;
 }
-
 .controls-section { 
-  margin: 24px 0 30px 0; 
+  margin: 28px 0 34px 0; 
   display: flex; 
-  gap: 20px; 
+  gap: 28px; 
   justify-content: center;
 }
-
 .controls-section button {
-  font-size: 1.14rem;
+  font-size: 1.19rem;
   font-weight: 700;
-  border-radius: 30px;
-  padding: 14px 34px;
-  background: linear-gradient(90deg, #6fffbf 0%, #23a6d5 100%);
-  color: #23272f;
+  border-radius: 36px;
+  padding: 16px 38px;
+  background: linear-gradient(90deg, #ffd700 0%, #a259f7 100%);
+  color: #181022;
   border: none;
   margin-right: 12px;
   cursor: pointer;
-  transition: background 0.22s, transform 0.15s, box-shadow 0.18s;
-  box-shadow: 0 2px 8px 0 rgba(35,166,213,0.10);
+  transition: background 0.22s, transform 0.15s, box-shadow 0.19s;
+  box-shadow: 0 3px 13px 0 #a259f71a;
   display: flex;
   align-items: center;
   gap: 0.5em;
 }
-
 .controls-section button:active,
 .controls-section button:hover {
-  background: linear-gradient(90deg, #23a6d5 0%, #6fffbf 100%);
-  color: #23272f;
-  transform: scale(1.07);
-  box-shadow: 0 4px 16px 0 rgba(111,255,191,0.13);
+  background: linear-gradient(90deg, #a259f7 0%, #ffd700 100%);
+  color: #181022;
+  transform: scale(1.09);
+  box-shadow: 0 8px 28px 0 #ffd70033;
 }
-
 input[type="file"] {
-  background: #16181d;
-  color: #6fffbf;
+  background: #221a33;
+  color: #ffd700;
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid #444;
+  border: 1px solid #a259f7;
   margin-top: 8px;
-  font-size: 0.98rem;
+  font-size: 0.99rem;
   cursor: pointer;
 }
-
 /* ----------- Video & Track Previews ----------- */
 .track-title {
   font-weight: bold;
-  color: #6fffbf;
-  margin-bottom: 7px;
-  font-size: 1.13rem;
+  color: #ffd700;
+  margin-bottom: 9px;
+  font-size: 1.17rem;
   letter-spacing: 0.01em;
+  text-shadow: 0 1px 8px #a259f755;
 }
-
 .track-preview {
   width: 98%;
-  max-width: 360px;
-  background: #13151a;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px 0 rgba(35,166,213,0.13);
+  max-width: 370px;
+  background: #1a122c;
+  border-radius: 12px;
+  box-shadow: 0 2px 13px 0 #a259f71b;
   margin: 14px auto 0 auto;
   display: block;
   transition: transform 0.19s, box-shadow 0.19s;
   cursor: pointer;
-  border: 1.5px solid #23272f;
+  border: 1.8px solid #a259f7;
 }
-
 .track-preview:hover {
-  transform: scale(1.03);
-  box-shadow: 0 8px 26px 0 rgba(111,255,191,0.18);
+  transform: scale(1.04);
+  box-shadow: 0 12px 32px 0 #ffd70033;
 }
-
 .upload-video-label {
-  font-size: 1.03rem;
-  color: #b0fff0;
-  margin: 8px 0 3px 0;
+  font-size: 1.07rem;
+  color: #ffd700;
+  margin: 8px 0 5px 0;
   letter-spacing: 0.01em;
+  text-shadow: 0 1px 8px #a259f731;
 }
-
 .hollywood-output { margin-top: 36px; }
-
 .video-output-card {
   text-align: center;
-  background: rgba(44,54,64,0.94);
-  border-radius: 22px;
-  box-shadow: 0 2px 18px 0 rgba(35, 166, 213, 0.09);
-  padding: 38px 10px;
+  background: rgba(34, 21, 51, 0.96);
+  border-radius: 26px;
+  box-shadow: 0 2px 22px 0 #a259f71c;
+  padding: 50px 14px;
 }
-
 #masterOutputVideo {
-  width: 86%;
-  max-width: 760px;
+  width: 92%;
+  max-width: 800px;
   min-height: 260px;
-  border-radius: 14px;
-  background: #222;
-  box-shadow: 0 2px 18px 0 rgba(111,255,191,0.13);
+  border-radius: 16px;
+  background: #0d0c13;
+  box-shadow: 0 4px 18px 0 #a259f719;
   margin-bottom: 10px;
+  border: 2px solid #ffd70055;
 }
-
 /* ----------- REC Indicator ----------- */
 .rec-indicator {
   color: #ff4d6d;
   font-weight: bold;
-  font-size: 1.18rem;
-  letter-spacing: 0.1em;
-  margin: 20px 0 12px 0;
+  font-size: 1.25rem;
+  letter-spacing: 0.12em;
+  margin: 22px 0 14px 0;
   animation: recPulse 1.2s cubic-bezier(.4,0,.6,1) infinite;
-  text-shadow: 0 0 8px #ff4d6d99;
+  text-shadow: 0 0 16px #ff4d6daa;
 }
 @keyframes recPulse {
-  0% { opacity: 1;   text-shadow: 0 0 8px #ff4d6d99;}
-  50% { opacity: 0.55; text-shadow: 0 0 16px #ff4d6dcc;}
-  100% { opacity: 1; text-shadow: 0 0 8px #ff4d6d99;}
+  0% { opacity: 1;   text-shadow: 0 0 12px #ff4d6daa;}
+  50% { opacity: 0.58; text-shadow: 0 0 28px #ff4d6dcc;}
+  100% { opacity: 1; text-shadow: 0 0 12px #ff4d6daa;}
 }
-
 .export-btn {
-  margin-top: 18px;
-  background: linear-gradient(90deg, #6fffbf 0%, #23a6d5 100%);
-  color: #23272f;
+  margin-top: 21px;
+  background: linear-gradient(90deg, #ffd700 0%, #a259f7 100%);
+  color: #181022;
   font-weight: bold;
   border: none;
-  border-radius: 30px;
-  padding: 15px 48px;
-  font-size: 1.18rem;
-  letter-spacing: 0.07em;
+  border-radius: 36px;
+  padding: 16px 54px;
+  font-size: 1.22rem;
+  letter-spacing: 0.08em;
   transition: background 0.18s, transform 0.13s, box-shadow 0.15s;
-  box-shadow: 0 1px 7px 0 rgba(35, 166, 213, 0.12);
+  box-shadow: 0 2px 13px 0 #a259f719;
   cursor: pointer;
 }
-
 .export-btn:active, .export-btn:hover {
-  background: linear-gradient(90deg, #23a6d5 0%, #6fffbf 100%);
-  color: #23272f;
-  transform: scale(1.09);
-  box-shadow: 0 6px 20px 0 rgba(111,255,191,0.19);
+  background: linear-gradient(90deg, #a259f7 0%, #ffd700 100%);
+  color: #181022;
+  transform: scale(1.10);
+  box-shadow: 0 10px 32px 0 #ffd70044;
 }
-
 #audioStatus {
-  color: #6fffbf;
-  margin-left: 12px;
-  font-size: 1.13rem;
-  font-weight: 600;
+  color: #ffd700;
+  margin-left: 15px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  text-shadow: 0 1px 8px #a259f733;
 }
-
 audio {
   margin-top: 13px;
   width: 98%;
-  border-radius: 8px;
-  background: #23272f;
+  border-radius: 10px;
+  background: #241845;
+  border: 1.5px solid #a259f7;
 }
-
 /* ----------- Footer ----------- */
 footer {
-  margin-top: 2.5rem;
+  margin-top: 2.6rem;
   padding: 2rem 0 1rem 0;
   text-align: center;
   background: none;
-  color: #b0fff0;
-  font-size: 1.08rem;
-  opacity: 0.78;
-  letter-spacing: 0.02em;
+  color: #a259f7;
+  font-size: 1.13rem;
+  opacity: 0.85;
+  letter-spacing: 0.03em;
 }
-
 .footer-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.6em;
+  gap: 0.7em;
 }
-
 .footer-links a {
-  color: #23a6d5;
+  color: #ffd700;
   text-decoration: none;
-  transition: color 0.16s;
+  transition: color 0.17s;
 }
 .footer-links a:hover {
-  color: #6fffbf;
+  color: #a259f7;
   text-decoration: underline;
 }
-
 /* ----------- Custom Scrollbar ----------- */
 body::-webkit-scrollbar {
   width: 13px;
-  background: #222a;
+  background: #19101a;
 }
 body::-webkit-scrollbar-thumb {
-  background: #23a6d5aa;
-  border-radius: 6px;
+  background: #a259f7cc;
+  border-radius: 7px;
 }
-
 /* ----------- Responsive ----------- */
 @media (max-width: 900px) {
-  .hollywood-card, .video-output-card { max-width: 99vw; padding: 18px; }
+  .hollywood-card, .video-output-card { max-width: 99vw; padding: 14px; }
   #masterOutputVideo { max-width: 99vw; }
   .track-preview { max-width: 100vw; }
-  .controls-section { flex-direction: column; gap: 14px; }
+  .controls-section { flex-direction: column; gap: 18px; }
   .logo-area { flex-direction: column; gap: 7px; }
-  h1 { font-size: 2.15rem; }
+  h1 { font-size: 2.25rem; }
 }
-
 @media (max-width: 600px) {
   header { margin-top: 1.0rem; }
-  .hollywood-card, .video-output-card { padding: 12px; }
-  .brand-name { font-size: 1.3rem; }
+  .hollywood-card, .video-output-card { padding: 9px; }
+  .brand-name { font-size: 1.4rem; }
   h1 { font-size: 1.18rem; }
 }
