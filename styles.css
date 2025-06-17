@@ -1,6 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;900&display=swap');
 
-/* ----------- SPOTLIGHT BACKGROUND GALA NIGHT ----------- */
 .spotlight-bg {
   position: fixed;
   inset: 0;
@@ -12,7 +11,6 @@
   pointer-events: none;
 }
 
-/* ----------- Body & General ----------- */
 body {
   font-family: 'Inter', Arial, sans-serif;
   background: #140c1d;
@@ -22,7 +20,6 @@ body {
   overflow-x: hidden;
 }
 
-/* ----------- Gala Header & Logo ----------- */
 header {
   display: flex;
   flex-direction: column;
@@ -94,7 +91,6 @@ header {
   100% { opacity: 1;}
 }
 
-/* ----------- Cards (Movie Night Glassmorphism) ----------- */
 .hollywood-card {
   background: rgba(25, 18, 38, 0.74);
   backdrop-filter: blur(18px);
@@ -113,7 +109,6 @@ header {
 }
 .upload-section { margin-bottom: 40px; }
 
-/* ----------- Switcher Buttons ----------- */
 .gala-switcher-btns {
   margin-bottom: 16px;
   margin-top: 7px;
@@ -130,7 +125,6 @@ header {
   margin: 0 3px 7px 0;
   min-width: 0;
   padding: 9px 16px;
-  /* Royal blue to turquoise gradient */
   background: linear-gradient(90deg, #0066ff 0%, #00e0c6 100%);
   color: #fff;
   border: none;
@@ -170,7 +164,6 @@ header {
   100% { opacity: 0.9;}
 }
 
-/* ----------- Controls (Action Buttons) ----------- */
 .controls-section {
   margin: 32px 0 38px 0;
   display: flex;
@@ -182,7 +175,6 @@ header {
   font-weight: 700;
   border-radius: 36px;
   padding: 16px 38px;
-  /* Orange to yellow gradient for Hollywood action */
   background: linear-gradient(90deg, #ff8800 0%, #ffe600 100%);
   color: #181022;
   border: none;
@@ -202,7 +194,6 @@ header {
   box-shadow: 0 8px 28px 0 #ff880055;
 }
 
-/* ----------- Track Card & Previews ----------- */
 .switcher-track {
   background: rgba(31,24,60,0.96);
   border-radius: 18px;
@@ -211,7 +202,7 @@ header {
   padding: 20px 22px 16px 24px;
   transition: box-shadow .18s, transform .16s;
   position: relative;
-  border: 2.5px solid #e63946; /* RED ACCENT */
+  border: 2.5px solid #e63946;
   cursor: pointer;
 }
 .switcher-track.active {
@@ -237,7 +228,7 @@ header {
   display: block;
   transition: transform 0.19s, box-shadow 0.19s;
   cursor: pointer;
-  border: 1.8px solid #e63946; /* RED ACCENT */
+  border: 1.8px solid #e63946;
 }
 .track-preview:hover {
   transform: scale(1.045);
@@ -257,7 +248,7 @@ header {
   border-radius: 24px;
   box-shadow: 0 2px 32px 0 #e639461c;
   padding: 50px 14px;
-  border: 2.5px solid #e63946; /* RED ACCENT */
+  border: 2.5px solid #e63946;
 }
 #masterOutputVideo {
   width: 92%;
@@ -270,7 +261,6 @@ header {
   border: 2px solid #ffd70070;
 }
 
-/* ----------- REC Indicator ----------- */
 .rec-indicator {
   color: #ff4d6d;
   font-weight: bold;
@@ -325,7 +315,6 @@ audio {
   border: 1.5px solid #e63946;
 }
 
-/* ----------- Footer ----------- */
 .gala-footer-bar {
   width: 100vw;
   height: 12px;
@@ -384,7 +373,6 @@ footer {
   opacity: 0.83;
   text-shadow: 0 1px 10px #e6394644, 0 2px 6px #ffd70044;
 }
-/* ----------- Custom Scrollbar ----------- */
 body::-webkit-scrollbar {
   width: 13px;
   background: #19101a;
@@ -393,7 +381,6 @@ body::-webkit-scrollbar-thumb {
   background: #17c3b2cc;
   border-radius: 7px;
 }
-/* ----------- Responsive ----------- */
 @media (max-width: 900px) {
   .hollywood-card, .video-output-card { max-width: 99vw; padding: 14px; }
   #masterOutputVideo { max-width: 99vw; }
