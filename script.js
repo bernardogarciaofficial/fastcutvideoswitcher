@@ -1,8 +1,6 @@
-// FASTCUT STUDIOS - Hollywood Music Video Editor
+// FASTCUT STUDIOS - Simplified, Robust Version
 // Author: Bernardo Garcia
-// (Annotated "Golden Version" for robust sync & switching)
 
-// --- CONSTANTS & DOM ELEMENTS ---
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
 const audioStatus = document.getElementById('audioStatus');
@@ -18,36 +16,37 @@ const exportStatus = document.getElementById('exportStatus');
 const hiddenVideos = document.getElementById('hiddenVideos');
 const debuglog = document.getElementById('debuglog');
 
-// --- DEBUG LOGGING ---
 function logDebug(msg) {
+  if (!debuglog) return;
   debuglog.textContent += msg + "\n";
   debuglog.scrollTop = debuglog.scrollHeight;
   console.log(msg);
 }
 
-// --- STATE ---
-const videoTracks = Array(NUM_TRACKS).fill(null);     // Metadata for each camera slot
-const tempVideos = Array(NUM_TRACKS).fill(null);      // Actual <video> elements for playback/drawing
-let activeTrackIndex = 0;                             // Currently selected camera
+const videoTracks = Array(NUM_TRACKS).fill(null);
+const tempVideos = Array(NUM_TRACKS).fill(null);
+let activeTrackIndex = 0;
 let isRecording = false;
-let isPlaying = false;                                // "Playing" = outputting to canvas, live editing
+let isPlaying = false;
 let mediaRecorder = null;
 let recordedChunks = [];
 let animationFrameId = null;
 let audioContext = null;
-let livePreviewStream = null;                         // For live preview in <video>
+let livePreviewStream = null;
 
 // ===== SONG UPLOAD =====
-songInput.addEventListener('change', function (e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const url = URL.createObjectURL(file);
-  audio.src = url;
-  audio.style.display = 'block';
-  audioStatus.textContent = `Loaded: ${file.name}`;
-  audio.load();
-  logDebug(`Audio file loaded: ${file.name}`);
-});
+if (songInput) {
+  songInput.addEventListener('change', function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    audio.src = url;
+    audio.style.display = 'block';
+    if (audioStatus) audioStatus.textContent = `Loaded: ${file.name}`;
+    audio.load();
+    logDebug(`Audio file loaded: ${file.name}`);
+  });
+}
 
 // ===== VIDEO TRACK CARD (UPLOAD/RECORD/PREVIEW/STATUS) =====
 function createTrackCard(index) {
@@ -90,13 +89,12 @@ function createTrackCard(index) {
   const stopRecBtn = document.createElement('button');
   stopRecBtn.textContent = 'Stop';
   stopRecBtn.style.marginLeft = '8px';
-  stopRecBtn.style.display = 'none'; // Only show while recording
+  stopRecBtn.style.display = 'none';
   card.appendChild(recBtn);
   card.appendChild(stopRecBtn);
 
   recBtn.addEventListener('click', async function () {
-    if (trackRecorder && trackRecorder.state === 'recording') return; // Already recording
-
+    if (trackRecorder && trackRecorder.state === 'recording') return;
     recBtn.disabled = true;
     recBtn.textContent = 'Recording...';
     stopRecBtn.style.display = '';
@@ -115,7 +113,6 @@ function createTrackCard(index) {
     }
     trackRecorder = new MediaRecorder(recStream, { mimeType: 'video/webm; codecs=vp9,opus' });
     recChunks = [];
-    // Show live webcam feed in preview
     preview.srcObject = recStream;
     preview.muted = true;
     preview.autoplay = true;
@@ -129,7 +126,6 @@ function createTrackCard(index) {
       const url = URL.createObjectURL(blob);
       videoTracks[index] = { file: null, url, name: `Camera${index+1}-take.webm`, recordedBlob: blob };
       prepareTempVideo(index, url, `Camera${index+1}-take.webm`);
-      // Replace webcam preview with recorded video (do NOT autoplay)
       preview.srcObject = null;
       preview.src = url;
       preview.autoplay = false;
@@ -176,7 +172,7 @@ function createTrackCard(index) {
   const preview = document.createElement('video');
   preview.className = 'track-preview';
   preview.controls = true;
-  preview.style.display = 'block'; // Always visible
+  preview.style.display = 'block';
   preview.style.background = "#000";
   preview.style.width = '80%';
   preview.style.marginTop = '6px';
@@ -186,7 +182,6 @@ function createTrackCard(index) {
   preview.playsInline = true;
   card.appendChild(preview);
 
-  // --- Preview Video Events (debugging) ---
   preview.addEventListener('error', (e) => {
     logDebug(`Preview video for Camera ${index+1} error: (code ${preview.error && preview.error.code})`);
     let msg = "Unknown error";
@@ -199,7 +194,7 @@ function createTrackCard(index) {
       }
     }
     logDebug(`Camera ${index+1} thumbnail: ${msg}`);
-    preview.poster = ""; // Remove any old poster
+    preview.poster = "";
     preview.style.background = "#900";
   });
   preview.addEventListener('loadeddata', () => {
@@ -213,7 +208,6 @@ function createTrackCard(index) {
   label.textContent = 'No video uploaded or recorded';
   card.appendChild(label);
 
-  // --- Card Updater ---
   card.update = function () {
     if (videoTracks[index]) {
       label.textContent = videoTracks[index].name || 'Recorded Take';
@@ -233,7 +227,6 @@ function createTrackCard(index) {
     }
   };
 
-  // --- Click Card to Select Camera ---
   card.addEventListener('click', function () {
     setActiveTrack(index);
   });
@@ -242,7 +235,7 @@ function createTrackCard(index) {
   card.update();
 }
 
-// === PREPARATION OF HIDDEN <video> ELEMENT FOR SYNC ===
+// === PREPARE HIDDEN <video> FOR SYNC ===
 function prepareTempVideo(idx, url, name = "") {
   tempVideos[idx] = document.createElement('video');
   tempVideos[idx].src = url;
@@ -259,35 +252,39 @@ function prepareTempVideo(idx, url, name = "") {
   tempVideos[idx].addEventListener('error', (e) => {
     logDebug(`tempVideos[${idx}] failed to load: ${e.message || e}`);
   });
-  if (!tempVideos[idx].parentNode) hiddenVideos.appendChild(tempVideos[idx]);
+  if (!tempVideos[idx].parentNode && hiddenVideos) hiddenVideos.appendChild(tempVideos[idx]);
 }
 
-// === SWITCHER BUTTONS (for instant camera switching) ===
+// === SIMPLE CAMERA BUTTONS ===
 function updateSwitcherBtns() {
+  if (!switcherBtnsContainer) return;
   switcherBtnsContainer.innerHTML = '';
   for (let i = 0; i < NUM_TRACKS; i++) {
     const track = videoTracks[i];
     const btn = document.createElement('button');
-    btn.className = 'switcher-btn' + (i === activeTrackIndex ? ' active' : '');
-    btn.textContent = `Camera ${i + 1}`;
+    btn.className = (i === activeTrackIndex ? 'active-cam-btn' : '');
+    btn.textContent = String(i + 1);
     btn.disabled = !track;
-    btn.addEventListener('click', function () {
+    btn.style.margin = '4px';
+    btn.onclick = function () {
       setActiveTrack(i);
       logDebug(`Switched to Camera ${i + 1}`);
-    });
+    };
     switcherBtnsContainer.appendChild(btn);
   }
 }
 
-// === SET ACTIVE CAMERA (for preview and for drawing during recording) ===
+// === SET ACTIVE CAMERA ===
 function setActiveTrack(idx) {
   activeTrackIndex = idx;
   document.querySelectorAll('.switcher-track').forEach((el, i) => {
     el.classList.toggle('active', i === idx);
   });
-  document.querySelectorAll('.switcher-btn').forEach((el, i) => {
-    el.classList.toggle('active', i === idx);
-  });
+  if (switcherBtnsContainer) {
+    Array.from(switcherBtnsContainer.children).forEach((el, i) => {
+      el.classList.toggle('active-cam-btn', i === idx);
+    });
+  }
   previewInOutput(idx);
 }
 
@@ -305,7 +302,7 @@ function previewInOutput(idx) {
 for (let i = 0; i < NUM_TRACKS; i++) createTrackCard(i);
 updateSwitcherBtns();
 masterOutputVideo.style.display = 'block';
-exportBtn.disabled = true;
+if (exportBtn) exportBtn.disabled = true;
 
 // === Returns the currently selected video for drawing ===
 function getCurrentDrawVideo() {
@@ -317,235 +314,247 @@ function getCurrentDrawVideo() {
 }
 
 // === LIVE RECORDING/EDITING LOGIC (sync & draw) ===
-recordFullEditBtn.addEventListener('click', async function () {
-  if (!audio.src) {
-    alert('Please upload a song first.');
-    logDebug('Attempted to record with no audio uploaded.');
-    return;
-  }
-  if (!videoTracks.some(Boolean)) {
-    alert('Please upload or record at least one video take.');
-    logDebug('Attempted to record with no video takes uploaded.');
-    return;
-  }
-  if (!tempVideos[activeTrackIndex]) {
-    alert('Selected camera has no video.');
-    logDebug('Attempted to record with no video in active camera.');
-    return;
-  }
+if (recordFullEditBtn) {
+  recordFullEditBtn.addEventListener('click', async function () {
+    logDebug('Record Full Edit button clicked');
+    if (!audio.src) {
+      alert('Please upload a song first.');
+      return;
+    }
+    if (!videoTracks.some(Boolean)) {
+      alert('Please upload or record at least one video take.');
+      return;
+    }
+    if (!tempVideos[activeTrackIndex]) {
+      alert('Selected camera has no video.');
+      return;
+    }
 
-  isRecording = true;
-  isPlaying = true;
-  recordedChunks = [];
-  exportStatus.textContent = '';
-  recIndicator.style.display = 'block';
-  exportBtn.disabled = true;
-  logDebug('Recording started.');
+    // Try to play audio immediately (user gesture)
+    try {
+      audio.currentTime = 0;
+      await audio.play();
+      logDebug("Audio playback started.");
+    } catch (e) {
+      alert('Browser blocked audio playback. Please interact with the page and try again.');
+      logDebug("Audio playback failed: " + e.message);
+      return;
+    }
 
-  const canvas = document.createElement('canvas');
-  canvas.width = 640;
-  canvas.height = 360;
-  const ctx = canvas.getContext('2d');
+    isRecording = true;
+    isPlaying = true;
+    recordedChunks = [];
+    if (exportStatus) exportStatus.textContent = '';
+    if (recIndicator) recIndicator.style.display = 'block';
+    if (exportBtn) exportBtn.disabled = true;
+    logDebug('Recording started.');
 
-  // --- Ensure all tempVideos are loaded and reset ---
-  for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) {
-      if (!tempVideos[i].parentNode) hiddenVideos.appendChild(tempVideos[i]);
-      try { 
-        tempVideos[i].pause(); 
-        tempVideos[i].currentTime = 0; 
-        tempVideos[i].load(); 
-      } catch(e) { 
-        logDebug(`Could not reset tempVideo ${i}: ${e.message || e}`); 
+    const canvas = document.createElement('canvas');
+    canvas.width = 640;
+    canvas.height = 360;
+    const ctx = canvas.getContext('2d');
+
+    // Ensure all tempVideos are loaded and reset
+    for (let i = 0; i < tempVideos.length; i++) {
+      if (tempVideos[i]) {
+        if (!tempVideos[i].parentNode && hiddenVideos) hiddenVideos.appendChild(tempVideos[i]);
+        try {
+          tempVideos[i].pause();
+          tempVideos[i].currentTime = 0;
+          tempVideos[i].load();
+        } catch(e) {
+          logDebug(`Could not reset tempVideo ${i}: ${e.message || e}`);
+        }
       }
     }
-  }
-  let currentVideo = getCurrentDrawVideo();
-  if (!currentVideo) {
-    alert('Please upload or record at least one video take.');
-    isRecording = false; isPlaying = false; recIndicator.style.display = 'none';
-    logDebug('No tempVideos available for drawing.');
-    return;
-  }
-
-  // --- Wait for all tempVideos to be loaded before playing ---
-  for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) {
-      if (tempVideos[i].readyState < 2) {
-        await new Promise(resolve => {
-          tempVideos[i].addEventListener('loadeddata', resolve, { once: true });
-        });
-      }
+    let currentVideo = getCurrentDrawVideo();
+    if (!currentVideo) {
+      alert('Please upload or record at least one video take.');
+      isRecording = false; isPlaying = false;
+      if (recIndicator) recIndicator.style.display = 'none';
+      logDebug('No tempVideos available for drawing.');
+      return;
     }
-  }
 
-  // --- Play all tempVideos to allow instant drawing on switch ---
-  for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) {
-      try {
-        tempVideos[i].currentTime = 0;
-        await tempVideos[i].play();
-        logDebug(`Playing tempVideo ${i}`);
-      } catch (err) {
-        logDebug(`Error playing tempVideo ${i}: ${err.message || err}`);
-      }
-    }
-  }
-
-  // --- Play the current video again to be sure ---
-  try {
-    await currentVideo.play();
-  } catch (e) {
-    logDebug(`Error playing initial currentVideo: ${e.message || e}`);
-  }
-
-  // --- Fade-in/out config for professional polish ---
-  const FADE_DURATION = 1.5; // seconds
-
-  // --- Animation Frame Draw Loop: Syncs to audio, draws selected camera, handles quick switching ---
-  function drawFrame() {
-    if (!isRecording) return;
-    const vid = getCurrentDrawVideo();
-    if (vid && !vid.ended && vid.readyState >= 2) {
-      ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
-    } else {
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    // Fade-in/out logic
-    const currentTime = audio.currentTime;
-    const totalDuration = audio.duration || (audio.seekable && audio.seekable.length ? audio.seekable.end(0) : 0);
-    if (currentTime < FADE_DURATION) {
-      // Fade in
-      let alpha = 1 - (currentTime / FADE_DURATION);
-      ctx.fillStyle = `rgba(0,0,0,${alpha})`;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    } else if (totalDuration && currentTime > totalDuration - FADE_DURATION) {
-      // Fade out
-      let alpha = (currentTime - (totalDuration - FADE_DURATION)) / FADE_DURATION;
-      ctx.fillStyle = `rgba(0,0,0,${alpha})`;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    animationFrameId = requestAnimationFrame(drawFrame);
-  }
-  drawFrame();
-
-  // --- Live preview to main output video (canvas stream) ---
-  try {
-    livePreviewStream = canvas.captureStream(30);
-    masterOutputVideo.srcObject = livePreviewStream;
-    masterOutputVideo.src = "";
-    masterOutputVideo.play();
-  } catch (e) {
-    logDebug("Live preview error: " + e.message);
-  }
-
-  // --- Update switcher buttons for live camera switching during recording ---
-  switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((btn, idx) => {
-    btn.onclick = function() {
-      setActiveTrack(idx);
-      const vid = getCurrentDrawVideo();
-      if (vid) {
-        vid.play()
-          .then(() => {
-            logDebug(`Switched & played tempVideo ${idx}`);
-          })
-          .catch(err => {
-            logDebug(`Error playing tempVideo after switch ${idx}: ${err.message || err}`);
+    // Wait for all tempVideos to be loaded before playing
+    for (let i = 0; i < tempVideos.length; i++) {
+      if (tempVideos[i]) {
+        if (tempVideos[i].readyState < 2) {
+          await new Promise(resolve => {
+            tempVideos[i].addEventListener('loadeddata', resolve, { once: true });
           });
+        }
+      }
+    }
+
+    // Play all tempVideos to allow instant drawing on switch
+    for (let i = 0; i < tempVideos.length; i++) {
+      if (tempVideos[i]) {
+        try {
+          tempVideos[i].currentTime = 0;
+          await tempVideos[i].play();
+          logDebug(`Playing tempVideo ${i}`);
+        } catch (err) {
+          logDebug(`Error playing tempVideo ${i}: ${err.message || err}`);
+        }
+      }
+    }
+
+    // Play the current video again to be sure
+    try {
+      await currentVideo.play();
+    } catch (e) {
+      logDebug(`Error playing initial currentVideo: ${e.message || e}`);
+    }
+
+    // Fade-in/out config
+    const FADE_DURATION = 1.5; // seconds
+
+    function drawFrame() {
+      if (!isRecording) return;
+      const vid = getCurrentDrawVideo();
+      if (vid && !vid.ended && vid.readyState >= 2) {
+        ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+      } else {
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+      // Fade-in/out logic
+      const currentTime = audio.currentTime;
+      const totalDuration = audio.duration || (audio.seekable && audio.seekable.length ? audio.seekable.end(0) : 0);
+      if (currentTime < FADE_DURATION) {
+        let alpha = 1 - (currentTime / FADE_DURATION);
+        ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      } else if (totalDuration && currentTime > totalDuration - FADE_DURATION) {
+        let alpha = (currentTime - (totalDuration - FADE_DURATION)) / FADE_DURATION;
+        ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+      animationFrameId = requestAnimationFrame(drawFrame);
+    }
+    drawFrame();
+
+    // Live preview to main output video (canvas stream)
+    try {
+      livePreviewStream = canvas.captureStream(30);
+      masterOutputVideo.srcObject = livePreviewStream;
+      masterOutputVideo.src = "";
+      masterOutputVideo.play();
+    } catch (e) {
+      logDebug("Live preview error: " + e.message);
+    }
+
+    // Camera buttons live switching
+    if (switcherBtnsContainer) {
+      Array.from(switcherBtnsContainer.children).forEach((btn, idx) => {
+        btn.onclick = function() {
+          setActiveTrack(idx);
+          const vid = getCurrentDrawVideo();
+          if (vid) {
+            vid.play()
+              .then(() => {
+                logDebug(`Switched & played tempVideo ${idx}`);
+              })
+              .catch(err => {
+                logDebug(`Error playing tempVideo after switch ${idx}: ${err.message || err}`);
+              });
+          }
+        };
+      });
+    }
+
+    // Audio context for exporting song audio into recording
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioContext.createMediaElementSource(audio);
+    const dest = audioContext.createMediaStreamDestination();
+    source.connect(dest);
+    source.connect(audioContext.destination);
+
+    const canvasStream = canvas.captureStream(30);
+    const combinedStream = new MediaStream([
+      ...canvasStream.getVideoTracks(),
+      ...dest.stream.getAudioTracks()
+    ]);
+
+    mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm; codecs=vp9,opus' });
+    mediaRecorder.ondataavailable = function(e) {
+      if (e.data.size > 0) recordedChunks.push(e.data);
+    };
+    mediaRecorder.onstop = function() {
+      cancelAnimationFrame(animationFrameId);
+      const blob = new Blob(recordedChunks, { type: 'video/webm' });
+      masterOutputVideo.src = URL.createObjectURL(blob);
+      masterOutputVideo.srcObject = null;
+      masterOutputVideo.controls = true;
+      masterOutputVideo.style.display = 'block';
+      if (recIndicator) recIndicator.style.display = 'none';
+      if (exportBtn) exportBtn.disabled = false;
+      isRecording = false;
+      isPlaying = false;
+      livePreviewStream = null;
+      if (exportStatus) exportStatus.textContent = 'Recording finished! Preview your cut below.';
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+      }
+      logDebug('Recording stopped. Video ready for export.');
+    };
+
+    audio.currentTime = 0;
+    audio.play();
+
+    // Play all tempVideos again to be sure (for sync)
+    for (let i = 0; i < tempVideos.length; i++) {
+      if (tempVideos[i]) {
+        try {
+          tempVideos[i].currentTime = 0;
+          await tempVideos[i].play();
+        } catch(e) {
+          logDebug(`Could not play tempVideo ${i}: ${e.message || e}`);
+        }
+      }
+    }
+    mediaRecorder.start();
+
+    audio.onended = function () {
+      if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        audio.onended = null;
+        logDebug('Audio ended, stopping recording.');
       }
     };
+
+    if (stopPreviewBtn) {
+      stopPreviewBtn.onclick = function () {
+        if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
+          mediaRecorder.stop();
+          audio.pause();
+          if (recIndicator) recIndicator.style.display = 'none';
+          if (exportStatus) exportStatus.textContent = 'Recording stopped.';
+          logDebug('Recording stopped by user.');
+        }
+      };
+    }
   });
-
-  // --- Audio context for merging song audio into recording ---
-  audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  const source = audioContext.createMediaElementSource(audio);
-  const dest = audioContext.createMediaStreamDestination();
-  source.connect(dest);
-  source.connect(audioContext.destination);
-
-  const canvasStream = canvas.captureStream(30);
-  const combinedStream = new MediaStream([
-    ...canvasStream.getVideoTracks(),
-    ...dest.stream.getAudioTracks()
-  ]);
-
-  mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm; codecs=vp9,opus' });
-  mediaRecorder.ondataavailable = function(e) {
-    if (e.data.size > 0) recordedChunks.push(e.data);
-  };
-  mediaRecorder.onstop = function() {
-    cancelAnimationFrame(animationFrameId);
-    const blob = new Blob(recordedChunks, { type: 'video/webm' });
-    masterOutputVideo.src = URL.createObjectURL(blob);
-    masterOutputVideo.srcObject = null;
-    masterOutputVideo.controls = true;
-    masterOutputVideo.style.display = 'block';
-    recIndicator.style.display = 'none';
-    exportBtn.disabled = false;
-    isRecording = false;
-    isPlaying = false;
-    livePreviewStream = null;
-    exportStatus.textContent = 'Recording finished! Preview your cut below.';
-    if (audioContext) {
-      audioContext.close();
-      audioContext = null;
-    }
-    logDebug('Recording stopped. Video ready for export.');
-  };
-
-  audio.currentTime = 0;
-  audio.play();
-
-  // Play all tempVideos again to be sure (for sync)
-  for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) { 
-      try { 
-        tempVideos[i].currentTime = 0; 
-        await tempVideos[i].play(); 
-      } catch(e) { 
-        logDebug(`Could not play tempVideo ${i}: ${e.message || e}`);
-      }
-    }
-  }
-  mediaRecorder.start();
-
-  // --- Stop recording on audio end ---
-  audio.onended = function () {
-    if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
-      mediaRecorder.stop();
-      audio.onended = null;
-      logDebug('Audio ended, stopping recording.');
-    }
-  };
-
-  // --- Manual Stop Button ---
-  stopPreviewBtn.onclick = function () {
-    if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
-      mediaRecorder.stop();
-      audio.pause();
-      recIndicator.style.display = 'none';
-      exportStatus.textContent = 'Recording stopped.';
-      logDebug('Recording stopped by user.');
-    }
-  };
-});
+}
 
 // ===== EXPORT TO FILE =====
-exportBtn.addEventListener('click', function () {
-  if (!masterOutputVideo.src) {
-    exportStatus.textContent = 'Nothing to export yet!';
-    logDebug('Export attempted but no video available.');
-    return;
-  }
-  fetch(masterOutputVideo.src)
-    .then(res => res.blob())
-    .then(blob => {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'fastcut-studios-edit.webm';
-      a.click();
-      exportStatus.textContent = 'Video exported – check your downloads!';
-      logDebug('Video exported.');
-    });
-});
+if (exportBtn) {
+  exportBtn.addEventListener('click', function () {
+    if (!masterOutputVideo.src) {
+      if (exportStatus) exportStatus.textContent = 'Nothing to export yet!';
+      logDebug('Export attempted but no video available.');
+      return;
+    }
+    fetch(masterOutputVideo.src)
+      .then(res => res.blob())
+      .then(blob => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'fastcut-studios-edit.webm';
+        a.click();
+        if (exportStatus) exportStatus.textContent = 'Video exported – check your downloads!';
+        logDebug('Video exported.');
+      });
+}
