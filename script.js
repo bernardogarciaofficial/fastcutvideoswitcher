@@ -1,4 +1,4 @@
-// FASTCUT STUDIOS - Minimal, Reliable, Simple Thumbnails & Switcher
+// FASTCUT STUDIOS - Minimal, Reliable, Simple Thumbnails & Switcher, 2x3 layout, dark+red
 
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
@@ -10,6 +10,7 @@ const recordFullEditBtn = document.getElementById('recordFullEditBtn');
 const stopPreviewBtn = document.getElementById('stopPreviewBtn');
 const exportBtn = document.getElementById('exportMusicVideoBtn');
 const exportStatus = document.getElementById('exportStatus');
+const warnSong = document.getElementById('warnSong');
 
 const videoTracks = Array(NUM_TRACKS).fill(null);
 const tempVideos = Array(NUM_TRACKS).fill(null);
@@ -22,17 +23,12 @@ let audioContext = null;
 
 function createTrackCard(index) {
   const card = document.createElement('div');
-  card.style.border = '1px solid #aaa';
-  card.style.padding = '6px';
-  card.style.margin = '5px';
-  card.style.width = '150px';
-  card.style.display = 'inline-block';
-  card.style.verticalAlign = 'top';
-  card.style.background = '#f7f7f7';
+  card.className = 'track-card';
 
   // Title
   const title = document.createElement('div');
-  title.textContent = `#${index + 1}`;
+  title.className = "track-title";
+  title.textContent = `Camera ${index + 1}`;
   card.appendChild(title);
 
   // Upload
@@ -54,13 +50,11 @@ function createTrackCard(index) {
   // Record
   const recBtn = document.createElement('button');
   recBtn.textContent = 'Rec';
-  recBtn.style.marginLeft = '4px';
   card.appendChild(recBtn);
 
   const stopRecBtn = document.createElement('button');
   stopRecBtn.textContent = 'Stop';
   stopRecBtn.style.display = 'none';
-  stopRecBtn.style.marginLeft = '4px';
   card.appendChild(stopRecBtn);
 
   let trackRecorder = null;
@@ -113,7 +107,6 @@ function createTrackCard(index) {
   // Download button
   const dlBtn = document.createElement('button');
   dlBtn.textContent = 'DL';
-  dlBtn.style.marginLeft = '4px';
   dlBtn.style.display = 'none';
   dlBtn.addEventListener('click', function() {
     if (videoTracks[index] && videoTracks[index].url) {
@@ -128,8 +121,6 @@ function createTrackCard(index) {
   // Video preview (thumbnail)
   const preview = document.createElement('video');
   preview.controls = true;
-  preview.style.width = '100%';
-  preview.style.marginTop = '4px';
   preview.style.background = "#000";
   preview.muted = true;
   preview.playsInline = true;
@@ -160,7 +151,6 @@ function createSwitcherBtns() {
   for (let i = 0; i < NUM_TRACKS; i++) {
     const btn = document.createElement('button');
     btn.textContent = String(i + 1);
-    btn.style.margin = '4px';
     btn.onclick = function () {
       setActiveTrack(i);
       for (let j = 0; j < NUM_TRACKS; j++) {
@@ -169,6 +159,8 @@ function createSwitcherBtns() {
     };
     switcherBtnsContainer.appendChild(btn);
   }
+  // set first active
+  switcherBtnsContainer.children[0].className = "active-switcher-btn";
 }
 
 function setActiveTrack(idx) {
@@ -180,9 +172,13 @@ function setActiveTrack(idx) {
     mainOutput.currentTime = 0;
     mainOutput.play().catch(()=>{});
   }
+  // update switcher button highlight
+  for (let j = 0; j < NUM_TRACKS; j++) {
+    switcherBtnsContainer.children[j].className = (j === idx) ? "active-switcher-btn" : "";
+  }
 }
 
-// Initialize UI
+// UI: create 6 cards in 2x3 layout
 for (let i = 0; i < NUM_TRACKS; i++) createTrackCard(i);
 createSwitcherBtns();
 
@@ -190,10 +186,14 @@ function getCurrentDrawVideo() {
   return tempVideos[activeTrackIndex] || null;
 }
 
+// Hide warning by default
+warnSong.style.display = 'none';
+
 // Record Full Edit
 recordFullEditBtn.addEventListener('click', async function () {
   if (!audio.src) {
-    alert('Please upload a song first.');
+    warnSong.style.display = '';
+    setTimeout(() => { warnSong.style.display = 'none'; }, 2500);
     return;
   }
   if (!videoTracks.some(Boolean)) {
@@ -327,4 +327,9 @@ exportBtn.addEventListener('click', function () {
       a.click();
       if (exportStatus) exportStatus.textContent = 'Video exported – check your downloads!';
     });
+});
+
+// Song input hide warning
+songInput.addEventListener('change', function() {
+  warnSong.style.display = 'none';
 });
