@@ -1,4 +1,4 @@
-// FASTCUT MUSIC VIDEO MAKER - with Fade Transitions, Live Camera Switching During Recording, and Robust Recording Logic
+// FASTCUT MUSIC VIDEO MAKER - Fade-in/out, Perfect Audio/Video Sync, Live Camera Switching
 
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
@@ -320,15 +320,29 @@ recordFullEditBtn.addEventListener('click', async function () {
   function drawFrame() {
     if (!isRecording) return;
     const vid = tempVideos[activeTrackIndex];
-    if (
-      vid &&
-      vid.readyState >= 2 &&
-      !vid.ended &&
-      vid.currentTime < (vid.duration || Infinity)
-    ) {
-      ctx.globalAlpha = 1;
+    const t = audio.currentTime || 0;
+
+    // --- Fade-in/out setup ---
+    const duration = audio.duration || 0;
+    const FADE_LEN = 1.0; // seconds for fade-in/out
+
+    // Alpha for fade-in/out
+    let alpha = 1;
+    if (t < FADE_LEN) {
+      alpha = Math.max(0, t / FADE_LEN);
+    } else if (duration && t > duration - FADE_LEN) {
+      alpha = Math.max(0, (duration - t) / FADE_LEN);
+    }
+
+    // Sync video to audio on every frame (for perfect sync)
+    if (vid && vid.readyState >= 2) {
+      // Clamp currentTime so we don't seek past end and see black
+      vid.currentTime = Math.min(t, vid.duration ? vid.duration - 0.033 : t);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.globalAlpha = alpha;
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
     } else {
+      ctx.globalAlpha = 1;
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
