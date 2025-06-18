@@ -1,4 +1,4 @@
-// FASTCUT MUSIC VIDEO MAKER - with Fade Transitions and Live Camera Switching During Recording
+// FASTCUT MUSIC VIDEO MAKER - with Fade Transitions, Live Camera Switching During Recording, and Robust Recording Logic
 
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
@@ -200,7 +200,7 @@ function setActiveTrack(idx, withFade) {
   // Video preview: sync video to audio time
   if (!isRecording && tempVideos[idx]) {
     let t = audio.currentTime || 0;
-    tempVideos[idx].currentTime = t;
+    tempVideos[idx].currentTime = Math.min(t, tempVideos[idx].duration || t);
     tempVideos[idx].pause();
     // Only play main output if not fading
     if (!withFade) {
@@ -233,8 +233,8 @@ function fadeDraw(now) {
   const ctx = canvas.getContext('2d');
   let t = audio.currentTime || 0;
   // seek both videos to current audio time
-  if (tempVideos[fadeFromIdx]) tempVideos[fadeFromIdx].currentTime = t;
-  if (tempVideos[fadeToIdx]) tempVideos[fadeToIdx].currentTime = t;
+  if (tempVideos[fadeFromIdx]) tempVideos[fadeFromIdx].currentTime = Math.min(t, tempVideos[fadeFromIdx].duration || t);
+  if (tempVideos[fadeToIdx]) tempVideos[fadeToIdx].currentTime = Math.min(t, tempVideos[fadeToIdx].duration || t);
 
   // draw blend
   const elapsed = (now - fadeStart) / 1000;
@@ -307,41 +307,25 @@ recordFullEditBtn.addEventListener('click', async function () {
   canvas.height = 360;
   const ctx = canvas.getContext('2d');
 
-  // Ensure all temp videos are loaded and reset
+  // Ensure all temp videos are loaded, seeked to start, and playing
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
-      try {
-        tempVideos[i].pause();
-        tempVideos[i].currentTime = 0;
-        tempVideos[i].load();
-      } catch(e) {}
-    }
-  }
-  for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i] && tempVideos[i].readyState < 2) {
-      await new Promise(resolve => {
-        tempVideos[i].addEventListener('loadeddata', resolve, { once: true });
-      });
-    }
-  }
-  // Play all temp videos for instant switching
-  for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) {
-      try {
-        tempVideos[i].currentTime = 0;
-        await tempVideos[i].play();
-      } catch(e) {}
+      tempVideos[i].pause();
+      tempVideos[i].currentTime = 0;
+      await new Promise(resolve => tempVideos[i].addEventListener('seeked', resolve, { once: true }));
+      await tempVideos[i].play();
     }
   }
 
   function drawFrame() {
     if (!isRecording) return;
-    // Sync all videos to audio for perfect sync
-    let t = audio.currentTime || 0;
-    if (tempVideos[activeTrackIndex]) tempVideos[activeTrackIndex].currentTime = t;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
     const vid = tempVideos[activeTrackIndex];
-    if (vid && !vid.ended && vid.readyState >= 2) {
+    if (
+      vid &&
+      vid.readyState >= 2 &&
+      !vid.ended &&
+      vid.currentTime < (vid.duration || Infinity)
+    ) {
       ctx.globalAlpha = 1;
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
     } else {
