@@ -1,4 +1,4 @@
-// FASTCUT MUSIC VIDEO MAKER - Fade-in/out, Perfect Audio/Video Sync, Live Camera Switching
+// FASTCUT MUSIC VIDEO MAKER - Fade-in/out, Perfect Audio/Video Sync, Live Camera Switching, No Flashing Black
 
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
@@ -29,6 +29,9 @@ const FADE_DURATION = 0.4; // seconds
 let fadeFromIdx = null;
 let fadeToIdx = null;
 let fadeStart = null;
+
+// --- Sync helpers ---
+let lastSwitchAudioTime = 0;
 
 // -- MUSIC only plays on switch or preview --
 function ensureAudioPlays() {
@@ -172,8 +175,18 @@ function createSwitcherBtns() {
     btn.onclick = function () {
       if (i === activeTrackIndex) return;
       if (isRecording) {
-        // Instantly switch the active track index during recording
         activeTrackIndex = i;
+        // On switch, immediately synchronize new video to audio time
+        if (tempVideos[activeTrackIndex]) {
+          const t = audio.currentTime || 0;
+          lastSwitchAudioTime = t;
+          try {
+            tempVideos[activeTrackIndex].currentTime = Math.min(
+              t,
+              tempVideos[activeTrackIndex].duration ? tempVideos[activeTrackIndex].duration - 0.033 : t
+            );
+          } catch (err) {}
+        }
       } else {
         // Start fade for preview mode
         startFadeTransition(activeTrackIndex, i);
@@ -316,6 +329,11 @@ recordFullEditBtn.addEventListener('click', async function () {
       await tempVideos[i].play();
     }
   }
+  // On start, sync all videos to current audio time (should be 0)
+  lastSwitchAudioTime = 0;
+  if (tempVideos[activeTrackIndex]) {
+    tempVideos[activeTrackIndex].currentTime = 0;
+  }
 
   function drawFrame() {
     if (!isRecording) return;
@@ -334,10 +352,15 @@ recordFullEditBtn.addEventListener('click', async function () {
       alpha = Math.max(0, (duration - t) / FADE_LEN);
     }
 
-    // Sync video to audio on every frame (for perfect sync)
-    if (vid && vid.readyState >= 2) {
-      // Clamp currentTime so we don't seek past end and see black
-      vid.currentTime = Math.min(t, vid.duration ? vid.duration - 0.033 : t);
+    // Only seek if out of sync (>0.1s) or if we've just switched tracks (use lastSwitchAudioTime)
+    if (vid && vid.readyState >= 2 && !vid.ended && t < (vid.duration || Infinity)) {
+      // If the video is out of sync, or we just switched, resync
+      if (Math.abs(vid.currentTime - t) > 0.1 || Math.abs(lastSwitchAudioTime - t) < 0.15) {
+        try {
+          vid.currentTime = Math.min(t, vid.duration ? vid.duration - 0.033 : t);
+        } catch (err) {}
+        lastSwitchAudioTime = -9999; // Don't trigger again unless we switch
+      }
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.globalAlpha = alpha;
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
