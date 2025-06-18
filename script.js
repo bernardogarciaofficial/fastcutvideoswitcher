@@ -24,7 +24,6 @@ let audioContext = null;
 const FADE_DURATION = 0.7; // seconds for fade-in/out
 const SYNC_THRESHOLD = 0.04; // 40ms
 
-// Fade state
 let fadeState = null; // null or {from, to, startTime, duration}
 
 // Persistent canvas for all compositing
@@ -32,7 +31,14 @@ const outputCanvas = document.createElement('canvas');
 outputCanvas.width = 640;
 outputCanvas.height = 360;
 const outputCtx = outputCanvas.getContext('2d');
-mainOutput.srcObject = outputCanvas.captureStream(30);
+
+// --- Helper to clear preview loop ---
+function stopPreviewLoop() {
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
+  }
+}
 
 // ---- Track Cards ----
 function createTrackCard(index) {
@@ -161,7 +167,7 @@ function prepareTempVideo(idx, url) {
 }
 
 // ---- Switcher ----
-function createSwitcherBtns() {
+function createSwitcherBtns(recordMode = false) {
   switcherBtnsContainer.innerHTML = '';
   for (let i = 0; i < NUM_TRACKS; i++) {
     const btn = document.createElement('button');
@@ -278,6 +284,7 @@ recordFullEditBtn.addEventListener('click', async function () {
   if (!audio.src) {
     warnSong.style.display = '';
     setTimeout(() => { warnSong.style.display = 'none'; }, 2500);
+    alert('Please upload a song first.');
     return;
   }
   if (!videoTracks.some(Boolean)) {
@@ -292,6 +299,9 @@ recordFullEditBtn.addEventListener('click', async function () {
   recordedChunks = [];
   if (exportStatus) exportStatus.textContent = '';
   if (exportBtn) exportBtn.disabled = true;
+
+  // Stop preview loop before recording
+  stopPreviewLoop();
 
   // Ensure all temp videos are loaded, seeked to start, and playing
   for (let i = 0; i < tempVideos.length; i++) {
@@ -324,7 +334,7 @@ recordFullEditBtn.addEventListener('click', async function () {
     if (e.data.size > 0) recordedChunks.push(e.data);
   };
   mediaRecorder.onstop = function() {
-    cancelAnimationFrame(animationFrameId);
+    stopPreviewLoop();
     const blob = new Blob(recordedChunks, { type: 'video/webm' });
     mainOutput.src = URL.createObjectURL(blob);
     mainOutput.srcObject = null;
@@ -337,21 +347,34 @@ recordFullEditBtn.addEventListener('click', async function () {
       audioContext.close();
       audioContext = null;
     }
+    // Restore preview loop after recording
+    mainOutput.srcObject = outputCanvas.captureStream(30);
+    animationFrameId = requestAnimationFrame(drawLoop);
+    createSwitcherBtns(); // Restore preview mode handlers
   };
 
   audio.currentTime = 0;
-  audio.play().catch(()=>{});
+  // Try to play audio, warn if blocked
+  audio.play().catch((err)=>{
+    alert('Audio playback failed. Please click the play button on the audio player to enable audio.');
+    if (exportStatus) exportStatus.textContent = 'Audio playback blocked. Click play on the audio bar.';
+  });
   mediaRecorder.start();
 
   // Re-enable switching during recording
-  switcherBtnsContainer.querySelectorAll('button').forEach((btn, idx) => {
+  switcherBtnsContainer.innerHTML = "";
+  for (let i = 0; i < NUM_TRACKS; i++) {
+    const btn = document.createElement('button');
+    btn.textContent = String(i + 1);
     btn.onclick = function () {
-      if (idx === requestedTrackIndex) return;
-      startFade(activeTrackIndex, idx);
-      requestedTrackIndex = idx;
+      if (i === requestedTrackIndex) return;
+      startFade(activeTrackIndex, i);
+      requestedTrackIndex = i;
       updateSwitcherBtns();
     };
-  });
+    switcherBtnsContainer.appendChild(btn);
+  }
+  updateSwitcherBtns();
 
   animationFrameId = requestAnimationFrame(drawLoop);
 
@@ -403,4 +426,7 @@ switcherBtnsContainer.addEventListener('click', ensureAudioPlays);
 for (let i = 0; i < NUM_TRACKS; i++) createTrackCard(i);
 createSwitcherBtns();
 warnSong.style.display = 'none';
+
+// Start preview loop
+mainOutput.srcObject = outputCanvas.captureStream(30);
 animationFrameId = requestAnimationFrame(drawLoop);
