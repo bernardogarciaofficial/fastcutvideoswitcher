@@ -1,4 +1,4 @@
-// FASTCUT MUSIC VIDEO MAKER - with Fade Transitions and Precise Audio/Video Synchronization
+// FASTCUT MUSIC VIDEO MAKER - with Fade Transitions and Live Camera Switching During Recording
 
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
@@ -171,10 +171,19 @@ function createSwitcherBtns() {
     btn.textContent = String(i + 1);
     btn.onclick = function () {
       if (i === activeTrackIndex) return;
-      // Start fade
-      startFadeTransition(activeTrackIndex, i);
-      setActiveTrack(i, true); // setActiveTrack will sync video position
-      ensureAudioPlays();
+      if (isRecording) {
+        // Instantly switch the active track index during recording
+        activeTrackIndex = i;
+      } else {
+        // Start fade for preview mode
+        startFadeTransition(activeTrackIndex, i);
+        setActiveTrack(i, true); // setActiveTrack will sync video position
+        ensureAudioPlays();
+      }
+      // Update switcher button highlight in all cases
+      for (let j = 0; j < NUM_TRACKS; j++) {
+        switcherBtnsContainer.children[j].className = (j === i) ? "active-switcher-btn" : "";
+      }
     };
     switcherBtnsContainer.appendChild(btn);
   }
