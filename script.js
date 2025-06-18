@@ -1,4 +1,4 @@
-// FASTCUT MUSIC VIDEO MAKER - Enhanced Sync & Fade Transitions
+// FASTCUT MUSIC VIDEO MAKER - Robust Switch, Fade, and Audio Sync
 
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
@@ -15,31 +15,24 @@ const warnSong = document.getElementById('warnSong');
 const videoTracks = Array(NUM_TRACKS).fill(null);
 const tempVideos = Array(NUM_TRACKS).fill(null);
 let activeTrackIndex = 0;
-let lastTrackIndex = 0;
+let requestedTrackIndex = 0;
 let isRecording = false;
 let animationFrameId = null;
 let mediaRecorder = null;
 let recordedChunks = [];
 let audioContext = null;
-let fadeStartTime = null;
-let fading = false;
 const FADE_DURATION = 0.7; // seconds for fade-in/out
-
-let fadeFromIdx = null;
-let fadeToIdx = null;
-let fadeStart = null;
-let crossfadeResolve = null;
-let crossfadeActive = false;
-
-let lastSwitchAudioTime = 0;
 const SYNC_THRESHOLD = 0.04; // 40ms
 
-// --- Ensure Audio Plays ---
-function ensureAudioPlays() {
-  if (audio.src && audio.paused) {
-    audio.play().catch(()=>{});
-  }
-}
+// Fade state
+let fadeState = null; // null or {from, to, startTime, duration}
+
+// Persistent canvas for all compositing
+const outputCanvas = document.createElement('canvas');
+outputCanvas.width = 640;
+outputCanvas.height = 360;
+const outputCtx = outputCanvas.getContext('2d');
+mainOutput.srcObject = outputCanvas.captureStream(30);
 
 // ---- Track Cards ----
 function createTrackCard(index) {
@@ -174,110 +167,99 @@ function createSwitcherBtns() {
     const btn = document.createElement('button');
     btn.textContent = String(i + 1);
     btn.onclick = function () {
-      if (i === activeTrackIndex) return;
-      if (isRecording) {
-        crossfadeBetweenTracks(activeTrackIndex, i, FADE_DURATION * 1000);
-      } else {
-        crossfadeBetweenTracks(activeTrackIndex, i, FADE_DURATION * 1000);
-        ensureAudioPlays();
-      }
-      // Update switcher button highlight in all cases
-      for (let j = 0; j < NUM_TRACKS; j++) {
-        switcherBtnsContainer.children[j].className = (j === i) ? "active-switcher-btn" : "";
-      }
+      if (i === requestedTrackIndex) return;
+      startFade(activeTrackIndex, i);
+      requestedTrackIndex = i;
+      updateSwitcherBtns();
+      ensureAudioPlays();
     };
     switcherBtnsContainer.appendChild(btn);
   }
-  switcherBtnsContainer.children[0].className = "active-switcher-btn";
+  updateSwitcherBtns();
 }
 
-// ---- Crossfade Between Tracks ----
-async function crossfadeBetweenTracks(fromIdx, toIdx, duration) {
-  if (crossfadeActive) return;
+function updateSwitcherBtns() {
+  for (let j = 0; j < NUM_TRACKS; j++) {
+    switcherBtnsContainer.children[j].className = (j === requestedTrackIndex) ? "active-switcher-btn" : "";
+  }
+}
+
+// ---- Fade Logic ----
+function startFade(fromIdx, toIdx) {
   if (!tempVideos[toIdx]) {
-    setActiveTrack(toIdx, false);
+    activeTrackIndex = toIdx;
+    requestedTrackIndex = toIdx;
     return;
   }
-  crossfadeActive = true;
-  fadeFromIdx = fromIdx;
-  fadeToIdx = toIdx;
-  fadeStart = performance.now();
+  fadeState = {
+    from: fromIdx,
+    to: toIdx,
+    startTime: performance.now(),
+    duration: FADE_DURATION * 1000
+  };
+}
 
-  // Seek both videos to correct audio time
+function getFadeAlpha(time, duration) {
+  if (time < FADE_DURATION) return time / FADE_DURATION;
+  if (duration && time > duration - FADE_DURATION) return (duration - time) / FADE_DURATION;
+  return 1;
+}
+
+// ---- Drawing Loop ----
+function drawLoop() {
   let t = audio.currentTime || 0;
-  if (tempVideos[fromIdx]) tempVideos[fromIdx].currentTime = Math.min(t, tempVideos[fromIdx].duration || t);
-  if (tempVideos[toIdx]) tempVideos[toIdx].currentTime = Math.min(t, tempVideos[toIdx].duration || t);
+  let mainVid = tempVideos[activeTrackIndex];
+  let showFade = fadeState !== null;
 
-  // Run fade loop
-  await runFadeDraw(duration);
+  // Fade/crossfade logic
+  if (showFade && fadeState) {
+    let elapsed = (performance.now() - fadeState.startTime) / 1000;
+    let alpha = Math.min(elapsed / FADE_DURATION, 1);
+    let fromVid = tempVideos[fadeState.from];
+    let toVid = tempVideos[fadeState.to];
 
-  setActiveTrack(toIdx, false);
-  crossfadeActive = false;
-}
+    // Sync both videos to audio time
+    if (fromVid) fromVid.currentTime = Math.min(t, fromVid.duration || t);
+    if (toVid) toVid.currentTime = Math.min(t, toVid.duration || t);
 
-function runFadeDraw(duration) {
-  return new Promise((resolve) => {
-    function fadeLoop(now) {
-      let t = audio.currentTime || 0;
-      let elapsed = Math.min((now - fadeStart) / duration, 1);
-
-      // Prepare canvas for blend
-      const canvas = document.createElement('canvas');
-      canvas.width = 640;
-      canvas.height = 360;
-      const ctx = canvas.getContext('2d');
-
-      // Seek both videos to the correct time
-      if (tempVideos[fadeFromIdx]) tempVideos[fadeFromIdx].currentTime = Math.min(t, tempVideos[fadeFromIdx].duration || t);
-      if (tempVideos[fadeToIdx]) tempVideos[fadeToIdx].currentTime = Math.min(t, tempVideos[fadeToIdx].duration || t);
-
-      // Draw fade-out old, fade-in new
-      // Fade out: (1 - elapsed), fade in: elapsed
-      if (tempVideos[fadeFromIdx] && tempVideos[fadeFromIdx].readyState >= 2) {
-        ctx.globalAlpha = 1 - elapsed;
-        ctx.drawImage(tempVideos[fadeFromIdx], 0, 0, canvas.width, canvas.height);
-      }
-      if (tempVideos[fadeToIdx] && tempVideos[fadeToIdx].readyState >= 2) {
-        ctx.globalAlpha = elapsed;
-        ctx.drawImage(tempVideos[fadeToIdx], 0, 0, canvas.width, canvas.height);
-      }
-      mainOutput.srcObject = canvas.captureStream();
-      mainOutput.play().catch(()=>{});
-
-      if (elapsed < 1) {
-        requestAnimationFrame(fadeLoop);
-      } else {
-        resolve();
-      }
+    outputCtx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
+    // Draw fading out
+    if (fromVid && fromVid.readyState >= 2) {
+      outputCtx.globalAlpha = 1 - alpha;
+      outputCtx.drawImage(fromVid, 0, 0, outputCanvas.width, outputCanvas.height);
     }
-    requestAnimationFrame(fadeLoop);
-  });
-}
-
-function setActiveTrack(idx, withFade) {
-  lastTrackIndex = activeTrackIndex;
-  activeTrackIndex = idx;
-  for (let j = 0; j < NUM_TRACKS; j++) {
-    switcherBtnsContainer.children[j].className = (j === idx) ? "active-switcher-btn" : "";
-  }
-  // Sync video to audio time
-  if (!isRecording && tempVideos[idx]) {
-    let t = audio.currentTime || 0;
-    tempVideos[idx].currentTime = Math.min(t, tempVideos[idx].duration || t);
-    tempVideos[idx].pause();
-    if (!withFade) {
-      mainOutput.srcObject = null;
-      mainOutput.src = videoTracks[idx].url;
-      mainOutput.currentTime = t;
-      mainOutput.play().catch(()=>{});
+    // Draw fading in
+    if (toVid && toVid.readyState >= 2) {
+      outputCtx.globalAlpha = alpha;
+      outputCtx.drawImage(toVid, 0, 0, outputCanvas.width, outputCanvas.height);
     }
+    outputCtx.globalAlpha = 1;
+
+    if (alpha >= 1) {
+      activeTrackIndex = fadeState.to;
+      fadeState = null;
+      updateSwitcherBtns();
+    }
+  } else if (mainVid && mainVid.readyState >= 2 && t < (mainVid.duration || Infinity)) {
+    // Improved sync: always seek if out of sync
+    if (Math.abs(mainVid.currentTime - t) > SYNC_THRESHOLD) {
+      try {
+        mainVid.currentTime = Math.min(t, mainVid.duration ? mainVid.duration - 0.033 : t);
+      } catch (err) {}
+    }
+    outputCtx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
+    outputCtx.globalAlpha = getFadeAlpha(t, audio.duration || 0);
+    outputCtx.drawImage(mainVid, 0, 0, outputCanvas.width, outputCanvas.height);
+    outputCtx.globalAlpha = 1;
+  } else {
+    // Draw black if no video is ready
+    outputCtx.globalAlpha = 1;
+    outputCtx.fillStyle = "#000";
+    outputCtx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
   }
+
+  animationFrameId = requestAnimationFrame(drawLoop);
 }
-
-for (let i = 0; i < NUM_TRACKS; i++) createTrackCard(i);
-createSwitcherBtns();
-
-warnSong.style.display = 'none';
 
 // ---- AUDIO ----
 songInput.addEventListener('change', function() {
@@ -290,14 +272,6 @@ songInput.addEventListener('change', function() {
     audio.volume = 1;
   }
 });
-
-// ---- Fade Helper ----
-function getFadeAlpha(t, duration) {
-  if (!duration) return 1;
-  if (t < FADE_DURATION) return Math.max(0, t / FADE_DURATION); // fade in
-  if (duration && t > duration - FADE_DURATION) return Math.max(0, (duration - t) / FADE_DURATION); // fade out
-  return 1;
-}
 
 // ---- RECORD FULL EDIT ----
 recordFullEditBtn.addEventListener('click', async function () {
@@ -319,11 +293,6 @@ recordFullEditBtn.addEventListener('click', async function () {
   if (exportStatus) exportStatus.textContent = '';
   if (exportBtn) exportBtn.disabled = true;
 
-  const canvas = document.createElement('canvas');
-  canvas.width = 640;
-  canvas.height = 360;
-  const ctx = canvas.getContext('2d');
-
   // Ensure all temp videos are loaded, seeked to start, and playing
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
@@ -333,104 +302,10 @@ recordFullEditBtn.addEventListener('click', async function () {
       await tempVideos[i].play();
     }
   }
-
-  lastSwitchAudioTime = 0;
-  if (tempVideos[activeTrackIndex]) {
-    tempVideos[activeTrackIndex].currentTime = 0;
-  }
-
-  // Fade/crossfade state for recording
-  let pendingSwitch = null;
-  let recFadeFrom = null;
-  let recFadeTo = null;
-  let recFadeStartT = 0;
-  let recFadeSwitchT = 0;
-  let recFadeActive = false;
-
-  // Track queue for switches: {time, toIdx}
-  let switchQueue = [];
-
-  // Monkey-patch switcher for recording: queue requested switches
-  switcherBtnsContainer.querySelectorAll('button').forEach((btn, idx) => {
-    btn.onclick = () => {
-      if (isRecording && activeTrackIndex !== idx) {
-        switchQueue.push({ time: audio.currentTime, toIdx: idx });
-      }
-    };
-  });
-
-  function drawFrame() {
-    if (!isRecording) return;
-    let vid = tempVideos[activeTrackIndex];
-    let t = audio.currentTime || 0;
-
-    // Handle pending crossfade
-    if (switchQueue.length && t >= switchQueue[0].time) {
-      let sw = switchQueue.shift();
-      recFadeFrom = activeTrackIndex;
-      recFadeTo = sw.toIdx;
-      recFadeStartT = t;
-      recFadeSwitchT = t + FADE_DURATION;
-      recFadeActive = true;
-    }
-
-    // Handle fade/crossfade on switch
-    if (recFadeActive && recFadeFrom !== null && recFadeTo !== null) {
-      let fadeElapsed = t - recFadeStartT;
-      let alpha = Math.min(fadeElapsed / FADE_DURATION, 1);
-
-      // Prepare both videos to current time
-      let fromVid = tempVideos[recFadeFrom];
-      let toVid = tempVideos[recFadeTo];
-      if (fromVid) fromVid.currentTime = Math.min(t, fromVid.duration || t);
-      if (toVid) toVid.currentTime = Math.min(t, toVid.duration || t);
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Fade out fromVid
-      if (fromVid && fromVid.readyState >= 2) {
-        ctx.globalAlpha = 1 - alpha;
-        ctx.drawImage(fromVid, 0, 0, canvas.width, canvas.height);
-      }
-      // Fade in toVid
-      if (toVid && toVid.readyState >= 2) {
-        ctx.globalAlpha = alpha;
-        ctx.drawImage(toVid, 0, 0, canvas.width, canvas.height);
-      }
-
-      // When fade is complete, activate new track
-      if (alpha >= 1) {
-        activeTrackIndex = recFadeTo;
-        recFadeActive = false;
-        recFadeFrom = null;
-        recFadeTo = null;
-      }
-    } else {
-      // Improved sync: always seek if out of sync
-      if (vid && vid.readyState >= 2 && !vid.ended && t < (vid.duration || Infinity)) {
-        if (Math.abs(vid.currentTime - t) > SYNC_THRESHOLD) {
-          try {
-            vid.currentTime = Math.min(t, vid.duration ? vid.duration - 0.033 : t);
-          } catch (err) {}
-        }
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.globalAlpha = getFadeAlpha(t, audio.duration || 0);
-        ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
-      } else {
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = "#000";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
-    }
-    animationFrameId = requestAnimationFrame(drawFrame);
-  }
-
-  drawFrame();
-
-  // Live preview
-  mainOutput.srcObject = canvas.captureStream(30);
-  mainOutput.src = "";
-  mainOutput.play();
+  activeTrackIndex = 0;
+  requestedTrackIndex = 0;
+  fadeState = null;
+  updateSwitcherBtns();
 
   audioContext = new (window.AudioContext || window.webkitAudioContext)();
   const source = audioContext.createMediaElementSource(audio);
@@ -438,7 +313,7 @@ recordFullEditBtn.addEventListener('click', async function () {
   source.connect(dest);
   source.connect(audioContext.destination);
 
-  const canvasStream = canvas.captureStream(30);
+  const canvasStream = outputCanvas.captureStream(30);
   const combinedStream = new MediaStream([
     ...canvasStream.getVideoTracks(),
     ...dest.stream.getAudioTracks()
@@ -465,8 +340,20 @@ recordFullEditBtn.addEventListener('click', async function () {
   };
 
   audio.currentTime = 0;
-  audio.play();
+  audio.play().catch(()=>{});
   mediaRecorder.start();
+
+  // Re-enable switching during recording
+  switcherBtnsContainer.querySelectorAll('button').forEach((btn, idx) => {
+    btn.onclick = function () {
+      if (idx === requestedTrackIndex) return;
+      startFade(activeTrackIndex, idx);
+      requestedTrackIndex = idx;
+      updateSwitcherBtns();
+    };
+  });
+
+  animationFrameId = requestAnimationFrame(drawLoop);
 
   audio.onended = function () {
     if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
@@ -501,8 +388,19 @@ exportBtn.addEventListener('click', function () {
     });
 });
 
-// -- Always keep audio playing on camera switch or preview, NOT on every click --
+// ---- Always Keep Audio Playing on Switch or Play ----
+function ensureAudioPlays() {
+  if (audio.src && audio.paused) {
+    audio.play().catch(()=>{});
+  }
+}
 mainOutput.addEventListener('play', ensureAudioPlays);
 mainOutput.addEventListener('seeking', ensureAudioPlays);
 mainOutput.addEventListener('click', ensureAudioPlays);
 switcherBtnsContainer.addEventListener('click', ensureAudioPlays);
+
+// ---- Init ----
+for (let i = 0; i < NUM_TRACKS; i++) createTrackCard(i);
+createSwitcherBtns();
+warnSong.style.display = 'none';
+animationFrameId = requestAnimationFrame(drawLoop);
