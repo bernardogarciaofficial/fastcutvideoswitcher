@@ -1,4 +1,4 @@
-// FASTCUT STUDIOS - Minimal, Reliable, Simple Thumbnails & Switcher, 2x3 layout, dark+red
+// FASTCUT MUSIC VIDEO MAKER - Minimal, Reliable, Centered, Music always plays
 
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
@@ -21,6 +21,14 @@ let mediaRecorder = null;
 let recordedChunks = [];
 let audioContext = null;
 
+// -- MUSIC always plays --
+function ensureAudioPlays() {
+  if (audio.src && audio.paused) {
+    audio.play().catch(()=>{});
+  }
+}
+
+// ---- CARDS ----
 function createTrackCard(index) {
   const card = document.createElement('div');
   card.className = 'track-card';
@@ -146,6 +154,7 @@ function prepareTempVideo(idx, url) {
   tempVideos[idx] = v;
 }
 
+// ---- SWITCHER ----
 function createSwitcherBtns() {
   switcherBtnsContainer.innerHTML = '';
   for (let i = 0; i < NUM_TRACKS; i++) {
@@ -153,13 +162,9 @@ function createSwitcherBtns() {
     btn.textContent = String(i + 1);
     btn.onclick = function () {
       setActiveTrack(i);
-      for (let j = 0; j < NUM_TRACKS; j++) {
-        switcherBtnsContainer.children[j].className = (j === i) ? "active-switcher-btn" : "";
-      }
     };
     switcherBtnsContainer.appendChild(btn);
   }
-  // set first active
   switcherBtnsContainer.children[0].className = "active-switcher-btn";
 }
 
@@ -171,14 +176,15 @@ function setActiveTrack(idx) {
     mainOutput.src = videoTracks[idx].url;
     mainOutput.currentTime = 0;
     mainOutput.play().catch(()=>{});
+    ensureAudioPlays();
   }
   // update switcher button highlight
   for (let j = 0; j < NUM_TRACKS; j++) {
     switcherBtnsContainer.children[j].className = (j === idx) ? "active-switcher-btn" : "";
   }
+  ensureAudioPlays();
 }
 
-// UI: create 6 cards in 2x3 layout
 for (let i = 0; i < NUM_TRACKS; i++) createTrackCard(i);
 createSwitcherBtns();
 
@@ -186,10 +192,21 @@ function getCurrentDrawVideo() {
   return tempVideos[activeTrackIndex] || null;
 }
 
-// Hide warning by default
 warnSong.style.display = 'none';
 
-// Record Full Edit
+// ---- AUDIO ----
+songInput.addEventListener('change', function() {
+  warnSong.style.display = 'none';
+  if (songInput.files.length > 0) {
+    const file = songInput.files[0];
+    audio.src = URL.createObjectURL(file);
+    audio.load();
+    audio.currentTime = 0;
+    audio.volume = 1;
+  }
+});
+
+// ---- RECORD FULL EDIT ----
 recordFullEditBtn.addEventListener('click', async function () {
   if (!audio.src) {
     warnSong.style.display = '';
@@ -312,7 +329,7 @@ recordFullEditBtn.addEventListener('click', async function () {
   };
 });
 
-// Export
+// ---- EXPORT ----
 exportBtn.addEventListener('click', function () {
   if (!mainOutput.src) {
     if (exportStatus) exportStatus.textContent = 'Nothing to export yet!';
@@ -329,7 +346,9 @@ exportBtn.addEventListener('click', function () {
     });
 });
 
-// Song input hide warning
-songInput.addEventListener('change', function() {
-  warnSong.style.display = 'none';
-});
+// -- Always keep audio playing on switch --
+mainOutput.addEventListener('play', ensureAudioPlays);
+mainOutput.addEventListener('seeking', ensureAudioPlays);
+mainOutput.addEventListener('click', ensureAudioPlays);
+switcherBtnsContainer.addEventListener('click', ensureAudioPlays);
+document.body.addEventListener('click', ensureAudioPlays, true);
