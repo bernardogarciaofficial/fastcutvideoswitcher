@@ -1,29 +1,50 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Fastcut Minimal UI</title>
+  <title>Fastcut Music Video Maker</title>
   <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
     body {
       font-family: sans-serif;
       background: #1a1a1a;
       color: #eaeaea;
-      margin: 30px auto;
-      max-width: 900px;
+      min-height: 100vh;
       min-width: 350px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    .container {
+      margin: 32px 0 12px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 900px;
     }
     h2 {
       color: #ff3333;
       border-bottom: 2px solid #ff3333;
       padding-bottom: 4px;
       margin-top: 0;
+      margin-bottom: 20px;
+      text-align: center;
+      font-size: 2.0em;
+      letter-spacing: 0.02em;
     }
     #tracksContainer {
-      margin-bottom: 12px;
+      margin-bottom: 16px;
       display: flex;
       flex-wrap: wrap;
-      gap: 16px;
-      justify-content: left;
-      max-width: 640px;
+      gap: 18px 24px;
+      justify-content: center;
+      max-width: 650px;
+      width: 100%;
     }
     .track-card {
       border: 2px solid #ff2222;
@@ -31,7 +52,6 @@
       border-radius: 6px;
       width: 200px;
       padding: 10px 8px 7px 8px;
-      margin: 0;
       color: #fff;
       box-sizing: border-box;
       display: flex;
@@ -71,7 +91,8 @@
       min-height: 80px;
     }
     #switcherBtnsContainer {
-      margin: 10px 0;
+      margin: 10px 0 20px 0;
+      text-align: center;
     }
     #switcherBtnsContainer button {
       font-size: 17px;
@@ -133,30 +154,60 @@
       font-size: 1.25em;
       max-width: 420px;
     }
+    .footer {
+      margin-top: 40px;
+      width: 100%;
+      text-align: center;
+      font-size: 1em;
+      color: #888;
+      border-top: 1px solid #222;
+      padding: 18px 0 8px 0;
+      letter-spacing: 0.02em;
+    }
+    .footer strong {
+      color: #ff3333;
+    }
+    .footer a {
+      color: #ff3333;
+      text-decoration: none;
+      margin-left: 8px;
+    }
+    @media (max-width: 700px) {
+      #mainOutput { width: 98vw; }
+      #tracksContainer { max-width: 97vw; }
+      .track-card { width: 45vw; min-width: 130px; }
+    }
   </style>
 </head>
 <body>
+<div class="container">
 
-<h2>Fastcut Minimal Multicam Editor</h2>
-<p>
-  <input id="songInput" type="file" accept="audio/*">
-  <audio id="audio" style="display:none"></audio>
-</p>
+  <h2>Fastcut Music Video Maker</h2>
+  <p>
+    <input id="songInput" type="file" accept="audio/*">
+    <audio id="audio" style="display:none"></audio>
+  </p>
 
-<div id="tracksContainer"></div>
+  <div id="tracksContainer"></div>
 
-<div id="switcherBtnsContainer"></div>
+  <div id="switcherBtnsContainer"></div>
 
-<video id="mainOutput" width="640" height="360" controls></video>
+  <video id="mainOutput" width="640" height="360" controls></video>
 
-<p>
-  <button id="recordFullEditBtn">Record Full Edit</button>
-  <button id="stopPreviewBtn">Stop</button>
-  <button id="exportMusicVideoBtn">Export</button>
-  <span id="exportStatus"></span>
-</p>
+  <p>
+    <button id="recordFullEditBtn">Record Full Edit</button>
+    <button id="stopPreviewBtn">Stop</button>
+    <button id="exportMusicVideoBtn">Export</button>
+    <span id="exportStatus"></span>
+  </p>
 
-<div id="warnSong" class="warn" style="display:none;">Please upload a song first.</div>
+  <div id="warnSong" class="warn" style="display:none;">Please upload a song first.</div>
+</div>
+
+<div class="footer">
+  <strong>Fastcut Music Video Maker</strong> &copy; 2025 Bernardo Garcia<br>
+  Contact: <a href="mailto:bernardogarciaofficial@gmail.com">bernardogarciaofficial@gmail.com</a>
+</div>
 
 <script src="script.js"></script>
 </body>
