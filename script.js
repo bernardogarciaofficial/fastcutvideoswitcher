@@ -1,4 +1,4 @@
-// FASTCUT MUSIC VIDEO MAKER - Fade-in/out, Perfect Audio/Video Sync, Live Camera Switching, No Flashing Black
+// FASTCUT MUSIC VIDEO MAKER - Enhanced Sync & Fade Transitions
 
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
@@ -23,24 +23,25 @@ let recordedChunks = [];
 let audioContext = null;
 let fadeStartTime = null;
 let fading = false;
-const FADE_DURATION = 0.4; // seconds
+const FADE_DURATION = 0.7; // seconds for fade-in/out
 
-// --- FADE STATE ---
 let fadeFromIdx = null;
 let fadeToIdx = null;
 let fadeStart = null;
+let crossfadeResolve = null;
+let crossfadeActive = false;
 
-// --- Sync helpers ---
 let lastSwitchAudioTime = 0;
+const SYNC_THRESHOLD = 0.04; // 40ms
 
-// -- MUSIC only plays on switch or preview --
+// --- Ensure Audio Plays ---
 function ensureAudioPlays() {
   if (audio.src && audio.paused) {
     audio.play().catch(()=>{});
   }
 }
 
-// ---- CARDS ----
+// ---- Track Cards ----
 function createTrackCard(index) {
   const card = document.createElement('div');
   card.className = 'track-card';
@@ -166,7 +167,7 @@ function prepareTempVideo(idx, url) {
   tempVideos[idx] = v;
 }
 
-// ---- SWITCHER ----
+// ---- Switcher ----
 function createSwitcherBtns() {
   switcherBtnsContainer.innerHTML = '';
   for (let i = 0; i < NUM_TRACKS; i++) {
@@ -175,22 +176,9 @@ function createSwitcherBtns() {
     btn.onclick = function () {
       if (i === activeTrackIndex) return;
       if (isRecording) {
-        activeTrackIndex = i;
-        // On switch, immediately synchronize new video to audio time
-        if (tempVideos[activeTrackIndex]) {
-          const t = audio.currentTime || 0;
-          lastSwitchAudioTime = t;
-          try {
-            tempVideos[activeTrackIndex].currentTime = Math.min(
-              t,
-              tempVideos[activeTrackIndex].duration ? tempVideos[activeTrackIndex].duration - 0.033 : t
-            );
-          } catch (err) {}
-        }
+        crossfadeBetweenTracks(activeTrackIndex, i, FADE_DURATION * 1000);
       } else {
-        // Start fade for preview mode
-        startFadeTransition(activeTrackIndex, i);
-        setActiveTrack(i, true); // setActiveTrack will sync video position
+        crossfadeBetweenTracks(activeTrackIndex, i, FADE_DURATION * 1000);
         ensureAudioPlays();
       }
       // Update switcher button highlight in all cases
@@ -203,19 +191,80 @@ function createSwitcherBtns() {
   switcherBtnsContainer.children[0].className = "active-switcher-btn";
 }
 
+// ---- Crossfade Between Tracks ----
+async function crossfadeBetweenTracks(fromIdx, toIdx, duration) {
+  if (crossfadeActive) return;
+  if (!tempVideos[toIdx]) {
+    setActiveTrack(toIdx, false);
+    return;
+  }
+  crossfadeActive = true;
+  fadeFromIdx = fromIdx;
+  fadeToIdx = toIdx;
+  fadeStart = performance.now();
+
+  // Seek both videos to correct audio time
+  let t = audio.currentTime || 0;
+  if (tempVideos[fromIdx]) tempVideos[fromIdx].currentTime = Math.min(t, tempVideos[fromIdx].duration || t);
+  if (tempVideos[toIdx]) tempVideos[toIdx].currentTime = Math.min(t, tempVideos[toIdx].duration || t);
+
+  // Run fade loop
+  await runFadeDraw(duration);
+
+  setActiveTrack(toIdx, false);
+  crossfadeActive = false;
+}
+
+function runFadeDraw(duration) {
+  return new Promise((resolve) => {
+    function fadeLoop(now) {
+      let t = audio.currentTime || 0;
+      let elapsed = Math.min((now - fadeStart) / duration, 1);
+
+      // Prepare canvas for blend
+      const canvas = document.createElement('canvas');
+      canvas.width = 640;
+      canvas.height = 360;
+      const ctx = canvas.getContext('2d');
+
+      // Seek both videos to the correct time
+      if (tempVideos[fadeFromIdx]) tempVideos[fadeFromIdx].currentTime = Math.min(t, tempVideos[fadeFromIdx].duration || t);
+      if (tempVideos[fadeToIdx]) tempVideos[fadeToIdx].currentTime = Math.min(t, tempVideos[fadeToIdx].duration || t);
+
+      // Draw fade-out old, fade-in new
+      // Fade out: (1 - elapsed), fade in: elapsed
+      if (tempVideos[fadeFromIdx] && tempVideos[fadeFromIdx].readyState >= 2) {
+        ctx.globalAlpha = 1 - elapsed;
+        ctx.drawImage(tempVideos[fadeFromIdx], 0, 0, canvas.width, canvas.height);
+      }
+      if (tempVideos[fadeToIdx] && tempVideos[fadeToIdx].readyState >= 2) {
+        ctx.globalAlpha = elapsed;
+        ctx.drawImage(tempVideos[fadeToIdx], 0, 0, canvas.width, canvas.height);
+      }
+      mainOutput.srcObject = canvas.captureStream();
+      mainOutput.play().catch(()=>{});
+
+      if (elapsed < 1) {
+        requestAnimationFrame(fadeLoop);
+      } else {
+        resolve();
+      }
+    }
+    requestAnimationFrame(fadeLoop);
+  });
+}
+
 function setActiveTrack(idx, withFade) {
   lastTrackIndex = activeTrackIndex;
   activeTrackIndex = idx;
-  // update switcher button highlight
   for (let j = 0; j < NUM_TRACKS; j++) {
     switcherBtnsContainer.children[j].className = (j === idx) ? "active-switcher-btn" : "";
   }
-  // Video preview: sync video to audio time
+  // Sync video to audio time
   if (!isRecording && tempVideos[idx]) {
     let t = audio.currentTime || 0;
     tempVideos[idx].currentTime = Math.min(t, tempVideos[idx].duration || t);
     tempVideos[idx].pause();
-    // Only play main output if not fading
     if (!withFade) {
       mainOutput.srcObject = null;
       mainOutput.src = videoTracks[idx].url;
@@ -225,60 +274,8 @@ function setActiveTrack(idx, withFade) {
   }
 }
 
-// ---- FADE LOGIC ----
-function startFadeTransition(fromIdx, toIdx) {
-  if (!tempVideos[fromIdx] || !tempVideos[toIdx]) {
-    setActiveTrack(toIdx, false);
-    return;
-  }
-  fadeFromIdx = fromIdx;
-  fadeToIdx = toIdx;
-  fadeStart = performance.now();
-  fading = true;
-  requestAnimationFrame(fadeDraw);
-}
-
-function fadeDraw(now) {
-  if (!fading) return;
-  const canvas = document.createElement('canvas');
-  canvas.width = 640;
-  canvas.height = 360;
-  const ctx = canvas.getContext('2d');
-  let t = audio.currentTime || 0;
-  // seek both videos to current audio time
-  if (tempVideos[fadeFromIdx]) tempVideos[fadeFromIdx].currentTime = Math.min(t, tempVideos[fadeFromIdx].duration || t);
-  if (tempVideos[fadeToIdx]) tempVideos[fadeToIdx].currentTime = Math.min(t, tempVideos[fadeToIdx].duration || t);
-
-  // draw blend
-  const elapsed = (now - fadeStart) / 1000;
-  let alpha = Math.min(elapsed / FADE_DURATION, 1);
-  // Draw from video
-  if (tempVideos[fadeFromIdx] && tempVideos[fadeFromIdx].readyState >= 2) {
-    ctx.globalAlpha = 1 - alpha;
-    ctx.drawImage(tempVideos[fadeFromIdx], 0, 0, canvas.width, canvas.height);
-  }
-  // Draw to video
-  if (tempVideos[fadeToIdx] && tempVideos[fadeToIdx].readyState >= 2) {
-    ctx.globalAlpha = alpha;
-    ctx.drawImage(tempVideos[fadeToIdx], 0, 0, canvas.width, canvas.height);
-  }
-  mainOutput.srcObject = canvas.captureStream();
-  mainOutput.play().catch(()=>{});
-
-  if (alpha < 1) {
-    requestAnimationFrame(fadeDraw);
-  } else {
-    fading = false;
-    setActiveTrack(fadeToIdx, false); // Finish transition, play new video
-  }
-}
-
 for (let i = 0; i < NUM_TRACKS; i++) createTrackCard(i);
 createSwitcherBtns();
-
-function getCurrentDrawVideo() {
-  return tempVideos[activeTrackIndex] || null;
-}
 
 warnSong.style.display = 'none';
 
@@ -291,9 +288,16 @@ songInput.addEventListener('change', function() {
     audio.load();
     audio.currentTime = 0;
     audio.volume = 1;
-    // DO NOT auto play!
   }
 });
+
+// ---- Fade Helper ----
+function getFadeAlpha(t, duration) {
+  if (!duration) return 1;
+  if (t < FADE_DURATION) return Math.max(0, t / FADE_DURATION); // fade in
+  if (duration && t > duration - FADE_DURATION) return Math.max(0, (duration - t) / FADE_DURATION); // fade out
+  return 1;
+}
 
 // ---- RECORD FULL EDIT ----
 recordFullEditBtn.addEventListener('click', async function () {
@@ -329,48 +333,98 @@ recordFullEditBtn.addEventListener('click', async function () {
       await tempVideos[i].play();
     }
   }
-  // On start, sync all videos to current audio time (should be 0)
+
   lastSwitchAudioTime = 0;
   if (tempVideos[activeTrackIndex]) {
     tempVideos[activeTrackIndex].currentTime = 0;
   }
 
+  // Fade/crossfade state for recording
+  let pendingSwitch = null;
+  let recFadeFrom = null;
+  let recFadeTo = null;
+  let recFadeStartT = 0;
+  let recFadeSwitchT = 0;
+  let recFadeActive = false;
+
+  // Track queue for switches: {time, toIdx}
+  let switchQueue = [];
+
+  // Monkey-patch switcher for recording: queue requested switches
+  switcherBtnsContainer.querySelectorAll('button').forEach((btn, idx) => {
+    btn.onclick = () => {
+      if (isRecording && activeTrackIndex !== idx) {
+        switchQueue.push({ time: audio.currentTime, toIdx: idx });
+      }
+    };
+  });
+
   function drawFrame() {
     if (!isRecording) return;
-    const vid = tempVideos[activeTrackIndex];
-    const t = audio.currentTime || 0;
+    let vid = tempVideos[activeTrackIndex];
+    let t = audio.currentTime || 0;
 
-    // --- Fade-in/out setup ---
-    const duration = audio.duration || 0;
-    const FADE_LEN = 1.0; // seconds for fade-in/out
-
-    // Alpha for fade-in/out
-    let alpha = 1;
-    if (t < FADE_LEN) {
-      alpha = Math.max(0, t / FADE_LEN);
-    } else if (duration && t > duration - FADE_LEN) {
-      alpha = Math.max(0, (duration - t) / FADE_LEN);
+    // Handle pending crossfade
+    if (switchQueue.length && t >= switchQueue[0].time) {
+      let sw = switchQueue.shift();
+      recFadeFrom = activeTrackIndex;
+      recFadeTo = sw.toIdx;
+      recFadeStartT = t;
+      recFadeSwitchT = t + FADE_DURATION;
+      recFadeActive = true;
     }
 
-    // Only seek if out of sync (>0.1s) or if we've just switched tracks (use lastSwitchAudioTime)
-    if (vid && vid.readyState >= 2 && !vid.ended && t < (vid.duration || Infinity)) {
-      // If the video is out of sync, or we just switched, resync
-      if (Math.abs(vid.currentTime - t) > 0.1 || Math.abs(lastSwitchAudioTime - t) < 0.15) {
-        try {
-          vid.currentTime = Math.min(t, vid.duration ? vid.duration - 0.033 : t);
-        } catch (err) {}
-        lastSwitchAudioTime = -9999; // Don't trigger again unless we switch
-      }
+    // Handle fade/crossfade on switch
+    if (recFadeActive && recFadeFrom !== null && recFadeTo !== null) {
+      let fadeElapsed = t - recFadeStartT;
+      let alpha = Math.min(fadeElapsed / FADE_DURATION, 1);
+
+      // Prepare both videos to current time
+      let fromVid = tempVideos[recFadeFrom];
+      let toVid = tempVideos[recFadeTo];
+      if (fromVid) fromVid.currentTime = Math.min(t, fromVid.duration || t);
+      if (toVid) toVid.currentTime = Math.min(t, toVid.duration || t);
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.globalAlpha = alpha;
-      ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+
+      // Fade out fromVid
+      if (fromVid && fromVid.readyState >= 2) {
+        ctx.globalAlpha = 1 - alpha;
+        ctx.drawImage(fromVid, 0, 0, canvas.width, canvas.height);
+      }
+      // Fade in toVid
+      if (toVid && toVid.readyState >= 2) {
+        ctx.globalAlpha = alpha;
+        ctx.drawImage(toVid, 0, 0, canvas.width, canvas.height);
+      }
+
+      // When fade is complete, activate new track
+      if (alpha >= 1) {
+        activeTrackIndex = recFadeTo;
+        recFadeActive = false;
+        recFadeFrom = null;
+        recFadeTo = null;
+      }
     } else {
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Improved sync: always seek if out of sync
+      if (vid && vid.readyState >= 2 && !vid.ended && t < (vid.duration || Infinity)) {
+        if (Math.abs(vid.currentTime - t) > SYNC_THRESHOLD) {
+          try {
+            vid.currentTime = Math.min(t, vid.duration ? vid.duration - 0.033 : t);
+          } catch (err) {}
+        }
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.globalAlpha = getFadeAlpha(t, audio.duration || 0);
+        ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+      } else {
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
     }
     animationFrameId = requestAnimationFrame(drawFrame);
   }
+
   drawFrame();
 
   // Live preview
@@ -452,4 +506,3 @@ mainOutput.addEventListener('play', ensureAudioPlays);
 mainOutput.addEventListener('seeking', ensureAudioPlays);
 mainOutput.addEventListener('click', ensureAudioPlays);
 switcherBtnsContainer.addEventListener('click', ensureAudioPlays);
-// document.body.addEventListener('click', ensureAudioPlays, true); // <-- REMOVED!
