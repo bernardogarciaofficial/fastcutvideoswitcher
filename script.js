@@ -291,6 +291,19 @@ recordFullEditBtn.addEventListener('click', async function () {
     alert('Please upload or record at least one video.');
     return;
   }
+
+  // Fix: select first loaded track if current is empty
+  let firstLoaded = tempVideos.findIndex(v => v);
+  if (firstLoaded === -1) {
+    alert('No video loaded in any camera.');
+    return;
+  }
+  if (!tempVideos[activeTrackIndex]) {
+    activeTrackIndex = firstLoaded;
+    requestedTrackIndex = firstLoaded;
+    updateSwitcherBtns();
+  }
+
   if (!tempVideos[activeTrackIndex]) {
     alert('Selected camera has no video.');
     return;
@@ -312,8 +325,6 @@ recordFullEditBtn.addEventListener('click', async function () {
       await tempVideos[i].play();
     }
   }
-  activeTrackIndex = 0;
-  requestedTrackIndex = 0;
   fadeState = null;
   updateSwitcherBtns();
 
