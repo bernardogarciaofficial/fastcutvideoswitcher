@@ -1,4 +1,4 @@
-// FASTCUT MUSIC VIDEO MAKER - Minimal, Reliable, Centered, Music always plays
+// FASTCUT MUSIC VIDEO MAKER - Minimal, Reliable, Centered, Music only plays on user action or switch
 
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
@@ -21,7 +21,7 @@ let mediaRecorder = null;
 let recordedChunks = [];
 let audioContext = null;
 
-// -- MUSIC always plays --
+// -- MUSIC only plays on switch or preview --
 function ensureAudioPlays() {
   if (audio.src && audio.paused) {
     audio.play().catch(()=>{});
@@ -162,6 +162,7 @@ function createSwitcherBtns() {
     btn.textContent = String(i + 1);
     btn.onclick = function () {
       setActiveTrack(i);
+      ensureAudioPlays();
     };
     switcherBtnsContainer.appendChild(btn);
   }
@@ -176,15 +177,14 @@ function setActiveTrack(idx) {
     mainOutput.src = videoTracks[idx].url;
     mainOutput.currentTime = 0;
     mainOutput.play().catch(()=>{});
-    ensureAudioPlays();
   }
   // update switcher button highlight
   for (let j = 0; j < NUM_TRACKS; j++) {
     switcherBtnsContainer.children[j].className = (j === idx) ? "active-switcher-btn" : "";
   }
-  ensureAudioPlays();
 }
 
+// UI: create 6 cards in 2x3 layout
 for (let i = 0; i < NUM_TRACKS; i++) createTrackCard(i);
 createSwitcherBtns();
 
@@ -203,6 +203,7 @@ songInput.addEventListener('change', function() {
     audio.load();
     audio.currentTime = 0;
     audio.volume = 1;
+    // DO NOT auto play!
   }
 });
 
@@ -346,9 +347,9 @@ exportBtn.addEventListener('click', function () {
     });
 });
 
-// -- Always keep audio playing on switch --
+// -- Always keep audio playing on camera switch or preview, NOT on every click --
 mainOutput.addEventListener('play', ensureAudioPlays);
 mainOutput.addEventListener('seeking', ensureAudioPlays);
 mainOutput.addEventListener('click', ensureAudioPlays);
 switcherBtnsContainer.addEventListener('click', ensureAudioPlays);
-document.body.addEventListener('click', ensureAudioPlays, true);
+// document.body.addEventListener('click', ensureAudioPlays, true); // <-- REMOVED!
