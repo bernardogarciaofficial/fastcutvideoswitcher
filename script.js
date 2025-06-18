@@ -164,7 +164,7 @@ function createSwitcherBtns() {
     btn.onclick = function () {
       setActiveTrack(i);
       for (let j = 0; j < NUM_TRACKS; j++) {
-        switcherBtnsContainer.children[j].style.background = (j === i) ? "#ddd" : "";
+        switcherBtnsContainer.children[j].className = (j === i) ? "active-switcher-btn" : "";
       }
     };
     switcherBtnsContainer.appendChild(btn);
@@ -182,6 +182,7 @@ function setActiveTrack(idx) {
   }
 }
 
+// Initialize UI
 for (let i = 0; i < NUM_TRACKS; i++) createTrackCard(i);
 createSwitcherBtns();
 
