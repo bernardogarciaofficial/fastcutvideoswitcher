@@ -1,4 +1,4 @@
-// FASTCUT MUSIC VIDEO MAKER - Minimal, Reliable, Centered, Music only plays on user action or switch
+// FASTCUT MUSIC VIDEO MAKER - with Fade Transitions and Precise Audio/Video Synchronization
 
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
@@ -15,11 +15,20 @@ const warnSong = document.getElementById('warnSong');
 const videoTracks = Array(NUM_TRACKS).fill(null);
 const tempVideos = Array(NUM_TRACKS).fill(null);
 let activeTrackIndex = 0;
+let lastTrackIndex = 0;
 let isRecording = false;
 let animationFrameId = null;
 let mediaRecorder = null;
 let recordedChunks = [];
 let audioContext = null;
+let fadeStartTime = null;
+let fading = false;
+const FADE_DURATION = 0.4; // seconds
+
+// --- FADE STATE ---
+let fadeFromIdx = null;
+let fadeToIdx = null;
+let fadeStart = null;
 
 // -- MUSIC only plays on switch or preview --
 function ensureAudioPlays() {
@@ -161,7 +170,10 @@ function createSwitcherBtns() {
     const btn = document.createElement('button');
     btn.textContent = String(i + 1);
     btn.onclick = function () {
-      setActiveTrack(i);
+      if (i === activeTrackIndex) return;
+      // Start fade
+      startFadeTransition(activeTrackIndex, i);
+      setActiveTrack(i, true); // setActiveTrack will sync video position
       ensureAudioPlays();
     };
     switcherBtnsContainer.appendChild(btn);
@@ -169,22 +181,76 @@ function createSwitcherBtns() {
   switcherBtnsContainer.children[0].className = "active-switcher-btn";
 }
 
-function setActiveTrack(idx) {
+function setActiveTrack(idx, withFade) {
+  lastTrackIndex = activeTrackIndex;
   activeTrackIndex = idx;
-  // Show preview in main output if not recording
-  if (!isRecording && videoTracks[idx]) {
-    mainOutput.srcObject = null;
-    mainOutput.src = videoTracks[idx].url;
-    mainOutput.currentTime = 0;
-    mainOutput.play().catch(()=>{});
-  }
   // update switcher button highlight
   for (let j = 0; j < NUM_TRACKS; j++) {
     switcherBtnsContainer.children[j].className = (j === idx) ? "active-switcher-btn" : "";
   }
+  // Video preview: sync video to audio time
+  if (!isRecording && tempVideos[idx]) {
+    let t = audio.currentTime || 0;
+    tempVideos[idx].currentTime = t;
+    tempVideos[idx].pause();
+    // Only play main output if not fading
+    if (!withFade) {
+      mainOutput.srcObject = null;
+      mainOutput.src = videoTracks[idx].url;
+      mainOutput.currentTime = t;
+      mainOutput.play().catch(()=>{});
+    }
+  }
 }
 
-// UI: create 6 cards in 2x3 layout
+// ---- FADE LOGIC ----
+function startFadeTransition(fromIdx, toIdx) {
+  if (!tempVideos[fromIdx] || !tempVideos[toIdx]) {
+    setActiveTrack(toIdx, false);
+    return;
+  }
+  fadeFromIdx = fromIdx;
+  fadeToIdx = toIdx;
+  fadeStart = performance.now();
+  fading = true;
+  requestAnimationFrame(fadeDraw);
+}
+
+function fadeDraw(now) {
+  if (!fading) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = 640;
+  canvas.height = 360;
+  const ctx = canvas.getContext('2d');
+  let t = audio.currentTime || 0;
+  // seek both videos to current audio time
+  if (tempVideos[fadeFromIdx]) tempVideos[fadeFromIdx].currentTime = t;
+  if (tempVideos[fadeToIdx]) tempVideos[fadeToIdx].currentTime = t;
+
+  // draw blend
+  const elapsed = (now - fadeStart) / 1000;
+  let alpha = Math.min(elapsed / FADE_DURATION, 1);
+  // Draw from video
+  if (tempVideos[fadeFromIdx] && tempVideos[fadeFromIdx].readyState >= 2) {
+    ctx.globalAlpha = 1 - alpha;
+    ctx.drawImage(tempVideos[fadeFromIdx], 0, 0, canvas.width, canvas.height);
+  }
+  // Draw to video
+  if (tempVideos[fadeToIdx] && tempVideos[fadeToIdx].readyState >= 2) {
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(tempVideos[fadeToIdx], 0, 0, canvas.width, canvas.height);
+  }
+  mainOutput.srcObject = canvas.captureStream();
+  mainOutput.play().catch(()=>{});
+
+  if (alpha < 1) {
+    requestAnimationFrame(fadeDraw);
+  } else {
+    fading = false;
+    setActiveTrack(fadeToIdx, false); // Finish transition, play new video
+  }
+}
+
 for (let i = 0; i < NUM_TRACKS; i++) createTrackCard(i);
 createSwitcherBtns();
 
@@ -249,7 +315,6 @@ recordFullEditBtn.addEventListener('click', async function () {
       });
     }
   }
-
   // Play all temp videos for instant switching
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
@@ -262,8 +327,13 @@ recordFullEditBtn.addEventListener('click', async function () {
 
   function drawFrame() {
     if (!isRecording) return;
-    const vid = getCurrentDrawVideo();
+    // Sync all videos to audio for perfect sync
+    let t = audio.currentTime || 0;
+    if (tempVideos[activeTrackIndex]) tempVideos[activeTrackIndex].currentTime = t;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const vid = tempVideos[activeTrackIndex];
     if (vid && !vid.ended && vid.readyState >= 2) {
+      ctx.globalAlpha = 1;
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
     } else {
       ctx.fillStyle = "#000";
