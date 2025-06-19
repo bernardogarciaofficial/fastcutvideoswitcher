@@ -1,4 +1,4 @@
-// FASTCUT MUSIC VIDEO MAKER – with six thumbnail video screens, track switcher, and recording/export controls
+// FASTCUT MUSIC VIDEO MAKER – with robust syncing and no black frames
 
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
@@ -11,8 +11,6 @@ const stopPreviewBtn = document.getElementById('stopPreviewBtn');
 const exportBtn = document.getElementById('exportMusicVideoBtn');
 const exportStatus = document.getElementById('exportStatus');
 const warnSong = document.getElementById('warnSong');
-
-// Thumbnails for each track (video elements in the DOM)
 const thumbVideos = Array.from({ length: NUM_TRACKS }, (_, i) => document.getElementById(`thumb${i}`));
 
 const videoTracks = Array(NUM_TRACKS).fill(null); // {file, url, name, recordedBlob}
@@ -25,7 +23,6 @@ let mediaRecorder = null;
 let recordedChunks = [];
 let audioContext = null;
 const FADE_DURATION = 0.7; // seconds
-const SYNC_THRESHOLD = 0.04; // 40ms
 
 let fadeState = null;
 
@@ -202,15 +199,37 @@ function startFade(fromIdx, toIdx) {
   };
 }
 
+// --- Helpers for black frame prevention and syncing ---
+function isVidReady(v) {
+  // Video is ready only if it has enough data and isn't at end
+  return v && v.readyState >= 2 && v.currentTime < (v.duration || Infinity);
+}
+
+function seekAndWait(v, t) {
+  return new Promise(resolve => {
+    if (!v) return resolve();
+    // Only seek if not already almost at correct time
+    if (Math.abs(v.currentTime - t) > 0.033) {
+      v.currentTime = Math.min(t, v.duration ? v.duration - 0.033 : t);
+      v.addEventListener('seeked', resolve, { once: true });
+    } else {
+      resolve();
+    }
+  });
+}
+
+async function ensureAllVideosReadyAt(t) {
+  const waitPromises = tempVideos
+    .filter(v => v)
+    .map(v => seekAndWait(v, t));
+  await Promise.all(waitPromises);
+}
+
 // ---- Drawing Loop ----
-function drawLoop() {
+async function drawLoop() {
   let t = audio.currentTime || 0;
   let mainVid = tempVideos[activeTrackIndex];
   let showFade = fadeState !== null;
-
-  function isVidReady(v) {
-    return v && v.readyState >= 2 && v.currentTime < (v.duration || Infinity);
-  }
 
   if (showFade && fadeState) {
     let elapsed = (performance.now() - fadeState.startTime) / 1000;
@@ -218,8 +237,7 @@ function drawLoop() {
     let fromVid = tempVideos[fadeState.from];
     let toVid = tempVideos[fadeState.to];
 
-    if (isVidReady(fromVid)) fromVid.currentTime = Math.min(t, fromVid.duration || t);
-    if (isVidReady(toVid)) toVid.currentTime = Math.min(t, toVid.duration || t);
+    await Promise.all([seekAndWait(fromVid, t), seekAndWait(toVid, t)]);
 
     outputCtx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
     if (isVidReady(fromVid)) {
@@ -238,16 +256,13 @@ function drawLoop() {
       updateSwitcherBtns();
     }
   } else if (isVidReady(mainVid)) {
-    if (Math.abs(mainVid.currentTime - t) > SYNC_THRESHOLD) {
-      try {
-        mainVid.currentTime = Math.min(t, mainVid.duration ? mainVid.duration - 0.033 : t);
-      } catch (err) {}
-    }
+    await seekAndWait(mainVid, t);
     outputCtx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
     outputCtx.globalAlpha = 1;
     outputCtx.drawImage(mainVid, 0, 0, outputCanvas.width, outputCanvas.height);
     outputCtx.globalAlpha = 1;
   } else {
+    // Only draw black if no video is loaded
     outputCtx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
     outputCtx.globalAlpha = 1;
     outputCtx.fillStyle = "#000";
@@ -276,22 +291,6 @@ songInput.addEventListener('change', function() {
     audio.volume = 1;
   }
 });
-
-// ---- Wait for all video tracks to be ready (readyState >= 2) ----
-async function ensureAllVideosReady() {
-  const waitPromises = tempVideos
-    .filter(v => v)
-    .map(v => {
-      return new Promise(resolve => {
-        if (v.readyState >= 2) {
-          resolve();
-        } else {
-          v.addEventListener('canplay', resolve, { once: true });
-        }
-      });
-    });
-  await Promise.all(waitPromises);
-}
 
 // ---- Record Full Edit ----
 recordFullEditBtn.addEventListener('click', async function () {
@@ -329,17 +328,7 @@ recordFullEditBtn.addEventListener('click', async function () {
   stopDrawLoop();
 
   // Seek all loaded videos to 0 and ensure they're ready before starting
-  for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) {
-      tempVideos[i].pause();
-      tempVideos[i].currentTime = 0;
-      await new Promise(resolve => {
-        tempVideos[i].addEventListener('seeked', resolve, { once: true });
-      });
-      tempVideos[i].play().catch(() => {});
-    }
-  }
-  await ensureAllVideosReady();
+  await ensureAllVideosReadyAt(0);
   fadeState = null;
   updateSwitcherBtns();
 
