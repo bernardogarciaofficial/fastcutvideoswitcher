@@ -1,57 +1,480 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Fastcut Music Video Maker</title>
-  <style>
-    body { font-family: sans-serif; background: #f7f7f7; color: #232323; }
-    h1 { margin-bottom: 2px; }
-    .track-card { display:inline-block; vertical-align:top; margin:8px; padding:7px; border:1px solid #aaa; border-radius:6px; background:#fafafa; }
-    #tracksContainer { margin:16px 0; }
-    #switcherBtnsContainer button.active-switcher-btn { background:#ff5555; color:#fff; }
-    .track-title { font-weight:bold; margin-bottom:3px; }
-    #mainOutput { display:block; width:640px; height:360px; margin:12px auto; background:#000; }
-    #switcherBtnsContainer { margin:12px 0; }
-    #exportStatus { margin-left:10px; color:#228B22; }
-    #warnSong { color:#b00; font-weight:bold; display:none; }
-    video[muted]::-webkit-media-controls-volume-slider { display:none; }
-    video[muted]::-webkit-media-controls-mute-button { display:none; }
-    @media (max-width: 900px) {
-      #mainOutput { width:100vw; height:auto; max-width:95vw; }
-      .track-card { width:150px; }
+// FASTCUT MUSIC VIDEO MAKER – with six thumbnail video screens, track switcher, and recording/export controls
+
+const NUM_TRACKS = 6;
+const songInput = document.getElementById('songInput');
+const audio = document.getElementById('audio');
+const mainOutput = document.getElementById('mainOutput');
+const tracksContainer = document.getElementById('tracksContainer');
+const switcherBtnsContainer = document.getElementById('switcherBtnsContainer');
+const recordFullEditBtn = document.getElementById('recordFullEditBtn');
+const stopPreviewBtn = document.getElementById('stopPreviewBtn');
+const exportBtn = document.getElementById('exportMusicVideoBtn');
+const exportStatus = document.getElementById('exportStatus');
+const warnSong = document.getElementById('warnSong');
+
+// Thumbnails for each track (video elements in the DOM)
+const thumbVideos = Array.from({ length: NUM_TRACKS }, (_, i) => document.getElementById(`thumb${i}`));
+
+const videoTracks = Array(NUM_TRACKS).fill(null); // {file, url, name, recordedBlob}
+const tempVideos = Array(NUM_TRACKS).fill(null); // DOM video elements for compositing
+let activeTrackIndex = 0;
+let requestedTrackIndex = 0;
+let isRecording = false;
+let animationFrameId = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+let audioContext = null;
+const FADE_DURATION = 0.7; // seconds
+const SYNC_THRESHOLD = 0.04; // 40ms
+
+let fadeState = null;
+
+// Persistent canvas for compositing
+const outputCanvas = document.createElement('canvas');
+outputCanvas.width = 640;
+outputCanvas.height = 360;
+const outputCtx = outputCanvas.getContext('2d');
+
+// ---- Track Cards with Upload/Rec Controls ----
+function createTrackCard(index) {
+  const card = document.createElement('div');
+  card.className = 'track-card';
+  const title = document.createElement('div');
+  title.className = "track-title";
+  title.textContent = `Camera ${index + 1}`;
+  card.appendChild(title);
+
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'video/*';
+  input.addEventListener('change', function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    videoTracks[index] = { file, url, name: file.name };
+    prepareTempVideo(index, url);
+    thumbVideos[index].src = url;
+    thumbVideos[index].style.display = 'block';
+    thumbVideos[index].load();
+    dlBtn.style.display = '';
+  });
+  card.appendChild(input);
+
+  const recBtn = document.createElement('button');
+  recBtn.textContent = 'Rec';
+  card.appendChild(recBtn);
+
+  const stopRecBtn = document.createElement('button');
+  stopRecBtn.textContent = 'Stop';
+  stopRecBtn.style.display = 'none';
+  card.appendChild(stopRecBtn);
+
+  let trackRecorder = null;
+  let recStream = null;
+  let recChunks = [];
+
+  recBtn.addEventListener('click', async function () {
+    recBtn.disabled = true;
+    stopRecBtn.style.display = '';
+    try {
+      recStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    } catch (err) {
+      recBtn.disabled = false;
+      stopRecBtn.style.display = 'none';
+      alert("Camera/mic permission denied.");
+      return;
     }
-  </style>
-</head>
-<body>
-  <h1>Fastcut Music Video Maker</h1>
+    // For recording preview, use the thumbnail video element
+    const preview = thumbVideos[index];
+    preview.srcObject = recStream;
+    preview.muted = true;
+    preview.autoplay = true;
+    preview.style.display = 'block';
+    preview.play().catch(()=>{});
+    trackRecorder = new MediaRecorder(recStream, { mimeType: 'video/webm; codecs=vp9,opus' });
+    recChunks = [];
+    trackRecorder.ondataavailable = function(e) {
+      if (e.data.size > 0) recChunks.push(e.data);
+    };
+    trackRecorder.onstop = function() {
+      const blob = new Blob(recChunks, { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      videoTracks[index] = { file: null, url, name: `Cam${index+1}-take.webm`, recordedBlob: blob };
+      prepareTempVideo(index, url);
+      preview.srcObject = null;
+      preview.src = url;
+      preview.load();
+      dlBtn.style.display = '';
+      recBtn.disabled = false;
+      stopRecBtn.style.display = 'none';
+      if (recStream) recStream.getTracks().forEach(track => track.stop());
+    };
+    trackRecorder.start();
+  });
 
-  <div>
-    <label>Song: <input type="file" id="songInput" accept="audio/*"></label>
-    <span id="warnSong">Please choose a song first!</span>
-  </div>
-  <audio id="audio" controls style="width:100%;margin:8px 0;"></audio>
+  stopRecBtn.addEventListener('click', function() {
+    if (trackRecorder && trackRecorder.state === 'recording') {
+      trackRecorder.stop();
+      stopRecBtn.style.display = 'none';
+      recBtn.disabled = false;
+    }
+  });
 
-  <!-- Six video thumbnail screens and track controls will be rendered here: -->
-  <div id="tracksContainer"></div>
+  const dlBtn = document.createElement('button');
+  dlBtn.textContent = 'DL';
+  dlBtn.style.display = 'none';
+  dlBtn.addEventListener('click', function() {
+    if (videoTracks[index] && videoTracks[index].url) {
+      const a = document.createElement('a');
+      a.href = videoTracks[index].url;
+      a.download = videoTracks[index].name || `track${index+1}.webm`;
+      a.click();
+    }
+  });
+  card.appendChild(dlBtn);
 
-  <!-- Six track switcher buttons will appear here: -->
-  <div id="switcherBtnsContainer"></div>
+  tracksContainer.appendChild(card);
+}
 
-  <!-- Main output video preview: -->
-  <video id="mainOutput" controls autoplay muted playsinline></video>
+function prepareTempVideo(idx, url) {
+  if (tempVideos[idx]) {
+    tempVideos[idx].pause();
+    tempVideos[idx].remove();
+  }
+  const v = document.createElement('video');
+  v.src = url;
+  v.crossOrigin = "anonymous";
+  v.muted = true;
+  v.preload = "auto";
+  v.playsInline = true;
+  v.style.display = "none";
+  v.load();
+  document.body.appendChild(v);
+  tempVideos[idx] = v;
+}
 
-  <div style="margin:10px 0;">
-    <button id="recordFullEditBtn">Record Full Edit</button>
-    <button id="stopPreviewBtn">Stop</button>
-    <button id="exportMusicVideoBtn" disabled>Export</button>
-    <span id="exportStatus"></span>
-  </div>
+// ---- Switcher ----
+function createSwitcherBtns() {
+  switcherBtnsContainer.innerHTML = '';
+  for (let i = 0; i < NUM_TRACKS; i++) {
+    const btn = document.createElement('button');
+    btn.textContent = String(i + 1);
+    btn.onclick = function () {
+      if (i === requestedTrackIndex) return;
+      startFade(activeTrackIndex, i);
+      requestedTrackIndex = i;
+      updateSwitcherBtns();
+      ensureAudioPlays();
+    };
+    switcherBtnsContainer.appendChild(btn);
+  }
+  updateSwitcherBtns();
+}
 
-  <div style="margin-top:24px;">
-    <small>Fastcut Music Video Maker © 2025 Bernardo Garcia<br>
-    Contact: bernardogarciaofficial@gmail.com</small>
-  </div>
+function updateThumbnails() {
+  for (let i = 0; i < NUM_TRACKS; i++) {
+    thumbVideos[i].classList.toggle('active', i === activeTrackIndex);
+    thumbVideos[i].style.opacity = (i === activeTrackIndex) ? "1" : "0.65";
+    thumbVideos[i].style.boxShadow = (i === activeTrackIndex) ? "0 0 10px #ff3333" : "";
+  }
+}
 
-  <script src="script.js"></script>
-</body>
-</html>
+function updateSwitcherBtns() {
+  for (let j = 0; j < NUM_TRACKS; j++) {
+    switcherBtnsContainer.children[j].className = (j === requestedTrackIndex) ? "active-switcher-btn" : "";
+  }
+  updateThumbnails();
+}
+
+// ---- Fade Logic ----
+function startFade(fromIdx, toIdx) {
+  if (!tempVideos[toIdx]) {
+    activeTrackIndex = toIdx;
+    requestedTrackIndex = toIdx;
+    updateSwitcherBtns();
+    return;
+  }
+  fadeState = {
+    from: fromIdx,
+    to: toIdx,
+    startTime: performance.now(),
+    duration: FADE_DURATION * 1000
+  };
+}
+
+// ---- Drawing Loop ----
+function drawLoop() {
+  let t = audio.currentTime || 0;
+  let mainVid = tempVideos[activeTrackIndex];
+  let showFade = fadeState !== null;
+
+  function isVidReady(v) {
+    return v && v.readyState >= 2 && v.currentTime < (v.duration || Infinity);
+  }
+
+  if (showFade && fadeState) {
+    let elapsed = (performance.now() - fadeState.startTime) / 1000;
+    let alpha = Math.min(elapsed / FADE_DURATION, 1);
+    let fromVid = tempVideos[fadeState.from];
+    let toVid = tempVideos[fadeState.to];
+
+    if (isVidReady(fromVid)) fromVid.currentTime = Math.min(t, fromVid.duration || t);
+    if (isVidReady(toVid)) toVid.currentTime = Math.min(t, toVid.duration || t);
+
+    outputCtx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
+    if (isVidReady(fromVid)) {
+      outputCtx.globalAlpha = 1 - alpha;
+      outputCtx.drawImage(fromVid, 0, 0, outputCanvas.width, outputCanvas.height);
+    }
+    if (isVidReady(toVid)) {
+      outputCtx.globalAlpha = alpha;
+      outputCtx.drawImage(toVid, 0, 0, outputCanvas.width, outputCanvas.height);
+    }
+    outputCtx.globalAlpha = 1;
+
+    if (alpha >= 1) {
+      activeTrackIndex = fadeState.to;
+      fadeState = null;
+      updateSwitcherBtns();
+    }
+  } else if (isVidReady(mainVid)) {
+    if (Math.abs(mainVid.currentTime - t) > SYNC_THRESHOLD) {
+      try {
+        mainVid.currentTime = Math.min(t, mainVid.duration ? mainVid.duration - 0.033 : t);
+      } catch (err) {}
+    }
+    outputCtx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
+    outputCtx.globalAlpha = 1;
+    outputCtx.drawImage(mainVid, 0, 0, outputCanvas.width, outputCanvas.height);
+    outputCtx.globalAlpha = 1;
+  } else {
+    outputCtx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
+    outputCtx.globalAlpha = 1;
+    outputCtx.fillStyle = "#000";
+    outputCtx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
+  }
+
+  animationFrameId = requestAnimationFrame(drawLoop);
+}
+
+// ---- Stop the draw loop (for recording)
+function stopDrawLoop() {
+  if (animationFrameId !== null) {
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
+  }
+}
+
+// ---- AUDIO ----
+songInput.addEventListener('change', function() {
+  warnSong.style.display = 'none';
+  if (songInput.files.length > 0) {
+    const file = songInput.files[0];
+    audio.src = URL.createObjectURL(file);
+    audio.load();
+    audio.currentTime = 0;
+    audio.volume = 1;
+  }
+});
+
+// ---- Wait for all video tracks to be ready (readyState >= 2) ----
+async function ensureAllVideosReady() {
+  const waitPromises = tempVideos
+    .filter(v => v)
+    .map(v => {
+      return new Promise(resolve => {
+        if (v.readyState >= 2) {
+          resolve();
+        } else {
+          v.addEventListener('canplay', resolve, { once: true });
+        }
+      });
+    });
+  await Promise.all(waitPromises);
+}
+
+// ---- Record Full Edit ----
+recordFullEditBtn.addEventListener('click', async function () {
+  if (!audio.src) {
+    warnSong.style.display = '';
+    setTimeout(() => { warnSong.style.display = 'none'; }, 2500);
+    alert('Please upload a song first.');
+    return;
+  }
+  if (!videoTracks.some(Boolean)) {
+    alert('Please upload or record at least one video.');
+    return;
+  }
+
+  let firstLoaded = tempVideos.findIndex(v => v);
+  if (firstLoaded === -1) {
+    alert('No video loaded in any camera.');
+    return;
+  }
+  if (!tempVideos[activeTrackIndex]) {
+    activeTrackIndex = firstLoaded;
+    requestedTrackIndex = firstLoaded;
+    updateSwitcherBtns();
+  }
+  if (!tempVideos[activeTrackIndex]) {
+    alert('Selected camera has no video.');
+    return;
+  }
+
+  isRecording = true;
+  recordedChunks = [];
+  if (exportStatus) exportStatus.textContent = '';
+  if (exportBtn) exportBtn.disabled = true;
+
+  stopDrawLoop();
+
+  // Seek all loaded videos to 0 and ensure they're ready before starting
+  for (let i = 0; i < tempVideos.length; i++) {
+    if (tempVideos[i]) {
+      tempVideos[i].pause();
+      tempVideos[i].currentTime = 0;
+      await new Promise(resolve => {
+        tempVideos[i].addEventListener('seeked', resolve, { once: true });
+      });
+      tempVideos[i].play().catch(() => {});
+    }
+  }
+  await ensureAllVideosReady();
+  fadeState = null;
+  updateSwitcherBtns();
+
+  // --- TRIGGER MUSIC PLAY AND WAIT FOR IT TO START ---
+  audio.currentTime = 0;
+  let playResult = audio.play();
+  if (playResult && typeof playResult.then === "function") {
+    try {
+      await playResult;
+    } catch (e) {
+      alert("Audio playback was blocked by your browser. Please interact with the audio controls and try again.");
+      isRecording = false;
+      createSwitcherBtns();
+      mainOutput.srcObject = outputCanvas.captureStream(30);
+      animationFrameId = requestAnimationFrame(drawLoop);
+      return;
+    }
+  }
+
+  try {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioContext.createMediaElementSource(audio);
+    const dest = audioContext.createMediaStreamDestination();
+    source.connect(dest);
+    source.connect(audioContext.destination);
+
+    const canvasStream = outputCanvas.captureStream(30);
+    const combinedStream = new MediaStream([
+      ...canvasStream.getVideoTracks(),
+      ...dest.stream.getAudioTracks()
+    ]);
+
+    mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm; codecs=vp9,opus' });
+    mediaRecorder.ondataavailable = function(e) {
+      if (e.data.size > 0) recordedChunks.push(e.data);
+    };
+    mediaRecorder.onstop = function() {
+      stopDrawLoop();
+      const blob = new Blob(recordedChunks, { type: 'video/webm' });
+      mainOutput.src = URL.createObjectURL(blob);
+      mainOutput.srcObject = null;
+      mainOutput.controls = true;
+      mainOutput.style.display = 'block';
+      if (exportBtn) exportBtn.disabled = false;
+      isRecording = false;
+      if (exportStatus) exportStatus.textContent = 'Recording finished! Preview your cut below.';
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+      }
+      mainOutput.srcObject = outputCanvas.captureStream(30);
+      animationFrameId = requestAnimationFrame(drawLoop);
+      createSwitcherBtns();
+    };
+
+    mediaRecorder.start();
+
+    // Re-enable switcher during recording
+    switcherBtnsContainer.innerHTML = "";
+    for (let i = 0; i < NUM_TRACKS; i++) {
+      const btn = document.createElement('button');
+      btn.textContent = String(i + 1);
+      btn.onclick = function () {
+        if (i === requestedTrackIndex) return;
+        startFade(activeTrackIndex, i);
+        requestedTrackIndex = i;
+        updateSwitcherBtns();
+      };
+      switcherBtnsContainer.appendChild(btn);
+    }
+    updateSwitcherBtns();
+
+    animationFrameId = requestAnimationFrame(drawLoop);
+
+    audio.onended = function () {
+      if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        audio.onended = null;
+      }
+    };
+
+    stopPreviewBtn.onclick = function () {
+      if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        audio.pause();
+        if (exportStatus) exportStatus.textContent = 'Recording stopped.';
+      }
+    };
+  } catch (err) {
+    alert("Browser audio/video recording error: " + err.message);
+    if (exportStatus) exportStatus.textContent = 'Recording error. Try a different browser or audio file format.';
+    isRecording = false;
+    if (audioContext) {
+      audioContext.close();
+      audioContext = null;
+    }
+    createSwitcherBtns();
+    mainOutput.srcObject = outputCanvas.captureStream(30);
+    animationFrameId = requestAnimationFrame(drawLoop);
+    return;
+  }
+});
+
+// ---- EXPORT ----
+exportBtn.addEventListener('click', function () {
+  if (!mainOutput.src) {
+    if (exportStatus) exportStatus.textContent = 'Nothing to export yet!';
+    return;
+  }
+  fetch(mainOutput.src)
+    .then(res => res.blob())
+    .then(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'fastcut-edit.webm';
+      a.click();
+      if (exportStatus) exportStatus.textContent = 'Video exported – check your downloads!';
+    });
+});
+
+// ---- Always Keep Audio Playing on Switch or Play ----
+function ensureAudioPlays() {
+  if (audio.src && audio.paused) {
+    audio.play().catch(()=>{});
+  }
+}
+mainOutput.addEventListener('play', ensureAudioPlays);
+mainOutput.addEventListener('seeking', ensureAudioPlays);
+mainOutput.addEventListener('click', ensureAudioPlays);
+switcherBtnsContainer.addEventListener('click', ensureAudioPlays);
+
+// ---- Init ----
+for (let i = 0; i < NUM_TRACKS; i++) createTrackCard(i);
+createSwitcherBtns();
+warnSong.style.display = 'none';
+
+mainOutput.srcObject = outputCanvas.captureStream(30);
+animationFrameId = requestAnimationFrame(drawLoop);
