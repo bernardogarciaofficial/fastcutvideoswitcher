@@ -1,4 +1,4 @@
-// FASTCUT MUSIC VIDEO MAKER - RESTORED Record Full Edit, Stop, Export
+// FASTCUT MUSIC VIDEO MAKER - WITH Record Full Edit, Stop, Export
 
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
