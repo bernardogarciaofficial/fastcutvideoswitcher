@@ -271,6 +271,14 @@ function drawLoop() {
   animationFrameId = requestAnimationFrame(drawLoop);
 }
 
+// ---- Stop the draw loop (for recording)
+function stopDrawLoop() {
+  if (animationFrameId !== null) {
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
+  }
+}
+
 // ---- AUDIO ----
 songInput.addEventListener('change', function() {
   warnSong.style.display = 'none';
@@ -330,6 +338,10 @@ recordFullEditBtn.addEventListener('click', async function () {
   updateSwitcherBtns();
 
   try {
+    // --- TRIGGER MUSIC PLAY HERE ---
+    audio.currentTime = 0;
+    await audio.play();
+
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const source = audioContext.createMediaElementSource(audio);
     const dest = audioContext.createMediaStreamDestination();
@@ -366,11 +378,6 @@ recordFullEditBtn.addEventListener('click', async function () {
       createSwitcherBtns();
     };
 
-    audio.currentTime = 0;
-    await audio.play().catch((err)=>{
-      alert('Audio playback failed. Please click the play button on the audio player to enable audio.');
-      if (exportStatus) exportStatus.textContent = 'Audio playback blocked. Click play on the audio bar.';
-    });
     mediaRecorder.start();
 
     // Re-enable switcher during recording
