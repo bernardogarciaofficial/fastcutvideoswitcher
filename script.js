@@ -1,4 +1,4 @@
-// FASTCUT MUSIC VIDEO MAKER - WITH Record Full Edit, Stop, Export
+// FASTCUT MUSIC VIDEO MAKER - Full Version with Thumbnails, Six-Track Switcher, Record Full Edit, Stop, and Export
 
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
@@ -14,6 +14,7 @@ const warnSong = document.getElementById('warnSong');
 
 const videoTracks = Array(NUM_TRACKS).fill(null);
 const tempVideos = Array(NUM_TRACKS).fill(null);
+const thumbVideos = Array(NUM_TRACKS).fill(null);
 let activeTrackIndex = 0;
 let requestedTrackIndex = 0;
 let isRecording = false;
@@ -32,15 +33,7 @@ outputCanvas.width = 640;
 outputCanvas.height = 360;
 const outputCtx = outputCanvas.getContext('2d');
 
-// Helper: Stop draw loop
-function stopDrawLoop() {
-  if (animationFrameId) {
-    cancelAnimationFrame(animationFrameId);
-    animationFrameId = null;
-  }
-}
-
-// ---- Track Cards ----
+// ---- Track Cards with Thumbnails ----
 function createTrackCard(index) {
   const card = document.createElement('div');
   card.className = 'track-card';
@@ -62,6 +55,8 @@ function createTrackCard(index) {
     preview.src = url;
     preview.load();
     dlBtn.style.display = '';
+    thumbVideos[index].src = url;
+    thumbVideos[index].style.display = 'block';
   });
   card.appendChild(input);
 
@@ -110,6 +105,8 @@ function createTrackCard(index) {
       recBtn.disabled = false;
       stopRecBtn.style.display = 'none';
       if (recStream) recStream.getTracks().forEach(track => track.stop());
+      thumbVideos[index].src = url;
+      thumbVideos[index].style.display = 'block';
     };
     trackRecorder.start();
   });
@@ -135,13 +132,30 @@ function createTrackCard(index) {
   });
   card.appendChild(dlBtn);
 
+  // Thumbnail video element (small, muted, no controls)
+  const thumb = document.createElement('video');
+  thumb.width = 130;
+  thumb.height = 72;
+  thumb.controls = false;
+  thumb.muted = true;
+  thumb.playsInline = true;
+  thumb.style.background = "#000";
+  thumb.style.border = "1px solid #ff2222";
+  thumb.style.borderRadius = "2px";
+  thumb.style.marginTop = "5px";
+  thumb.style.display = "none";
+  card.appendChild(thumb);
+  thumbVideos[index] = thumb;
+
   const preview = document.createElement('video');
   preview.controls = true;
   preview.style.background = "#000";
   preview.muted = true;
   preview.playsInline = true;
+  preview.style.display = "none";
   card.appendChild(preview);
 
+  // Show the preview only on demand (not used as a main feature here)
   tracksContainer.appendChild(card);
 }
 
@@ -183,6 +197,11 @@ function createSwitcherBtns() {
 function updateSwitcherBtns() {
   for (let j = 0; j < NUM_TRACKS; j++) {
     switcherBtnsContainer.children[j].className = (j === requestedTrackIndex) ? "active-switcher-btn" : "";
+    // Thumbnail highlight for active
+    if (thumbVideos[j]) {
+      thumbVideos[j].style.opacity = (j === activeTrackIndex) ? "1" : "0.65";
+      thumbVideos[j].style.boxShadow = (j === activeTrackIndex) ? "0 0 10px #ff3333" : "";
+    }
   }
 }
 
@@ -191,6 +210,7 @@ function startFade(fromIdx, toIdx) {
   if (!tempVideos[toIdx]) {
     activeTrackIndex = toIdx;
     requestedTrackIndex = toIdx;
+    updateSwitcherBtns();
     return;
   }
   fadeState = {
@@ -199,12 +219,6 @@ function startFade(fromIdx, toIdx) {
     startTime: performance.now(),
     duration: FADE_DURATION * 1000
   };
-}
-
-function getFadeAlpha(time, duration) {
-  if (time < FADE_DURATION) return time / FADE_DURATION;
-  if (duration && time > duration - FADE_DURATION) return (duration - time) / FADE_DURATION;
-  return 1;
 }
 
 // ---- Drawing Loop ----
@@ -245,7 +259,7 @@ function drawLoop() {
       } catch (err) {}
     }
     outputCtx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
-    outputCtx.globalAlpha = getFadeAlpha(t, audio.duration || 0);
+    outputCtx.globalAlpha = 1;
     outputCtx.drawImage(mainVid, 0, 0, outputCanvas.width, outputCanvas.height);
     outputCtx.globalAlpha = 1;
   } else {
@@ -282,7 +296,6 @@ recordFullEditBtn.addEventListener('click', async function () {
     return;
   }
 
-  // Auto-select first loaded video if needed
   let firstLoaded = tempVideos.findIndex(v => v);
   if (firstLoaded === -1) {
     alert('No video loaded in any camera.');
