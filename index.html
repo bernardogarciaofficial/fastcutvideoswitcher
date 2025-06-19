@@ -14,11 +14,11 @@
     #switcherBtnsContainer { margin:12px 0; }
     #exportStatus { margin-left:10px; color:#228B22; }
     #warnSong { color:#b00; font-weight:bold; display:none; }
-    video[muted]::-webkit-media-controls-volume-slider { display:none; }
-    video[muted]::-webkit-media-controls-mute-button { display:none; }
     .thumb-row { display: flex; flex-wrap: wrap; justify-content: center; margin-bottom: 12px; }
     .thumb { background: #000; border: 2px solid #aaa; border-radius: 4px; margin: 2px; width: 130px; height: 72px; object-fit: cover; }
     .thumb.active { border: 2px solid #ff3333; box-shadow: 0 0 10px #ff3333; }
+    video[muted]::-webkit-media-controls-volume-slider { display:none; }
+    video[muted]::-webkit-media-controls-mute-button { display:none; }
     @media (max-width: 900px) {
       #mainOutput { width:100vw; height:auto; max-width:95vw; }
       .track-card { width:150px; }
@@ -34,10 +34,17 @@
   </div>
   <audio id="audio" controls style="width:100%;margin:8px 0;"></audio>
 
-  <!-- Thumbnails -->
-  <div id="thumbRow" class="thumb-row"></div>
+  <!-- Thumbnails row for six video tracks -->
+  <div id="thumbRow" class="thumb-row">
+    <video class="thumb" id="thumb0" muted playsinline></video>
+    <video class="thumb" id="thumb1" muted playsinline></video>
+    <video class="thumb" id="thumb2" muted playsinline></video>
+    <video class="thumb" id="thumb3" muted playsinline></video>
+    <video class="thumb" id="thumb4" muted playsinline></video>
+    <video class="thumb" id="thumb5" muted playsinline></video>
+  </div>
 
-  <!-- Track card controls -->
+  <!-- Track card controls (uploads, rec, etc) -->
   <div id="tracksContainer"></div>
 
   <!-- Track switcher buttons -->
