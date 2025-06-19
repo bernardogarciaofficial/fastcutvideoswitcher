@@ -1,209 +1,57 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Fastcut Music Video Maker</title>
   <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-    }
-    body {
-      font-family: sans-serif;
-      background: #1a1a1a;
-      color: #eaeaea;
-      min-height: 100vh;
-      min-width: 350px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-    }
-    .container {
-      margin: 32px 0 12px 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      width: 100%;
-      max-width: 900px;
-    }
-    h2 {
-      color: #ff3333;
-      border-bottom: 2px solid #ff3333;
-      padding-bottom: 4px;
-      margin-top: 0;
-      margin-bottom: 20px;
-      text-align: center;
-      font-size: 2.0em;
-      letter-spacing: 0.02em;
-    }
-    #tracksContainer {
-      margin-bottom: 16px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 18px 24px;
-      justify-content: center;
-      max-width: 650px;
-      width: 100%;
-    }
-    .track-card {
-      border: 2px solid #ff2222;
-      background: #111;
-      border-radius: 6px;
-      width: 200px;
-      padding: 10px 8px 7px 8px;
-      color: #fff;
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .track-card .track-title {
-      font-weight: bold;
-      color: #ff3333;
-      margin-bottom: 3px;
-    }
-    .track-card input[type="file"] {
-      margin-bottom: 7px;
-      margin-top: 1px;
-      color: #ccc;
-    }
-    .track-card button {
-      margin-right: 4px;
-      margin-bottom: 2px;
-      background: #222;
-      color: #ff3333;
-      border: 1px solid #ff3333;
-      border-radius: 4px;
-      padding: 3px 9px;
-      font-size: 13px;
-      cursor: pointer;
-    }
-    .track-card button:last-child {
-      margin-right: 0;
-    }
-    .track-card video {
-      width: 100%;
-      border-radius: 3px;
-      margin-top: 5px;
-      background: #000;
-      border: 1px solid #ff2222;
-      min-height: 80px;
-    }
-    #switcherBtnsContainer {
-      margin: 10px 0 20px 0;
-      text-align: center;
-    }
-    #switcherBtnsContainer button {
-      font-size: 17px;
-      padding: 6px 15px;
-      margin-right: 4px;
-      border-radius: 4px;
-      border: 1px solid #ff3333;
-      background: #111;
-      color: #ff3333;
-      cursor: pointer;
-      transition: background 0.2s, color 0.2s;
-    }
-    #switcherBtnsContainer .active-switcher-btn {
-      background: #ff3333;
-      color: #fff;
-      border-color: #fff;
-      font-weight: bold;
-    }
-    #mainOutput {
-      margin-bottom: 10px;
-      background: #000;
-      border: 2px solid #ff3333;
-      border-radius: 6px;
-      display: block;
-      width: 640px;
-      max-width: 100%;
-    }
-    button {
-      cursor: pointer;
-      background: #222;
-      color: #ff3333;
-      border: 1px solid #ff3333;
-      border-radius: 4px;
-      padding: 7px 14px;
-      margin-right: 8px;
-      font-size: 15px;
-      margin-bottom: 5px;
-    }
-    button:last-child {
-      margin-right: 0;
-    }
-    #exportStatus {
-      margin-left: 12px;
-      color: #0a7;
-      font-weight: bold;
-    }
-    #songInput {
-      margin-bottom: 14px;
-      color: #fff;
-    }
-    .warn {
-      background: #000;
-      color: #ff3333;
-      border: 2px solid #ff3333;
-      border-radius: 8px;
-      padding: 20px 15px;
-      margin: 25px auto;
-      text-align: center;
-      font-size: 1.25em;
-      max-width: 420px;
-    }
-    .footer {
-      margin-top: 40px;
-      width: 100%;
-      text-align: center;
-      font-size: 1em;
-      color: #888;
-      border-top: 1px solid #222;
-      padding: 18px 0 8px 0;
-      letter-spacing: 0.02em;
-    }
-    .footer strong {
-      color: #ff3333;
-    }
-    .footer a {
-      color: #ff3333;
-      text-decoration: none;
-      margin-left: 8px;
-    }
-    @media (max-width: 700px) {
-      #mainOutput { width: 98vw; }
-      #tracksContainer { max-width: 97vw; }
-      .track-card { width: 45vw; min-width: 130px; }
+    body { font-family: sans-serif; background: #f7f7f7; color: #232323; }
+    h1 { margin-bottom: 2px; }
+    .track-card { display:inline-block; vertical-align:top; margin:8px; padding:7px; border:1px solid #aaa; border-radius:6px; background:#fafafa; }
+    #tracksContainer { margin:16px 0; }
+    #switcherBtnsContainer button.active-switcher-btn { background:#ff5555; color:#fff; }
+    .track-title { font-weight:bold; margin-bottom:3px; }
+    #mainOutput { display:block; width:640px; height:360px; margin:12px auto; background:#000; }
+    #switcherBtnsContainer { margin:12px 0; }
+    #exportStatus { margin-left:10px; color:#228B22; }
+    #warnSong { color:#b00; font-weight:bold; display:none; }
+    video[muted]::-webkit-media-controls-volume-slider { display:none; }
+    video[muted]::-webkit-media-controls-mute-button { display:none; }
+    @media (max-width: 900px) {
+      #mainOutput { width:100vw; height:auto; max-width:95vw; }
+      .track-card { width:150px; }
     }
   </style>
 </head>
 <body>
-<div class="container">
+  <h1>Fastcut Music Video Maker</h1>
 
-  <h2>Fastcut Music Video Maker</h2>
-  <p>
-    <input id="songInput" type="file" accept="audio/*">
-    <audio id="audio" style="display:none"></audio>
-  </p>
+  <div>
+    <label>Song: <input type="file" id="songInput" accept="audio/*"></label>
+    <span id="warnSong">Please choose a song first!</span>
+  </div>
+  <audio id="audio" controls style="width:100%;margin:8px 0;"></audio>
 
+  <!-- Six video thumbnail screens and track controls will be rendered here: -->
   <div id="tracksContainer"></div>
 
+  <!-- Six track switcher buttons will appear here: -->
   <div id="switcherBtnsContainer"></div>
 
-  <video id="mainOutput" width="640" height="360" controls></video>
+  <!-- Main output video preview: -->
+  <video id="mainOutput" controls autoplay muted playsinline></video>
 
-  <!-- Record Full Edit, Stop, Export buttons and exportStatus span removed -->
+  <div style="margin:10px 0;">
+    <button id="recordFullEditBtn">Record Full Edit</button>
+    <button id="stopPreviewBtn">Stop</button>
+    <button id="exportMusicVideoBtn" disabled>Export</button>
+    <span id="exportStatus"></span>
+  </div>
 
-  <div id="warnSong" class="warn" style="display:none;">Please upload a song first.</div>
-</div>
+  <div style="margin-top:24px;">
+    <small>Fastcut Music Video Maker © 2025 Bernardo Garcia<br>
+    Contact: bernardogarciaofficial@gmail.com</small>
+  </div>
 
-<div class="footer">
-  <strong>Fastcut Music Video Maker</strong> &copy; 2025 Bernardo Garcia<br>
-  Contact: <a href="mailto:bernardogarciaofficial@gmail.com">bernardogarciaofficial@gmail.com</a>
-</div>
-
-<script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
