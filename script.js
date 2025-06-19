@@ -1,4 +1,4 @@
-// FASTCUT MUSIC VIDEO MAKER - CLEAN VERSION (NO RECORD FULL EDIT, STOP, EXPORT)
+// FASTCUT MUSIC VIDEO MAKER - RESTORED Record Full Edit, Stop, Export
 
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
@@ -6,13 +6,21 @@ const audio = document.getElementById('audio');
 const mainOutput = document.getElementById('mainOutput');
 const tracksContainer = document.getElementById('tracksContainer');
 const switcherBtnsContainer = document.getElementById('switcherBtnsContainer');
+const recordFullEditBtn = document.getElementById('recordFullEditBtn');
+const stopPreviewBtn = document.getElementById('stopPreviewBtn');
+const exportBtn = document.getElementById('exportMusicVideoBtn');
+const exportStatus = document.getElementById('exportStatus');
 const warnSong = document.getElementById('warnSong');
 
 const videoTracks = Array(NUM_TRACKS).fill(null);
 const tempVideos = Array(NUM_TRACKS).fill(null);
 let activeTrackIndex = 0;
 let requestedTrackIndex = 0;
+let isRecording = false;
 let animationFrameId = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+let audioContext = null;
 const FADE_DURATION = 0.7; // seconds
 const SYNC_THRESHOLD = 0.04; // 40ms
 
@@ -23,6 +31,14 @@ const outputCanvas = document.createElement('canvas');
 outputCanvas.width = 640;
 outputCanvas.height = 360;
 const outputCtx = outputCanvas.getContext('2d');
+
+// Helper: Stop draw loop
+function stopDrawLoop() {
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
+  }
+}
 
 // ---- Track Cards ----
 function createTrackCard(index) {
@@ -251,6 +267,160 @@ songInput.addEventListener('change', function() {
     audio.currentTime = 0;
     audio.volume = 1;
   }
+});
+
+// ---- Record Full Edit ----
+recordFullEditBtn.addEventListener('click', async function () {
+  if (!audio.src) {
+    warnSong.style.display = '';
+    setTimeout(() => { warnSong.style.display = 'none'; }, 2500);
+    alert('Please upload a song first.');
+    return;
+  }
+  if (!videoTracks.some(Boolean)) {
+    alert('Please upload or record at least one video.');
+    return;
+  }
+
+  // Auto-select first loaded video if needed
+  let firstLoaded = tempVideos.findIndex(v => v);
+  if (firstLoaded === -1) {
+    alert('No video loaded in any camera.');
+    return;
+  }
+  if (!tempVideos[activeTrackIndex]) {
+    activeTrackIndex = firstLoaded;
+    requestedTrackIndex = firstLoaded;
+    updateSwitcherBtns();
+  }
+  if (!tempVideos[activeTrackIndex]) {
+    alert('Selected camera has no video.');
+    return;
+  }
+
+  isRecording = true;
+  recordedChunks = [];
+  if (exportStatus) exportStatus.textContent = '';
+  if (exportBtn) exportBtn.disabled = true;
+
+  stopDrawLoop();
+
+  for (let i = 0; i < tempVideos.length; i++) {
+    if (tempVideos[i]) {
+      tempVideos[i].pause();
+      tempVideos[i].currentTime = 0;
+      await new Promise(resolve => tempVideos[i].addEventListener('seeked', resolve, { once: true }));
+      await tempVideos[i].play();
+    }
+  }
+  fadeState = null;
+  updateSwitcherBtns();
+
+  try {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioContext.createMediaElementSource(audio);
+    const dest = audioContext.createMediaStreamDestination();
+    source.connect(dest);
+    source.connect(audioContext.destination);
+
+    const canvasStream = outputCanvas.captureStream(30);
+    const combinedStream = new MediaStream([
+      ...canvasStream.getVideoTracks(),
+      ...dest.stream.getAudioTracks()
+    ]);
+
+    mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm; codecs=vp9,opus' });
+    mediaRecorder.ondataavailable = function(e) {
+      if (e.data.size > 0) recordedChunks.push(e.data);
+    };
+    mediaRecorder.onstop = function() {
+      stopDrawLoop();
+      const blob = new Blob(recordedChunks, { type: 'video/webm' });
+      mainOutput.src = URL.createObjectURL(blob);
+      mainOutput.srcObject = null;
+      mainOutput.controls = true;
+      mainOutput.style.display = 'block';
+      if (exportBtn) exportBtn.disabled = false;
+      isRecording = false;
+      if (exportStatus) exportStatus.textContent = 'Recording finished! Preview your cut below.';
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+      }
+      // Restore preview loop after recording
+      mainOutput.srcObject = outputCanvas.captureStream(30);
+      animationFrameId = requestAnimationFrame(drawLoop);
+      createSwitcherBtns();
+    };
+
+    audio.currentTime = 0;
+    await audio.play().catch((err)=>{
+      alert('Audio playback failed. Please click the play button on the audio player to enable audio.');
+      if (exportStatus) exportStatus.textContent = 'Audio playback blocked. Click play on the audio bar.';
+    });
+    mediaRecorder.start();
+
+    // Re-enable switcher during recording
+    switcherBtnsContainer.innerHTML = "";
+    for (let i = 0; i < NUM_TRACKS; i++) {
+      const btn = document.createElement('button');
+      btn.textContent = String(i + 1);
+      btn.onclick = function () {
+        if (i === requestedTrackIndex) return;
+        startFade(activeTrackIndex, i);
+        requestedTrackIndex = i;
+        updateSwitcherBtns();
+      };
+      switcherBtnsContainer.appendChild(btn);
+    }
+    updateSwitcherBtns();
+
+    animationFrameId = requestAnimationFrame(drawLoop);
+
+    audio.onended = function () {
+      if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        audio.onended = null;
+      }
+    };
+
+    stopPreviewBtn.onclick = function () {
+      if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        audio.pause();
+        if (exportStatus) exportStatus.textContent = 'Recording stopped.';
+      }
+    };
+  } catch (err) {
+    alert("Browser audio/video recording error: " + err.message);
+    if (exportStatus) exportStatus.textContent = 'Recording error. Try a different browser or audio file format.';
+    isRecording = false;
+    if (audioContext) {
+      audioContext.close();
+      audioContext = null;
+    }
+    createSwitcherBtns();
+    mainOutput.srcObject = outputCanvas.captureStream(30);
+    animationFrameId = requestAnimationFrame(drawLoop);
+    return;
+  }
+});
+
+// ---- EXPORT ----
+exportBtn.addEventListener('click', function () {
+  if (!mainOutput.src) {
+    if (exportStatus) exportStatus.textContent = 'Nothing to export yet!';
+    return;
+  }
+  fetch(mainOutput.src)
+    .then(res => res.blob())
+    .then(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'fastcut-edit.webm';
+      a.click();
+      if (exportStatus) exportStatus.textContent = 'Video exported – check your downloads!';
+    });
 });
 
 // ---- Always Keep Audio Playing on Switch or Play ----
