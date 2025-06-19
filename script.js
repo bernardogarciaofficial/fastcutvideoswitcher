@@ -1,4 +1,4 @@
-// FASTCUT MUSIC VIDEO MAKER - Robust Switch, Fade, and Audio Sync
+// FASTCUT MUSIC VIDEO MAKER - Robust & Reliable Recording
 
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
@@ -21,19 +21,19 @@ let animationFrameId = null;
 let mediaRecorder = null;
 let recordedChunks = [];
 let audioContext = null;
-const FADE_DURATION = 0.7; // seconds for fade-in/out
+const FADE_DURATION = 0.7; // seconds
 const SYNC_THRESHOLD = 0.04; // 40ms
 
-let fadeState = null; // null or {from, to, startTime, duration}
+let fadeState = null;
 
-// Persistent canvas for all compositing
+// Persistent canvas for compositing
 const outputCanvas = document.createElement('canvas');
 outputCanvas.width = 640;
 outputCanvas.height = 360;
 const outputCtx = outputCanvas.getContext('2d');
 
-// --- Helper to clear preview loop ---
-function stopPreviewLoop() {
+// Helper: Stop draw loop
+function stopDrawLoop() {
   if (animationFrameId) {
     cancelAnimationFrame(animationFrameId);
     animationFrameId = null;
@@ -45,13 +45,11 @@ function createTrackCard(index) {
   const card = document.createElement('div');
   card.className = 'track-card';
 
-  // Title
   const title = document.createElement('div');
   title.className = "track-title";
   title.textContent = `Camera ${index + 1}`;
   card.appendChild(title);
 
-  // Upload
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'video/*';
@@ -67,7 +65,6 @@ function createTrackCard(index) {
   });
   card.appendChild(input);
 
-  // Record
   const recBtn = document.createElement('button');
   recBtn.textContent = 'Rec';
   card.appendChild(recBtn);
@@ -89,6 +86,7 @@ function createTrackCard(index) {
     } catch (err) {
       recBtn.disabled = false;
       stopRecBtn.style.display = 'none';
+      alert("Camera/mic permission denied.");
       return;
     }
     preview.srcObject = recStream;
@@ -124,7 +122,6 @@ function createTrackCard(index) {
     }
   });
 
-  // Download button
   const dlBtn = document.createElement('button');
   dlBtn.textContent = 'DL';
   dlBtn.style.display = 'none';
@@ -138,7 +135,6 @@ function createTrackCard(index) {
   });
   card.appendChild(dlBtn);
 
-  // Video preview (thumbnail)
   const preview = document.createElement('video');
   preview.controls = true;
   preview.style.background = "#000";
@@ -167,7 +163,7 @@ function prepareTempVideo(idx, url) {
 }
 
 // ---- Switcher ----
-function createSwitcherBtns(recordMode = false) {
+function createSwitcherBtns() {
   switcherBtnsContainer.innerHTML = '';
   for (let i = 0; i < NUM_TRACKS; i++) {
     const btn = document.createElement('button');
@@ -217,24 +213,20 @@ function drawLoop() {
   let mainVid = tempVideos[activeTrackIndex];
   let showFade = fadeState !== null;
 
-  // Fade/crossfade logic
   if (showFade && fadeState) {
     let elapsed = (performance.now() - fadeState.startTime) / 1000;
     let alpha = Math.min(elapsed / FADE_DURATION, 1);
     let fromVid = tempVideos[fadeState.from];
     let toVid = tempVideos[fadeState.to];
 
-    // Sync both videos to audio time
     if (fromVid) fromVid.currentTime = Math.min(t, fromVid.duration || t);
     if (toVid) toVid.currentTime = Math.min(t, toVid.duration || t);
 
     outputCtx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
-    // Draw fading out
     if (fromVid && fromVid.readyState >= 2) {
       outputCtx.globalAlpha = 1 - alpha;
       outputCtx.drawImage(fromVid, 0, 0, outputCanvas.width, outputCanvas.height);
     }
-    // Draw fading in
     if (toVid && toVid.readyState >= 2) {
       outputCtx.globalAlpha = alpha;
       outputCtx.drawImage(toVid, 0, 0, outputCanvas.width, outputCanvas.height);
@@ -247,7 +239,6 @@ function drawLoop() {
       updateSwitcherBtns();
     }
   } else if (mainVid && mainVid.readyState >= 2 && t < (mainVid.duration || Infinity)) {
-    // Improved sync: always seek if out of sync
     if (Math.abs(mainVid.currentTime - t) > SYNC_THRESHOLD) {
       try {
         mainVid.currentTime = Math.min(t, mainVid.duration ? mainVid.duration - 0.033 : t);
@@ -258,7 +249,6 @@ function drawLoop() {
     outputCtx.drawImage(mainVid, 0, 0, outputCanvas.width, outputCanvas.height);
     outputCtx.globalAlpha = 1;
   } else {
-    // Draw black if no video is ready
     outputCtx.globalAlpha = 1;
     outputCtx.fillStyle = "#000";
     outputCtx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
@@ -292,7 +282,7 @@ recordFullEditBtn.addEventListener('click', async function () {
     return;
   }
 
-  // Fix: select first loaded track if current is empty
+  // Auto-select first loaded video if needed
   let firstLoaded = tempVideos.findIndex(v => v);
   if (firstLoaded === -1) {
     alert('No video loaded in any camera.');
@@ -303,20 +293,18 @@ recordFullEditBtn.addEventListener('click', async function () {
     requestedTrackIndex = firstLoaded;
     updateSwitcherBtns();
   }
-
   if (!tempVideos[activeTrackIndex]) {
     alert('Selected camera has no video.');
     return;
   }
+
   isRecording = true;
   recordedChunks = [];
   if (exportStatus) exportStatus.textContent = '';
   if (exportBtn) exportBtn.disabled = true;
 
-  // Stop preview loop before recording
-  stopPreviewLoop();
+  stopDrawLoop();
 
-  // Ensure all temp videos are loaded, seeked to start, and playing
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
       tempVideos[i].pause();
@@ -328,81 +316,94 @@ recordFullEditBtn.addEventListener('click', async function () {
   fadeState = null;
   updateSwitcherBtns();
 
-  audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  const source = audioContext.createMediaElementSource(audio);
-  const dest = audioContext.createMediaStreamDestination();
-  source.connect(dest);
-  source.connect(audioContext.destination);
+  try {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioContext.createMediaElementSource(audio);
+    const dest = audioContext.createMediaStreamDestination();
+    source.connect(dest);
+    source.connect(audioContext.destination);
 
-  const canvasStream = outputCanvas.captureStream(30);
-  const combinedStream = new MediaStream([
-    ...canvasStream.getVideoTracks(),
-    ...dest.stream.getAudioTracks()
-  ]);
+    const canvasStream = outputCanvas.captureStream(30);
+    const combinedStream = new MediaStream([
+      ...canvasStream.getVideoTracks(),
+      ...dest.stream.getAudioTracks()
+    ]);
 
-  mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm; codecs=vp9,opus' });
-  mediaRecorder.ondataavailable = function(e) {
-    if (e.data.size > 0) recordedChunks.push(e.data);
-  };
-  mediaRecorder.onstop = function() {
-    stopPreviewLoop();
-    const blob = new Blob(recordedChunks, { type: 'video/webm' });
-    mainOutput.src = URL.createObjectURL(blob);
-    mainOutput.srcObject = null;
-    mainOutput.controls = true;
-    mainOutput.style.display = 'block';
-    if (exportBtn) exportBtn.disabled = false;
+    mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm; codecs=vp9,opus' });
+    mediaRecorder.ondataavailable = function(e) {
+      if (e.data.size > 0) recordedChunks.push(e.data);
+    };
+    mediaRecorder.onstop = function() {
+      stopDrawLoop();
+      const blob = new Blob(recordedChunks, { type: 'video/webm' });
+      mainOutput.src = URL.createObjectURL(blob);
+      mainOutput.srcObject = null;
+      mainOutput.controls = true;
+      mainOutput.style.display = 'block';
+      if (exportBtn) exportBtn.disabled = false;
+      isRecording = false;
+      if (exportStatus) exportStatus.textContent = 'Recording finished! Preview your cut below.';
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+      }
+      // Restore preview loop after recording
+      mainOutput.srcObject = outputCanvas.captureStream(30);
+      animationFrameId = requestAnimationFrame(drawLoop);
+      createSwitcherBtns();
+    };
+
+    audio.currentTime = 0;
+    await audio.play().catch((err)=>{
+      alert('Audio playback failed. Please click the play button on the audio player to enable audio.');
+      if (exportStatus) exportStatus.textContent = 'Audio playback blocked. Click play on the audio bar.';
+    });
+    mediaRecorder.start();
+
+    // Re-enable switcher during recording
+    switcherBtnsContainer.innerHTML = "";
+    for (let i = 0; i < NUM_TRACKS; i++) {
+      const btn = document.createElement('button');
+      btn.textContent = String(i + 1);
+      btn.onclick = function () {
+        if (i === requestedTrackIndex) return;
+        startFade(activeTrackIndex, i);
+        requestedTrackIndex = i;
+        updateSwitcherBtns();
+      };
+      switcherBtnsContainer.appendChild(btn);
+    }
+    updateSwitcherBtns();
+
+    animationFrameId = requestAnimationFrame(drawLoop);
+
+    audio.onended = function () {
+      if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        audio.onended = null;
+      }
+    };
+
+    stopPreviewBtn.onclick = function () {
+      if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        audio.pause();
+        if (exportStatus) exportStatus.textContent = 'Recording stopped.';
+      }
+    };
+  } catch (err) {
+    alert("Browser audio/video recording error: " + err.message);
+    if (exportStatus) exportStatus.textContent = 'Recording error. Try a different browser or audio file format.';
     isRecording = false;
-    if (exportStatus) exportStatus.textContent = 'Recording finished! Preview your cut below.';
     if (audioContext) {
       audioContext.close();
       audioContext = null;
     }
-    // Restore preview loop after recording
+    createSwitcherBtns();
     mainOutput.srcObject = outputCanvas.captureStream(30);
     animationFrameId = requestAnimationFrame(drawLoop);
-    createSwitcherBtns(); // Restore preview mode handlers
-  };
-
-  audio.currentTime = 0;
-  // Try to play audio, warn if blocked
-  audio.play().catch((err)=>{
-    alert('Audio playback failed. Please click the play button on the audio player to enable audio.');
-    if (exportStatus) exportStatus.textContent = 'Audio playback blocked. Click play on the audio bar.';
-  });
-  mediaRecorder.start();
-
-  // Re-enable switching during recording
-  switcherBtnsContainer.innerHTML = "";
-  for (let i = 0; i < NUM_TRACKS; i++) {
-    const btn = document.createElement('button');
-    btn.textContent = String(i + 1);
-    btn.onclick = function () {
-      if (i === requestedTrackIndex) return;
-      startFade(activeTrackIndex, i);
-      requestedTrackIndex = i;
-      updateSwitcherBtns();
-    };
-    switcherBtnsContainer.appendChild(btn);
+    return;
   }
-  updateSwitcherBtns();
-
-  animationFrameId = requestAnimationFrame(drawLoop);
-
-  audio.onended = function () {
-    if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
-      mediaRecorder.stop();
-      audio.onended = null;
-    }
-  };
-
-  stopPreviewBtn.onclick = function () {
-    if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
-      mediaRecorder.stop();
-      audio.pause();
-      if (exportStatus) exportStatus.textContent = 'Recording stopped.';
-    }
-  };
 });
 
 // ---- EXPORT ----
