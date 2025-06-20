@@ -1,4 +1,4 @@
-// FASTCUT MUSIC VIDEO MAKER – instant multicam cuts (no dissolve, no stills, always live and synced video)
+// FASTCUT MUSIC VIDEO MAKER – instant multicam cuts, no stills, no dissolve, always live and synced video
 
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
@@ -178,40 +178,20 @@ function updateSwitcherBtns() {
   updateThumbnails();
 }
 
-// --- Helpers for black frame prevention and syncing ---
 function isVidReady(v) {
   return v && v.readyState >= 2 && v.currentTime < (v.duration || Infinity);
 }
 
-function seekAndWait(v, t) {
-  return new Promise(resolve => {
-    if (!v) return resolve();
-    if (Math.abs(v.currentTime - t) > 0.033) {
-      v.currentTime = Math.min(t, v.duration ? v.duration - 0.033 : t);
-      v.addEventListener('seeked', resolve, { once: true });
-    } else {
-      resolve();
-    }
-  });
-}
-
-async function ensureAllVideosReadyAt(t) {
-  const waitPromises = tempVideos
-    .filter(v => v)
-    .map(v => seekAndWait(v, t));
-  await Promise.all(waitPromises);
-}
-
 // ---- Drawing Loop ----
-async function drawLoop() {
+function drawLoop() {
   let t = audio.currentTime || 0;
   const mainVid = tempVideos[activeTrackIndex];
 
   if (mainVid && mainVid.readyState >= 2 && mainVid.currentTime < (mainVid.duration || Infinity)) {
-    // Always keep video in sync with audio
-    if (Math.abs(mainVid.currentTime - t) > 0.033) {
+    // Only seek if video is out of sync by more than 0.2s for smooth updates
+    if (Math.abs(mainVid.currentTime - t) > 0.2) {
       mainVid.currentTime = Math.min(t, mainVid.duration ? mainVid.duration - 0.033 : t);
-      await new Promise(resolve => mainVid.addEventListener('seeked', resolve, { once: true }));
+      // DO NOT await seeked event – just set and move on
     }
     outputCtx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
     outputCtx.globalAlpha = 1;
@@ -282,7 +262,11 @@ recordFullEditBtn.addEventListener('click', async function () {
   stopDrawLoop();
 
   // Seek all loaded videos to 0 and ensure they're ready before starting
-  await ensureAllVideosReadyAt(0);
+  await Promise.all(tempVideos.filter(Boolean).map(v => {
+    if (!v) return;
+    v.currentTime = 0;
+    return new Promise(resolve => v.addEventListener('seeked', resolve, { once: true }));
+  }));
   updateSwitcherBtns();
 
   // --- TRIGGER MUSIC PLAY AND WAIT FOR IT TO START ---
