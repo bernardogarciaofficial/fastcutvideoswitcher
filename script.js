@@ -1,4 +1,4 @@
-// FASTCUT MUSIC VIDEO MAKER – instant cut switcher (no dissolve, no stills, just real-time video switching)
+// FASTCUT MUSIC VIDEO MAKER – instant multicam cuts (no dissolve, no stills, always live and synced video)
 
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
@@ -208,6 +208,7 @@ async function drawLoop() {
   const mainVid = tempVideos[activeTrackIndex];
 
   if (mainVid && mainVid.readyState >= 2 && mainVid.currentTime < (mainVid.duration || Infinity)) {
+    // Always keep video in sync with audio
     if (Math.abs(mainVid.currentTime - t) > 0.033) {
       mainVid.currentTime = Math.min(t, mainVid.duration ? mainVid.duration - 0.033 : t);
       await new Promise(resolve => mainVid.addEventListener('seeked', resolve, { once: true }));
@@ -215,7 +216,6 @@ async function drawLoop() {
     outputCtx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
     outputCtx.globalAlpha = 1;
     outputCtx.drawImage(mainVid, 0, 0, outputCanvas.width, outputCanvas.height);
-    outputCtx.globalAlpha = 1;
   } else {
     outputCtx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
     outputCtx.globalAlpha = 1;
