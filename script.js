@@ -1,4 +1,4 @@
-// FASTCUT MUSIC VIDEO MAKER – fade in at switch start, fade out at switch end
+// FASTCUT MUSIC VIDEO MAKER – instant cut switcher (no dissolve, no stills, just real-time video switching)
 
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
@@ -22,10 +22,6 @@ let animationFrameId = null;
 let mediaRecorder = null;
 let recordedChunks = [];
 let audioContext = null;
-
-let transitionState = null;
-const TRANSITION_DURATION = 0.6; // seconds (0.3 fade in, 0.3 fade out)
-
 
 // Persistent canvas for compositing
 const outputCanvas = document.createElement('canvas');
@@ -82,7 +78,6 @@ function createTrackCard(index) {
       alert("Camera/mic permission denied.");
       return;
     }
-    // For recording preview, use the thumbnail video element
     const preview = thumbVideos[index];
     preview.srcObject = recStream;
     preview.muted = true;
@@ -158,12 +153,7 @@ function createSwitcherBtns() {
     const btn = document.createElement('button');
     btn.textContent = String(i + 1);
     btn.onclick = function () {
-      if (i === activeTrackIndex) return;
-      transitionState = {
-        from: activeTrackIndex,
-        to: i,
-        startTime: performance.now()
-      };
+      activeTrackIndex = i;
       requestedTrackIndex = i;
       updateSwitcherBtns();
       ensureAudioPlays();
@@ -190,14 +180,12 @@ function updateSwitcherBtns() {
 
 // --- Helpers for black frame prevention and syncing ---
 function isVidReady(v) {
-  // Video is ready only if it has enough data and isn't at end
   return v && v.readyState >= 2 && v.currentTime < (v.duration || Infinity);
 }
 
 function seekAndWait(v, t) {
   return new Promise(resolve => {
     if (!v) return resolve();
-    // Only seek if not already almost at correct time
     if (Math.abs(v.currentTime - t) > 0.033) {
       v.currentTime = Math.min(t, v.duration ? v.duration - 0.033 : t);
       v.addEventListener('seeked', resolve, { once: true });
@@ -217,67 +205,22 @@ async function ensureAllVideosReadyAt(t) {
 // ---- Drawing Loop ----
 async function drawLoop() {
   let t = audio.currentTime || 0;
+  const mainVid = tempVideos[activeTrackIndex];
 
-  // Handle transition state: fade in new, then fade out old
-  if (transitionState) {
-    const elapsed = (performance.now() - transitionState.startTime) / 1000;
-    const fromVid = tempVideos[transitionState.from];
-    const toVid = tempVideos[transitionState.to];
-
-    // Ensure both videos are at correct time
-    await Promise.all([seekAndWait(fromVid, t), seekAndWait(toVid, t)]);
-
+  if (mainVid && mainVid.readyState >= 2 && mainVid.currentTime < (mainVid.duration || Infinity)) {
+    if (Math.abs(mainVid.currentTime - t) > 0.033) {
+      mainVid.currentTime = Math.min(t, mainVid.duration ? mainVid.duration - 0.033 : t);
+      await new Promise(resolve => mainVid.addEventListener('seeked', resolve, { once: true }));
+    }
     outputCtx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
-
-    if (elapsed < TRANSITION_DURATION / 2) {
-      // Fade in the new video only
-      const alpha = elapsed / (TRANSITION_DURATION / 2);
-      if (isVidReady(fromVid)) {
-        outputCtx.globalAlpha = 1;
-        outputCtx.drawImage(fromVid, 0, 0, outputCanvas.width, outputCanvas.height);
-      }
-      if (isVidReady(toVid)) {
-        outputCtx.globalAlpha = alpha;
-        outputCtx.drawImage(toVid, 0, 0, outputCanvas.width, outputCanvas.height);
-      }
-      outputCtx.globalAlpha = 1;
-    } else if (elapsed < TRANSITION_DURATION) {
-      // New video at full opacity, old video fades out on top
-      const alpha = 1 - (elapsed - TRANSITION_DURATION / 2) / (TRANSITION_DURATION / 2);
-      if (isVidReady(toVid)) {
-        outputCtx.globalAlpha = 1;
-        outputCtx.drawImage(toVid, 0, 0, outputCanvas.width, outputCanvas.height);
-      }
-      if (isVidReady(fromVid)) {
-        outputCtx.globalAlpha = alpha;
-        outputCtx.drawImage(fromVid, 0, 0, outputCanvas.width, outputCanvas.height);
-      }
-      outputCtx.globalAlpha = 1;
-    } else {
-      // Transition finished
-      activeTrackIndex = transitionState.to;
-      transitionState = null;
-    }
-  }
-
-  // Normal drawing when not switching
-  if (!transitionState) {
-    const mainVid = tempVideos[activeTrackIndex];
-    if (mainVid && mainVid.readyState >= 2 && mainVid.currentTime < (mainVid.duration || Infinity)) {
-      if (Math.abs(mainVid.currentTime - t) > 0.033) {
-        mainVid.currentTime = Math.min(t, mainVid.duration ? mainVid.duration - 0.033 : t);
-        await new Promise(resolve => mainVid.addEventListener('seeked', resolve, { once: true }));
-      }
-      outputCtx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
-      outputCtx.globalAlpha = 1;
-      outputCtx.drawImage(mainVid, 0, 0, outputCanvas.width, outputCanvas.height);
-      outputCtx.globalAlpha = 1;
-    } else {
-      outputCtx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
-      outputCtx.globalAlpha = 1;
-      outputCtx.fillStyle = "#000";
-      outputCtx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
-    }
+    outputCtx.globalAlpha = 1;
+    outputCtx.drawImage(mainVid, 0, 0, outputCanvas.width, outputCanvas.height);
+    outputCtx.globalAlpha = 1;
+  } else {
+    outputCtx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
+    outputCtx.globalAlpha = 1;
+    outputCtx.fillStyle = "#000";
+    outputCtx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
   }
 
   animationFrameId = requestAnimationFrame(drawLoop);
@@ -340,7 +283,6 @@ recordFullEditBtn.addEventListener('click', async function () {
 
   // Seek all loaded videos to 0 and ensure they're ready before starting
   await ensureAllVideosReadyAt(0);
-  transitionState = null;
   updateSwitcherBtns();
 
   // --- TRIGGER MUSIC PLAY AND WAIT FOR IT TO START ---
@@ -403,12 +345,7 @@ recordFullEditBtn.addEventListener('click', async function () {
       const btn = document.createElement('button');
       btn.textContent = String(i + 1);
       btn.onclick = function () {
-        if (i === activeTrackIndex) return;
-        transitionState = {
-          from: activeTrackIndex,
-          to: i,
-          startTime: performance.now()
-        };
+        activeTrackIndex = i;
         requestedTrackIndex = i;
         updateSwitcherBtns();
       };
