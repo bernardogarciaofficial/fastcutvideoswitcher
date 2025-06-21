@@ -4,26 +4,10 @@
   <meta charset="UTF-8">
   <title>Fastcut Music Video Maker</title>
   <link rel="stylesheet" href="styles.css">
-  <style>
-    #warnSong { color:#b00; font-weight:bold; display:none; }
-    .thumb-row { display: flex; flex-wrap: wrap; justify-content: center; margin-bottom: 12px; }
-    .thumb-col { display: flex; flex-direction: column; align-items: center; margin: 0 6px; }
-    .thumb { background: #000; border: 2px solid #aaa; border-radius: 4px; margin: 2px; width: 130px; height: 72px; object-fit: cover; }
-    .thumb.active { border: 2px solid #ff3333; box-shadow: 0 0 10px #ff3333; }
-    .thumb-controls {
-      margin-top: 4px;
-      display: flex;
-      gap: 5px;
-      flex-direction: row;
-      justify-content: center;
-    }
-  </style>
 </head>
 <body>
-  <div class="spotlight-bg"></div>
   <header>
     <div class="logo-area">
-      <svg width="38" height="38" viewBox="0 0 38 38"><circle cx="19" cy="19" r="18" fill="#ffd700" stroke="#17c3b2" stroke-width="3"/></svg>
       <span class="brand-name">Fastcut Music Video Maker</span>
     </div>
     <div class="gala-title">
@@ -39,13 +23,7 @@
       <span id="audioStatus"></span>
       <audio id="audio" controls style="width:100%;margin:8px 0;"></audio>
     </div>
-
-    <!-- Thumbnails row for six video tracks, each with its own control buttons below -->
-    <div id="thumbRow" class="thumb-row">
-      <!-- JS will populate .thumb-col elements -->
-    </div>
-
-    <!-- Six channel switcher: always visible -->
+    <div id="thumbRow" class="thumb-row"></div>
     <div id="switcherBtnsContainer" class="gala-switcher-btns">
       <button class="switcher-btn" data-idx="0">Camera 1</button>
       <button class="switcher-btn" data-idx="1">Camera 2</button>
@@ -54,9 +32,7 @@
       <button class="switcher-btn" data-idx="4">Camera 5</button>
       <button class="switcher-btn" data-idx="5">Camera 6</button>
     </div>
-
     <div id="switcherTracks"></div>
-
     <div class="hollywood-output">
       <div class="video-output-card">
         <div id="recIndicator" class="rec-indicator" style="display:none;">● REC</div>
@@ -71,12 +47,11 @@
     </div>
     <div id="hiddenVideos" style="display:none;"></div>
   </div>
-  <div class="gala-footer-bar"></div>
   <footer>
     <div class="footer-content">
       <span class="ticket-badge">🎟️ <a href="mailto:bernardogarciaofficial@gmail.com">Contact: bernardogarciaofficial@gmail.com</a></span>
       <div class="footer-links">
-        <a href="https://github.com/bernardogarciaofficial" style="color:#ffd700;">GitHub</a>
+        <a href="https://github.com/bernardogarciaofficial">GitHub</a>
       </div>
       <div class="created-by">Fastcut Music Video Maker © 2025 Bernardo Garcia</div>
     </div>
