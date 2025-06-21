@@ -3,68 +3,84 @@
 <head>
   <meta charset="UTF-8">
   <title>Fastcut Music Video Maker</title>
+  <link rel="stylesheet" href="styles.css">
   <style>
-    body { font-family: sans-serif; background: #f7f7f7; color: #232323; }
-    h1 { margin-bottom: 2px; }
-    .track-card { display:inline-block; vertical-align:top; margin:8px; padding:7px; border:1px solid #aaa; border-radius:6px; background:#fafafa; }
-    #tracksContainer { margin:16px 0; }
-    #switcherBtnsContainer button.active-switcher-btn { background:#ff5555; color:#fff; }
-    .track-title { font-weight:bold; margin-bottom:3px; }
-    #mainOutput { display:block; width:640px; height:360px; margin:12px auto; background:#000; }
-    #switcherBtnsContainer { margin:12px 0; }
-    #exportStatus { margin-left:10px; color:#228B22; }
     #warnSong { color:#b00; font-weight:bold; display:none; }
     .thumb-row { display: flex; flex-wrap: wrap; justify-content: center; margin-bottom: 12px; }
+    .thumb-col { display: flex; flex-direction: column; align-items: center; margin: 0 6px; }
     .thumb { background: #000; border: 2px solid #aaa; border-radius: 4px; margin: 2px; width: 130px; height: 72px; object-fit: cover; }
     .thumb.active { border: 2px solid #ff3333; box-shadow: 0 0 10px #ff3333; }
-    video[muted]::-webkit-media-controls-volume-slider { display:none; }
-    video[muted]::-webkit-media-controls-mute-button { display:none; }
-    @media (max-width: 900px) {
-      #mainOutput { width:100vw; height:auto; max-width:95vw; }
-      .track-card { width:150px; }
+    .thumb-controls {
+      margin-top: 4px;
+      display: flex;
+      gap: 5px;
+      flex-direction: row;
+      justify-content: center;
     }
   </style>
 </head>
 <body>
-  <h1>Fastcut Music Video Maker</h1>
+  <div class="spotlight-bg"></div>
+  <header>
+    <div class="logo-area">
+      <svg width="38" height="38" viewBox="0 0 38 38"><circle cx="19" cy="19" r="18" fill="#ffd700" stroke="#17c3b2" stroke-width="3"/></svg>
+      <span class="brand-name">Fastcut Music Video Maker</span>
+    </div>
+    <div class="gala-title">
+      <span class="movie">Hollywood-Style Multi-Cam Editor</span>
+      <br><span class="editor">Sync your videos to music in seconds!</span>
+    </div>
+    <div class="lights-camera-action">🎬 Lights • 🎥 Camera • 🎶 Action!</div>
+  </header>
+  <div class="hollywood-card">
+    <div class="upload-section">
+      <label>Song: <input type="file" id="songInput" accept="audio/*"></label>
+      <span id="warnSong">Please choose a song first!</span>
+      <span id="audioStatus"></span>
+      <audio id="audio" controls style="width:100%;margin:8px 0;"></audio>
+    </div>
 
-  <div>
-    <label>Song: <input type="file" id="songInput" accept="audio/*"></label>
-    <span id="warnSong">Please choose a song first!</span>
+    <!-- Thumbnails row for six video tracks, each with its own control buttons below -->
+    <div id="thumbRow" class="thumb-row">
+      <!-- JS will populate .thumb-col elements -->
+    </div>
+
+    <!-- Six channel switcher: always visible -->
+    <div id="switcherBtnsContainer" class="gala-switcher-btns">
+      <button class="switcher-btn" data-idx="0">Camera 1</button>
+      <button class="switcher-btn" data-idx="1">Camera 2</button>
+      <button class="switcher-btn" data-idx="2">Camera 3</button>
+      <button class="switcher-btn" data-idx="3">Camera 4</button>
+      <button class="switcher-btn" data-idx="4">Camera 5</button>
+      <button class="switcher-btn" data-idx="5">Camera 6</button>
+    </div>
+
+    <div id="switcherTracks"></div>
+
+    <div class="hollywood-output">
+      <div class="video-output-card">
+        <div id="recIndicator" class="rec-indicator" style="display:none;">● REC</div>
+        <video id="masterOutputVideo" controls autoplay muted playsinline></video>
+        <div class="controls-section">
+          <button id="recordFullEditBtn" class="action-btn">Record Full Edit</button>
+          <button id="stopPreviewBtn" class="action-btn">Stop</button>
+          <button id="exportMusicVideoBtn" class="export-btn" disabled>Export</button>
+          <span id="exportStatus"></span>
+        </div>
+      </div>
+    </div>
+    <div id="hiddenVideos" style="display:none;"></div>
   </div>
-  <audio id="audio" controls style="width:100%;margin:8px 0;"></audio>
-
-  <!-- Thumbnails row for six video tracks -->
-  <div id="thumbRow" class="thumb-row">
-    <video class="thumb" id="thumb0" muted playsinline></video>
-    <video class="thumb" id="thumb1" muted playsinline></video>
-    <video class="thumb" id="thumb2" muted playsinline></video>
-    <video class="thumb" id="thumb3" muted playsinline></video>
-    <video class="thumb" id="thumb4" muted playsinline></video>
-    <video class="thumb" id="thumb5" muted playsinline></video>
-  </div>
-
-  <!-- Track card controls (uploads, rec, etc) -->
-  <div id="tracksContainer"></div>
-
-  <!-- Track switcher buttons -->
-  <div id="switcherBtnsContainer"></div>
-
-  <!-- Main output video preview -->
-  <video id="mainOutput" controls autoplay muted playsinline></video>
-
-  <div style="margin:10px 0;">
-    <button id="recordFullEditBtn">Record Full Edit</button>
-    <button id="stopPreviewBtn">Stop</button>
-    <button id="exportMusicVideoBtn" disabled>Export</button>
-    <span id="exportStatus"></span>
-  </div>
-
-  <div style="margin-top:24px;">
-    <small>Fastcut Music Video Maker © 2025 Bernardo Garcia<br>
-    Contact: bernardogarciaofficial@gmail.com</small>
-  </div>
-
+  <div class="gala-footer-bar"></div>
+  <footer>
+    <div class="footer-content">
+      <span class="ticket-badge">🎟️ <a href="mailto:bernardogarciaofficial@gmail.com">Contact: bernardogarciaofficial@gmail.com</a></span>
+      <div class="footer-links">
+        <a href="https://github.com/bernardogarciaofficial" style="color:#ffd700;">GitHub</a>
+      </div>
+      <div class="created-by">Fastcut Music Video Maker © 2025 Bernardo Garcia</div>
+    </div>
+  </footer>
   <script src="script.js"></script>
 </body>
 </html>
