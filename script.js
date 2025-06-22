@@ -5,6 +5,7 @@ const audio = document.getElementById('audio');
 const masterOutputVideo = document.getElementById('masterOutputVideo');
 const recIndicator = document.getElementById('recIndicator');
 const recordFullEditBtn = document.getElementById('recordFullEditBtn');
+const reRecordFullEditBtn = document.getElementById('reRecordFullEditBtn');
 const stopPreviewBtn = document.getElementById('stopPreviewBtn');
 const exportBtn = document.getElementById('exportMusicVideoBtn');
 const exportStatus = document.getElementById('exportStatus');
@@ -412,6 +413,26 @@ recordFullEditBtn.addEventListener('click', async function () {
       exportStatus.textContent = 'Recording stopped.';
     }
   };
+});
+
+// ===== RE-RECORD FULL EDIT BUTTON LOGIC =====
+reRecordFullEditBtn.addEventListener('click', async function () {
+  // If currently recording, stop it first
+  if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop();
+    if (audio) audio.pause();
+    if (recIndicator) recIndicator.style.display = 'none';
+    exportStatus.textContent = 'Resetting for re-record...';
+    // Wait a short moment for cleanup
+    await new Promise(r => setTimeout(r, 400));
+  }
+  // Clear previous main output preview
+  masterOutputVideo.src = '';
+  masterOutputVideo.srcObject = null;
+  masterOutputVideo.load();
+  exportStatus.textContent = 'Re-recording...';
+  // Immediately start a new main output recording
+  recordFullEditBtn.click();
 });
 
 // ===== EXPORT =====
