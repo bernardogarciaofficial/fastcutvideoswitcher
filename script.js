@@ -23,6 +23,11 @@ let animationFrameId = null;
 let audioContext = null;
 let livePreviewStream = null;
 
+// --- Per-track recording state ---
+let mediaRecorders = Array(NUM_TRACKS).fill(null);
+let recStreams = Array(NUM_TRACKS).fill(null);
+let recChunksArr = Array(NUM_TRACKS).fill(null);
+
 // ===== SONG UPLOAD =====
 songInput.addEventListener('change', function (e) {
   const file = e.target.files[0];
@@ -47,30 +52,44 @@ function createThumbRow() {
     video.id = 'thumb' + i;
     video.muted = true;
     video.playsInline = true;
+
     // Controls under thumbnail
     const controls = document.createElement('div');
     controls.className = 'thumb-controls';
+
     // Record button
     const recordBtn = document.createElement('button');
     recordBtn.className = 'record-btn';
     recordBtn.textContent = 'Record';
     recordBtn.dataset.idx = i;
+
+    // Stop button
+    const stopBtn = document.createElement('button');
+    stopBtn.className = 'stop-btn';
+    stopBtn.textContent = 'Stop';
+    stopBtn.dataset.idx = i;
+    stopBtn.disabled = true;
+
     // Upload button
     const uploadInput = document.createElement('input');
     uploadInput.type = 'file';
     uploadInput.accept = 'video/*';
     uploadInput.className = 'upload-btn';
     uploadInput.dataset.idx = i;
+
     // Download button
     const downloadBtn = document.createElement('button');
     downloadBtn.className = 'download-btn';
     downloadBtn.textContent = 'Download';
     downloadBtn.dataset.idx = i;
     downloadBtn.disabled = true;
+
     // Append controls
     controls.appendChild(recordBtn);
+    controls.appendChild(stopBtn);
     controls.appendChild(uploadInput);
     controls.appendChild(downloadBtn);
+
     // Compose
     col.appendChild(video);
     col.appendChild(controls);
@@ -81,90 +100,97 @@ createThumbRow();
 
 // ====== THUMB BUTTONS LOGIC ======
 for(let i=0; i<NUM_TRACKS; i++) {
+  const recordBtn = document.querySelector(`.record-btn[data-idx="${i}"]`);
+  const stopBtn = document.querySelector(`.stop-btn[data-idx="${i}"]`);
+  const uploadInput = document.querySelector(`.upload-btn[data-idx="${i}"]`);
+  const downloadBtn = document.querySelector(`.download-btn[data-idx="${i}"]`);
+  const thumbVideo = document.getElementById('thumb' + i);
+
   // Record button
-  document.querySelector(`.record-btn[data-idx="${i}"]`).onclick = async (e) => {
-    const idx = +e.target.dataset.idx;
-    // Music playback (slave to video)
+  recordBtn.onclick = async () => {
     audio.currentTime = 0;
     audio.play();
-    let recStream = null;
-    let recChunks = [];
+
+    recChunksArr[i] = [];
     try {
-      recStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      recStreams[i] = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
     } catch (err) {
       alert('Cannot access camera/microphone.');
       return;
     }
-    const recorder = new MediaRecorder(recStream, { mimeType: 'video/webm; codecs=vp9,opus' });
-    const preview = document.getElementById('thumb' + idx);
-    recorder.ondataavailable = function(e) {
-      if (e.data.size > 0) recChunks.push(e.data);
+    thumbVideo.srcObject = recStreams[i];
+    thumbVideo.src = '';
+    thumbVideo.muted = true;
+    thumbVideo.autoplay = true;
+    thumbVideo.play();
+
+    mediaRecorders[i] = new MediaRecorder(recStreams[i], { mimeType: 'video/webm; codecs=vp9,opus' });
+    mediaRecorders[i].ondataavailable = e => {
+      if (e.data.size > 0) recChunksArr[i].push(e.data);
     };
-    recorder.onstop = function() {
-      const blob = new Blob(recChunks, { type: 'video/webm' });
+    mediaRecorders[i].onstop = () => {
+      const blob = new Blob(recChunksArr[i], { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
-      preview.srcObject = null;
-      preview.src = url;
-      preview.autoplay = false;
-      preview.muted = true;
-      preview.load();
-      preview.play();
-      videoTracks[idx] = { file: null, url, blob, name: `Camera${idx+1}-take.webm` };
-      prepareTempVideo(idx, url, `Camera${idx+1}-take.webm`);
-      document.querySelector(`.download-btn[data-idx="${idx}"]`).disabled = false;
-      if (recStream) recStream.getTracks().forEach(track => track.stop());
+      thumbVideo.srcObject = null;
+      thumbVideo.src = url;
+      thumbVideo.load();
+      thumbVideo.play();
+      videoTracks[i] = { file: null, url, blob, name: `Camera${i+1}-take.webm` };
+      prepareTempVideo(i, url, `Camera${i+1}-take.webm`);
+      downloadBtn.disabled = false;
+      if (recStreams[i]) recStreams[i].getTracks().forEach(track => track.stop());
       audio.pause();
       audio.currentTime = 0;
+      recordBtn.disabled = false;
+      stopBtn.disabled = true;
     };
-    // Show webcam
-    preview.srcObject = recStream;
-    preview.muted = true;
-    preview.autoplay = true;
-    preview.play().catch(()=>{});
-    recorder.start();
-    // Change btn state
-    e.target.disabled = true;
-    e.target.textContent = 'Recording...';
-    // Stop after song or manual
-    audio.onended = function() {
-      if (recorder.state === 'recording') recorder.stop();
+    mediaRecorders[i].start();
+    recordBtn.disabled = true;
+    stopBtn.disabled = false;
+
+    // Stop automatically when music ends
+    audio.onended = () => {
+      if (mediaRecorders[i] && mediaRecorders[i].state === 'recording') mediaRecorders[i].stop();
       audio.onended = null;
     };
-    // Click to stop
-    preview.onclick = () => {
-      if (recorder.state === 'recording') recorder.stop();
+  };
+
+  // Stop button
+  stopBtn.onclick = () => {
+    if (mediaRecorders[i] && mediaRecorders[i].state === 'recording') {
+      mediaRecorders[i].stop();
       audio.pause();
       audio.currentTime = 0;
-    };
-    recorder.onstop = () => {
-      e.target.disabled = false;
-      e.target.textContent = 'Record';
-      preview.onclick = null;
-    };
+    }
+    recordBtn.disabled = false;
+    stopBtn.disabled = true;
   };
+
   // Upload button
-  document.querySelector(`.upload-btn[data-idx="${i}"]`).onchange = (e) => {
-    const idx = +e.target.dataset.idx;
+  uploadInput.onchange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const url = URL.createObjectURL(file);
-    document.getElementById('thumb' + idx).src = url;
-    videoTracks[idx] = { file, url, name: file.name };
-    prepareTempVideo(idx, url, file.name);
-    document.querySelector(`.download-btn[data-idx="${idx}"]`).disabled = false;
+    thumbVideo.srcObject = null;
+    thumbVideo.src = url;
+    thumbVideo.load();
+    videoTracks[i] = { file, url, name: file.name };
+    prepareTempVideo(i, url, file.name);
+    downloadBtn.disabled = false;
   };
+
   // Download button
-  document.querySelector(`.download-btn[data-idx="${i}"]`).onclick = (e) => {
-    const idx = +e.target.dataset.idx;
-    const track = videoTracks[idx];
+  downloadBtn.onclick = () => {
+    const track = videoTracks[i];
     if (!track) return;
     const a = document.createElement('a');
     a.href = track.url;
-    a.download = track.name || `track${idx+1}.webm`;
+    a.download = track.name || `track${i+1}.webm`;
     a.click();
   };
+
   // Thumbnail click: switch active track and highlight
-  document.getElementById('thumb' + i).onclick = () => {
+  thumbVideo.onclick = () => {
     setActiveTrack(i);
   };
 }
@@ -221,6 +247,7 @@ function getCurrentDrawVideo() {
   }
   return null;
 }
+
 recordFullEditBtn.addEventListener('click', async function () {
   if (!audio.src) {
     alert('Please upload a song first.');
