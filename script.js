@@ -11,7 +11,6 @@ const exportStatus = document.getElementById('exportStatus');
 const hiddenVideos = document.getElementById('hiddenVideos');
 const thumbRow = document.getElementById('thumbRow');
 const switcherBtnsContainer = document.getElementById('switcherBtnsContainer');
-const switcherTracks = document.getElementById('switcherTracks');
 
 const videoTracks = Array(NUM_TRACKS).fill(null);
 const tempVideos = Array(NUM_TRACKS).fill(null); // For playback/drawing
@@ -85,9 +84,9 @@ for(let i=0; i<NUM_TRACKS; i++) {
   // Record button
   document.querySelector(`.record-btn[data-idx="${i}"]`).onclick = async (e) => {
     const idx = +e.target.dataset.idx;
-    // Music playback
+    // Music playback (slave to video)
     audio.currentTime = 0;
-    audio.play().catch(()=>{});
+    audio.play();
     let recStream = null;
     let recChunks = [];
     try {
@@ -104,16 +103,18 @@ for(let i=0; i<NUM_TRACKS; i++) {
     recorder.onstop = function() {
       const blob = new Blob(recChunks, { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
-      videoTracks[idx] = { file: null, url, name: `Camera${idx+1}-take.webm`, recordedBlob: blob };
-      prepareTempVideo(idx, url, `Camera${idx+1}-take.webm`);
       preview.srcObject = null;
       preview.src = url;
       preview.autoplay = false;
       preview.muted = true;
       preview.load();
+      preview.play();
+      videoTracks[idx] = { file: null, url, blob, name: `Camera${idx+1}-take.webm` };
+      prepareTempVideo(idx, url, `Camera${idx+1}-take.webm`);
       document.querySelector(`.download-btn[data-idx="${idx}"]`).disabled = false;
       if (recStream) recStream.getTracks().forEach(track => track.stop());
       audio.pause();
+      audio.currentTime = 0;
     };
     // Show webcam
     preview.srcObject = recStream;
@@ -132,6 +133,8 @@ for(let i=0; i<NUM_TRACKS; i++) {
     // Click to stop
     preview.onclick = () => {
       if (recorder.state === 'recording') recorder.stop();
+      audio.pause();
+      audio.currentTime = 0;
     };
     recorder.onstop = () => {
       e.target.disabled = false;
