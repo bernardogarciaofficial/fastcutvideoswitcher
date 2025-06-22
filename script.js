@@ -417,10 +417,15 @@ recordFullEditBtn.addEventListener('click', async function () {
 
 // ===== RE-RECORD FULL EDIT BUTTON LOGIC =====
 reRecordFullEditBtn.addEventListener('click', async function () {
+  // Stop and reset the audio fully (audio is a "slave" to this re-record)
+  if (audio) {
+    audio.pause();
+    audio.currentTime = 0;
+    audio.load();
+  }
   // If currently recording, stop it first
   if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
     mediaRecorder.stop();
-    if (audio) audio.pause();
     if (recIndicator) recIndicator.style.display = 'none';
     exportStatus.textContent = 'Resetting for re-record...';
     // Wait a short moment for cleanup
@@ -431,7 +436,8 @@ reRecordFullEditBtn.addEventListener('click', async function () {
   masterOutputVideo.srcObject = null;
   masterOutputVideo.load();
   exportStatus.textContent = 'Re-recording...';
-  // Immediately start a new main output recording
+  // Immediately start a new main output recording,
+  // which will also trigger audio to play from the beginning in sync
   recordFullEditBtn.click();
 });
 
