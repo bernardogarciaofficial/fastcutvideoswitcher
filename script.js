@@ -417,27 +417,59 @@ recordFullEditBtn.addEventListener('click', async function () {
 
 // ===== RE-RECORD FULL EDIT BUTTON LOGIC =====
 reRecordFullEditBtn.addEventListener('click', async function () {
-  // Stop and reset the audio fully (audio is a "slave" to this re-record)
-  if (audio) {
-    audio.pause();
-    audio.currentTime = 0;
-    audio.load();
+  // 1. Stop and reset the audio
+  audio.pause();
+  audio.currentTime = 0;
+  audio.load();
+
+  // 2. Stop animation and preview
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
   }
-  // If currently recording, stop it first
+
+  // 3. Stop any ongoing main output recording
   if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.onstop = null; // Prevent duplicate logic
     mediaRecorder.stop();
-    if (recIndicator) recIndicator.style.display = 'none';
-    exportStatus.textContent = 'Resetting for re-record...';
-    // Wait a short moment for cleanup
-    await new Promise(r => setTimeout(r, 400));
   }
-  // Clear previous main output preview
+
+  // 4. Reset all video playheads (for tempVideos)
+  for (let i = 0; i < tempVideos.length; i++) {
+    if (tempVideos[i]) {
+      try {
+        tempVideos[i].pause();
+        tempVideos[i].currentTime = 0;
+        tempVideos[i].load();
+      } catch (e) {}
+    }
+  }
+
+  // 5. Reset output video
+  masterOutputVideo.pause();
   masterOutputVideo.src = '';
   masterOutputVideo.srcObject = null;
   masterOutputVideo.load();
-  exportStatus.textContent = 'Re-recording...';
-  // Immediately start a new main output recording,
-  // which will also trigger audio to play from the beginning in sync
+
+  // 6. Hide REC indicator, reset export and status
+  recIndicator.style.display = 'none';
+  exportBtn.disabled = true;
+  exportStatus.textContent = 'Ready for new full edit recording.';
+
+  // 7. Reset state flags
+  isRecording = false;
+  isPlaying = false;
+  recordedChunks = [];
+  livePreviewStream = null;
+  if (audioContext) {
+    audioContext.close();
+    audioContext = null;
+  }
+
+  // 8. Wait a moment for everything to settle (esp. after stopping MediaRecorder)
+  await new Promise(res => setTimeout(res, 300));
+
+  // 9. Start a new full edit recording as if "Record Full Edit" was pressed
   recordFullEditBtn.click();
 });
 
