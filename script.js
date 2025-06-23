@@ -417,22 +417,26 @@ recordFullEditBtn.addEventListener('click', async function () {
 
 // ===== RE-RECORD FULL EDIT BUTTON LOGIC =====
 reRecordFullEditBtn.addEventListener('click', async function () {
-  // 1. Stop and reset the audio
-  audio.pause();
-  audio.currentTime = 0;
-  audio.load();
-
-  // 2. Stop animation and preview
+  // 1. Cancel ongoing animation frame for preview
   if (animationFrameId) {
     cancelAnimationFrame(animationFrameId);
     animationFrameId = null;
   }
 
-  // 3. Stop any ongoing main output recording
+  // 2. Stop and reset audio
+  audio.pause();
+  audio.currentTime = 0;
+  audio.load();
+
+  // 3. Stop any ongoing main output recording and wait for cleanup
+  let stopPromise = Promise.resolve();
   if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
-    mediaRecorder.onstop = null; // Prevent duplicate logic
-    mediaRecorder.stop();
+    stopPromise = new Promise(resolve => {
+      mediaRecorder.onstop = () => resolve();
+      mediaRecorder.stop();
+    });
   }
+  await stopPromise;
 
   // 4. Reset all video playheads (for tempVideos)
   for (let i = 0; i < tempVideos.length; i++) {
@@ -456,7 +460,7 @@ reRecordFullEditBtn.addEventListener('click', async function () {
   exportBtn.disabled = true;
   exportStatus.textContent = 'Ready for new full edit recording.';
 
-  // 7. Reset state flags
+  // 7. Reset state flags and release resources
   isRecording = false;
   isPlaying = false;
   recordedChunks = [];
@@ -466,10 +470,19 @@ reRecordFullEditBtn.addEventListener('click', async function () {
     audioContext = null;
   }
 
-  // 8. Wait a moment for everything to settle (esp. after stopping MediaRecorder)
-  await new Promise(res => setTimeout(res, 300));
+  // 8. Reset UI highlights (camera switchers and thumbnails)
+  switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((el, i) => {
+    el.classList.toggle('active', i === 0);
+  });
+  document.querySelectorAll('.thumb').forEach((el, i) => {
+    el.classList.toggle('active', i === 0);
+  });
+  activeTrackIndex = 0;
 
-  // 9. Start a new full edit recording as if "Record Full Edit" was pressed
+  // 9. Wait a moment for everything to settle
+  await new Promise(res => setTimeout(res, 150));
+
+  // 10. Start a new full edit recording session
   recordFullEditBtn.click();
 });
 
