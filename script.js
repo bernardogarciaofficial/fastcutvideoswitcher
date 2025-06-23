@@ -415,9 +415,9 @@ recordFullEditBtn.addEventListener('click', async function () {
   };
 });
 
-// ===== RE-RECORD FULL EDIT BUTTON LOGIC =====
+// ===== RE-RECORD FULL EDIT BUTTON LOGIC (robust, step-by-step) =====
 reRecordFullEditBtn.addEventListener('click', async function () {
-  // 1. Cancel ongoing animation frame for preview
+  // 1. Cancel animation frame
   if (animationFrameId) {
     cancelAnimationFrame(animationFrameId);
     animationFrameId = null;
@@ -438,7 +438,7 @@ reRecordFullEditBtn.addEventListener('click', async function () {
   }
   await stopPromise;
 
-  // 4. Reset all video playheads (for tempVideos)
+  // 4. Reset all temp video playheads
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
       try {
@@ -460,7 +460,7 @@ reRecordFullEditBtn.addEventListener('click', async function () {
   exportBtn.disabled = true;
   exportStatus.textContent = 'Ready for new full edit recording.';
 
-  // 7. Reset state flags and release resources
+  // 7. Reset state variables and audio context
   isRecording = false;
   isPlaying = false;
   recordedChunks = [];
@@ -470,7 +470,7 @@ reRecordFullEditBtn.addEventListener('click', async function () {
     audioContext = null;
   }
 
-  // 8. Reset UI highlights (camera switchers and thumbnails)
+  // 8. Reset UI highlights to Camera 1
   switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((el, i) => {
     el.classList.toggle('active', i === 0);
   });
@@ -479,8 +479,8 @@ reRecordFullEditBtn.addEventListener('click', async function () {
   });
   activeTrackIndex = 0;
 
-  // 9. Wait a moment for everything to settle
-  await new Promise(res => setTimeout(res, 150));
+  // 9. Wait a short moment for everything to settle
+  await new Promise(res => setTimeout(res, 100));
 
   // 10. Start a new full edit recording session
   recordFullEditBtn.click();
