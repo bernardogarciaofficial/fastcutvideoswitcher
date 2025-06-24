@@ -1,4 +1,4 @@
-// Fastcut Music Video Maker - Audio/Video Sync Optimized, Re-Record Button Removed
+// Fastcut Music Video Maker - Audio/Video Sync Optimized, Frame-perfect Sync, Switcher Bug Fix
 
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
@@ -15,7 +15,7 @@ const thumbRow = document.getElementById('thumbRow');
 const switcherBtnsContainer = document.getElementById('switcherBtnsContainer');
 
 const videoTracks = Array(NUM_TRACKS).fill(null);
-const tempVideos = Array(NUM_TRACKS).fill(null); // For playback/drawing
+const tempVideos = Array(NUM_TRACKS).fill(null);
 let activeTrackIndex = 0;
 let isRecording = false;
 let isPlaying = false;
@@ -217,8 +217,22 @@ switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((btn, idx) => {
     setActiveTrack(idx);
   };
 });
-function setActiveTrack(idx) {
+async function setActiveTrack(idx) {
   activeTrackIndex = idx;
+  const vid = tempVideos[activeTrackIndex];
+  if (vid && audio) {
+    // Seek the video to match current audio time, wait for seek completion
+    vid.currentTime = audio.currentTime;
+    await new Promise(resolve => {
+      const handler = () => {
+        vid.removeEventListener('seeked', handler);
+        resolve();
+      };
+      vid.addEventListener('seeked', handler);
+      // If already at the right place, resolve immediately
+      if (Math.abs(vid.currentTime - audio.currentTime) < 0.05) resolve();
+    });
+  }
   // Highlight switcher btns
   switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((el, i) => {
     el.classList.toggle('active', i === idx);
@@ -242,6 +256,7 @@ function previewInOutput(idx) {
 setActiveTrack(0);
 
 // ====== LIVE RECORDING LOGIC (Main Output, sync-optimized) ======
+
 function getCurrentDrawVideo() {
   if (tempVideos[activeTrackIndex]) return tempVideos[activeTrackIndex];
   for (let i = 0; i < tempVideos.length; i++) {
@@ -250,34 +265,32 @@ function getCurrentDrawVideo() {
   return null;
 }
 
-// ====== INSERTED: Frame-perfect Sync Preview ======
+// ====== Frame-perfect Sync Preview ======
 /**
  * Call this function to preview audio and the currently selected video in perfect sync.
- * Example: add a button that calls startSyncedPlayback() for preview.
+ * For example: add a button that calls startSyncedPlayback() for preview.
  */
 async function startSyncedPlayback() {
-  // Use the master audio element and the currently selected temp video
   const video = tempVideos[activeTrackIndex];
   if (!audio || !video) {
     alert('Please upload a song and select a video!');
     return;
   }
-
-  // 1. Reset both
+  // Reset both
   audio.pause(); audio.currentTime = 0; audio.load();
   video.pause(); video.currentTime = 0; video.load();
 
-  // 2. Start both at the same time
   await Promise.all([audio.play(), video.play()]);
 
-  // 3. (Optional) For frame-perfect sync, force video to track audio:
   function syncFrame() {
-    video.currentTime = audio.currentTime;
+    // On preview, force video to follow audio, but don't update if seeking
+    if (video.readyState >= 2 && Math.abs(video.currentTime - audio.currentTime) > 0.04) {
+      video.currentTime = audio.currentTime;
+    }
     animationFrameId = requestAnimationFrame(syncFrame);
   }
   syncFrame();
 
-  // 4. Stop everything when audio ends
   audio.onended = () => {
     video.pause();
     cancelAnimationFrame(animationFrameId);
@@ -341,17 +354,21 @@ recordFullEditBtn.addEventListener('click', async function () {
     return;
   }
 
-  // Use audio.currentTime to sync drawFrame
+  // Draw loop: only draw if temp video is ready and in sync, else skip (prevents black flashes)
   function drawFrame() {
     if (!isRecording) return;
     const vid = tempVideos[activeTrackIndex];
-    if (vid && vid.readyState >= 2 && !vid.ended) {
-      // For even tighter sync, force video time
-      vid.currentTime = audio.currentTime;
+    if (
+      vid &&
+      vid.readyState >= 2 &&
+      !vid.ended &&
+      Math.abs(vid.currentTime - audio.currentTime) < 0.12
+    ) {
+      // For even tighter sync, force video time if drift is detected
+      if (Math.abs(vid.currentTime - audio.currentTime) > 0.04) {
+        vid.currentTime = audio.currentTime;
+      }
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
-    } else {
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
     animationFrameId = requestAnimationFrame(drawFrame);
   }
