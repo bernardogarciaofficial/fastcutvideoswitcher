@@ -1,3 +1,5 @@
+// Fastcut Music Video Maker - Robust Re-Record Full Edit Handler
+
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
 const audioStatus = document.getElementById('audioStatus');
@@ -415,52 +417,62 @@ recordFullEditBtn.addEventListener('click', async function () {
   };
 });
 
-// ===== RE-RECORD FULL EDIT BUTTON LOGIC (robust, step-by-step) =====
+// ===== RE-RECORD FULL EDIT BUTTON LOGIC (robust and debuggable) =====
 reRecordFullEditBtn.addEventListener('click', async function () {
-  // 1. Cancel animation frame
+  // Cancel animation frame
   if (animationFrameId) {
     cancelAnimationFrame(animationFrameId);
     animationFrameId = null;
+    console.log('[Re-Record] Animation frame cancelled');
   }
 
-  // 2. Stop and reset audio
+  // Stop and reset audio
   audio.pause();
   audio.currentTime = 0;
   audio.load();
+  console.log('[Re-Record] Audio reset');
 
-  // 3. Stop any ongoing main output recording and wait for cleanup
+  // Stop any ongoing main output recording and wait for cleanup
   let stopPromise = Promise.resolve();
   if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
     stopPromise = new Promise(resolve => {
-      mediaRecorder.onstop = () => resolve();
+      mediaRecorder.onstop = () => {
+        console.log('[Re-Record] MediaRecorder stopped');
+        resolve();
+      };
       mediaRecorder.stop();
+      console.log('[Re-Record] Stopping MediaRecorder...');
     });
   }
   await stopPromise;
 
-  // 4. Reset all temp video playheads
+  // Reset all temp video playheads
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
       try {
         tempVideos[i].pause();
         tempVideos[i].currentTime = 0;
         tempVideos[i].load();
-      } catch (e) {}
+        console.log(`[Re-Record] Temp video ${i} reset`);
+      } catch (e) {
+        console.log(`[Re-Record] Temp video ${i} error:`, e);
+      }
     }
   }
 
-  // 5. Reset output video
+  // Reset output video
   masterOutputVideo.pause();
   masterOutputVideo.src = '';
   masterOutputVideo.srcObject = null;
   masterOutputVideo.load();
+  console.log('[Re-Record] Output video reset');
 
-  // 6. Hide REC indicator, reset export and status
+  // Hide REC indicator, reset export and status
   recIndicator.style.display = 'none';
   exportBtn.disabled = true;
   exportStatus.textContent = 'Ready for new full edit recording.';
 
-  // 7. Reset state variables and audio context
+  // Reset state flags and release resources
   isRecording = false;
   isPlaying = false;
   recordedChunks = [];
@@ -468,9 +480,10 @@ reRecordFullEditBtn.addEventListener('click', async function () {
   if (audioContext) {
     audioContext.close();
     audioContext = null;
+    console.log('[Re-Record] AudioContext closed');
   }
 
-  // 8. Reset UI highlights to Camera 1
+  // Reset UI highlights to Camera 1
   switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((el, i) => {
     el.classList.toggle('active', i === 0);
   });
@@ -478,12 +491,15 @@ reRecordFullEditBtn.addEventListener('click', async function () {
     el.classList.toggle('active', i === 0);
   });
   activeTrackIndex = 0;
+  console.log('[Re-Record] UI highlights reset');
 
-  // 9. Wait a short moment for everything to settle
+  // Wait a short moment for everything to settle
   await new Promise(res => setTimeout(res, 100));
+  console.log('[Re-Record] State settled');
 
-  // 10. Start a new full edit recording session
+  // Start a new full edit recording session
   recordFullEditBtn.click();
+  console.log('[Re-Record] Triggered Record Full Edit');
 });
 
 // ===== EXPORT =====
