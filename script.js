@@ -7,7 +7,6 @@ const audio = document.getElementById('audio');
 const masterOutputVideo = document.getElementById('masterOutputVideo');
 const recIndicator = document.getElementById('recIndicator');
 const recordFullEditBtn = document.getElementById('recordFullEditBtn');
-// const reRecordFullEditBtn = document.getElementById('reRecordFullEditBtn'); // REMOVED
 const stopPreviewBtn = document.getElementById('stopPreviewBtn');
 const exportBtn = document.getElementById('exportMusicVideoBtn');
 const exportStatus = document.getElementById('exportStatus');
@@ -251,6 +250,41 @@ function getCurrentDrawVideo() {
   return null;
 }
 
+// ====== INSERTED: Frame-perfect Sync Preview ======
+/**
+ * Call this function to preview audio and the currently selected video in perfect sync.
+ * Example: add a button that calls startSyncedPlayback() for preview.
+ */
+async function startSyncedPlayback() {
+  // Use the master audio element and the currently selected temp video
+  const video = tempVideos[activeTrackIndex];
+  if (!audio || !video) {
+    alert('Please upload a song and select a video!');
+    return;
+  }
+
+  // 1. Reset both
+  audio.pause(); audio.currentTime = 0; audio.load();
+  video.pause(); video.currentTime = 0; video.load();
+
+  // 2. Start both at the same time
+  await Promise.all([audio.play(), video.play()]);
+
+  // 3. (Optional) For frame-perfect sync, force video to track audio:
+  function syncFrame() {
+    video.currentTime = audio.currentTime;
+    animationFrameId = requestAnimationFrame(syncFrame);
+  }
+  syncFrame();
+
+  // 4. Stop everything when audio ends
+  audio.onended = () => {
+    video.pause();
+    cancelAnimationFrame(animationFrameId);
+  };
+}
+
+// ====== FULL EDIT RECORD & EXPORT ======
 recordFullEditBtn.addEventListener('click', async function () {
   if (!audio.src) {
     alert('Please upload a song first.');
@@ -312,6 +346,8 @@ recordFullEditBtn.addEventListener('click', async function () {
     if (!isRecording) return;
     const vid = tempVideos[activeTrackIndex];
     if (vid && vid.readyState >= 2 && !vid.ended) {
+      // For even tighter sync, force video time
+      vid.currentTime = audio.currentTime;
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
     } else {
       ctx.fillStyle = "#000";
