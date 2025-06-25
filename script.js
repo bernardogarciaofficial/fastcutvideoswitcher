@@ -1,4 +1,4 @@
-// Fastcut Music Video Maker - Audio/Video Sync Optimized, Frame-perfect Sync, Switcher Bug Fix
+// Fastcut Music Video Maker - Improved Sync and Camera Switching
 
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
@@ -222,16 +222,21 @@ async function setActiveTrack(idx) {
   activeTrackIndex = idx;
   const vid = tempVideos[activeTrackIndex];
   if (vid && audio) {
-    // Seek the video to match current audio time, wait for seek completion
+    // Seek the video to match current audio time, wait for seek completion, then play
+    vid.pause();
     vid.currentTime = audio.currentTime;
     await new Promise(resolve => {
       const handler = () => {
         vid.removeEventListener('seeked', handler);
+        vid.play();
         resolve();
       };
       vid.addEventListener('seeked', handler);
       // If already at the right place, resolve immediately
-      if (Math.abs(vid.currentTime - audio.currentTime) < 0.05) resolve();
+      if (Math.abs(vid.currentTime - audio.currentTime) < 0.05) {
+        vid.play();
+        resolve();
+      }
     });
   }
   // Highlight switcher btns
@@ -256,36 +261,29 @@ function previewInOutput(idx) {
 // Set default
 setActiveTrack(0);
 
-// ====== LIVE RECORDING LOGIC (Main Output, sync-optimized) ======
-
-function getCurrentDrawVideo() {
-  if (tempVideos[activeTrackIndex]) return tempVideos[activeTrackIndex];
-  for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) return tempVideos[i];
-  }
-  return null;
-}
-
 // ====== Frame-perfect Sync Preview ======
-/**
- * Call this function to preview audio and the currently selected video in perfect sync.
- * For example: add a button that calls startSyncedPlayback() for preview.
- */
 async function startSyncedPlayback() {
   const video = tempVideos[activeTrackIndex];
   if (!audio || !video) {
     alert('Please upload a song and select a video!');
     return;
   }
-  // Reset both
+  // Reset all videos and pause them
+  for (let i = 0; i < tempVideos.length; i++) {
+    if (tempVideos[i]) {
+      tempVideos[i].pause();
+      tempVideos[i].currentTime = 0;
+    }
+  }
+  // Reset audio
   audio.pause(); audio.currentTime = 0; audio.load();
-  video.pause(); video.currentTime = 0; video.load();
+  video.load();
 
   await Promise.all([audio.play(), video.play()]);
 
   function syncFrame() {
-    // On preview, force video to follow audio, but don't update if seeking
-    if (video.readyState >= 2 && Math.abs(video.currentTime - audio.currentTime) > 0.04) {
+    // Only resync if the video is lagging behind or ahead
+    if (video.readyState >= 2 && Math.abs(video.currentTime - audio.currentTime) > 0.08) {
       video.currentTime = audio.currentTime;
     }
     animationFrameId = requestAnimationFrame(syncFrame);
@@ -325,16 +323,12 @@ recordFullEditBtn.addEventListener('click', async function () {
   canvas.height = 360;
   const ctx = canvas.getContext('2d');
 
-  // Reset and load all temp videos
-  let playPromises = [];
+  // Reset and load all temp videos, pause them, set currentTime to 0
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
-      try {
-        tempVideos[i].pause();
-        tempVideos[i].currentTime = 0;
-        tempVideos[i].load();
-        playPromises.push(tempVideos[i].play());
-      } catch (e) {}
+      tempVideos[i].pause();
+      tempVideos[i].currentTime = 0;
+      tempVideos[i].load();
     }
   }
 
@@ -342,11 +336,10 @@ recordFullEditBtn.addEventListener('click', async function () {
   audio.pause();
   audio.currentTime = 0;
   audio.load();
-  playPromises.push(audio.play());
 
-  // Await all play promises (ensures browser is ready)
+  // Play audio and active video
   try {
-    await Promise.all(playPromises);
+    await Promise.all([audio.play(), tempVideos[activeTrackIndex].play()]);
   } catch (e) {
     alert("Please interact with the page to allow playback.");
     isRecording = false;
@@ -355,18 +348,22 @@ recordFullEditBtn.addEventListener('click', async function () {
     return;
   }
 
-  // Draw loop: only draw if temp video is ready and in sync, else skip (prevents black flashes)
+  // Draw loop
   function drawFrame() {
     if (!isRecording) return;
     const vid = tempVideos[activeTrackIndex];
+    // Play video if paused for any reason
+    if (vid && vid.paused && vid.readyState >= 2) {
+      vid.play();
+    }
     if (
       vid &&
       vid.readyState >= 2 &&
       !vid.ended &&
-      Math.abs(vid.currentTime - audio.currentTime) < 0.12
+      Math.abs(vid.currentTime - audio.currentTime) < 0.16
     ) {
-      // For even tighter sync, force video time if drift is detected
-      if (Math.abs(vid.currentTime - audio.currentTime) > 0.04) {
+      // Resync if needed
+      if (Math.abs(vid.currentTime - audio.currentTime) > 0.08) {
         vid.currentTime = audio.currentTime;
       }
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
