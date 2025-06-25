@@ -1,4 +1,4 @@
-// Fastcut Music Video Maker - Improved Sync and Camera Switching
+// Fastcut Music Video Maker - SYNC LOGIC REMOVED (to be re-added cleanly)
 
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
@@ -218,27 +218,8 @@ switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((btn, idx) => {
   };
 });
 
-async function setActiveTrack(idx) {
+function setActiveTrack(idx) {
   activeTrackIndex = idx;
-  const vid = tempVideos[activeTrackIndex];
-  if (vid && audio) {
-    // Seek the video to match current audio time, wait for seek completion, then play
-    vid.pause();
-    vid.currentTime = audio.currentTime;
-    await new Promise(resolve => {
-      const handler = () => {
-        vid.removeEventListener('seeked', handler);
-        vid.play();
-        resolve();
-      };
-      vid.addEventListener('seeked', handler);
-      // If already at the right place, resolve immediately
-      if (Math.abs(vid.currentTime - audio.currentTime) < 0.05) {
-        vid.play();
-        resolve();
-      }
-    });
-  }
   // Highlight switcher btns
   switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((el, i) => {
     el.classList.toggle('active', i === idx);
@@ -261,42 +242,7 @@ function previewInOutput(idx) {
 // Set default
 setActiveTrack(0);
 
-// ====== Frame-perfect Sync Preview ======
-async function startSyncedPlayback() {
-  const video = tempVideos[activeTrackIndex];
-  if (!audio || !video) {
-    alert('Please upload a song and select a video!');
-    return;
-  }
-  // Reset all videos and pause them
-  for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) {
-      tempVideos[i].pause();
-      tempVideos[i].currentTime = 0;
-    }
-  }
-  // Reset audio
-  audio.pause(); audio.currentTime = 0; audio.load();
-  video.load();
-
-  await Promise.all([audio.play(), video.play()]);
-
-  function syncFrame() {
-    // Only resync if the video is lagging behind or ahead
-    if (video.readyState >= 2 && Math.abs(video.currentTime - audio.currentTime) > 0.08) {
-      video.currentTime = audio.currentTime;
-    }
-    animationFrameId = requestAnimationFrame(syncFrame);
-  }
-  syncFrame();
-
-  audio.onended = () => {
-    video.pause();
-    cancelAnimationFrame(animationFrameId);
-  };
-}
-
-// ====== FULL EDIT RECORD & EXPORT ======
+// ====== FULL EDIT RECORD & EXPORT (NO SYNC) ======
 recordFullEditBtn.addEventListener('click', async function () {
   if (!audio.src) {
     alert('Please upload a song first.');
@@ -323,23 +269,12 @@ recordFullEditBtn.addEventListener('click', async function () {
   canvas.height = 360;
   const ctx = canvas.getContext('2d');
 
-  // Reset and load all temp videos, pause them, set currentTime to 0
-  for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) {
-      tempVideos[i].pause();
-      tempVideos[i].currentTime = 0;
-      tempVideos[i].load();
-    }
-  }
-
-  // Reset and load audio
-  audio.pause();
+  // Just use the active video, play both audio and video independently (NO SYNC)
+  const vid = tempVideos[activeTrackIndex];
+  vid.currentTime = 0;
   audio.currentTime = 0;
-  audio.load();
-
-  // Play audio and active video
   try {
-    await Promise.all([audio.play(), tempVideos[activeTrackIndex].play()]);
+    await Promise.all([audio.play(), vid.play()]);
   } catch (e) {
     alert("Please interact with the page to allow playback.");
     isRecording = false;
@@ -348,24 +283,9 @@ recordFullEditBtn.addEventListener('click', async function () {
     return;
   }
 
-  // Draw loop
   function drawFrame() {
     if (!isRecording) return;
-    const vid = tempVideos[activeTrackIndex];
-    // Play video if paused for any reason
-    if (vid && vid.paused && vid.readyState >= 2) {
-      vid.play();
-    }
-    if (
-      vid &&
-      vid.readyState >= 2 &&
-      !vid.ended &&
-      Math.abs(vid.currentTime - audio.currentTime) < 0.16
-    ) {
-      // Resync if needed
-      if (Math.abs(vid.currentTime - audio.currentTime) > 0.08) {
-        vid.currentTime = audio.currentTime;
-      }
+    if (vid && vid.readyState >= 2 && !vid.ended) {
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
     }
     animationFrameId = requestAnimationFrame(drawFrame);
