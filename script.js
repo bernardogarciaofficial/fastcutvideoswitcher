@@ -16,7 +16,24 @@ const exportStatus = document.getElementById('exportStatus');
 const hiddenVideos = document.getElementById('hiddenVideos');
 const debuglog = document.getElementById('debuglog');
 
-// THUMBNAIL GRID (6 preview video screens)
+const videoTracks = Array(NUM_TRACKS).fill(null);
+const tempVideos = Array(NUM_TRACKS).fill(null); // For playback/drawing
+let activeTrackIndex = 0;
+let isRecording = false;
+let isPlaying = false;
+let mediaRecorder = null;
+let recordedChunks = [];
+let animationFrameId = null;
+let audioContext = null;
+
+// ========== UTILITY ==========
+function logDebug(msg) {
+  debuglog.textContent += msg + "\n";
+  debuglog.scrollTop = debuglog.scrollHeight;
+  console.log(msg);
+}
+
+// ========== THUMBNAIL GRID (6 preview video screens with controls) ==========
 function createThumbRow() {
   let thumbRow = document.getElementById('thumbRow');
   if (!thumbRow) {
@@ -63,8 +80,133 @@ function createThumbRow() {
     label.textContent = `Camera ${i + 1}`;
     col.appendChild(label);
 
-    // Click to select
+    // Controls row
+    const controls = document.createElement('div');
+    controls.style.display = 'flex';
+    controls.style.justifyContent = 'center';
+    controls.style.alignItems = 'center';
+    controls.style.marginBottom = '6px';
+    controls.style.gap = '6px';
+
+    // Record button
+    const recordBtn = document.createElement('button');
+    recordBtn.textContent = 'Record';
+    recordBtn.style.fontSize = '0.95em';
+    recordBtn.style.padding = '2px 7px';
+    recordBtn.style.cursor = 'pointer';
+    controls.appendChild(recordBtn);
+
+    // Upload/Choose File button
+    const uploadInput = document.createElement('input');
+    uploadInput.type = 'file';
+    uploadInput.accept = 'video/*';
+    uploadInput.style.fontSize = '0.95em';
+    uploadInput.title = 'Choose file';
+    controls.appendChild(uploadInput);
+
+    // Download button
+    const downloadBtn = document.createElement('button');
+    downloadBtn.textContent = 'Download';
+    downloadBtn.style.fontSize = '0.95em';
+    downloadBtn.style.padding = '2px 7px';
+    downloadBtn.style.cursor = 'pointer';
+    downloadBtn.disabled = true;
+    controls.appendChild(downloadBtn);
+
+    col.appendChild(controls);
+
+    // Status label
+    const statusLabel = document.createElement('div');
+    statusLabel.style.textAlign = 'center';
+    statusLabel.style.fontSize = '0.85em';
+    statusLabel.style.color = '#888';
+    statusLabel.style.minHeight = '1.5em';
+    statusLabel.textContent = 'No video';
+    col.appendChild(statusLabel);
+
+    // Click to select track
     video.onclick = () => setActiveTrack(i);
+
+    // --- BUTTON LOGIC ---
+
+    // Record button logic
+    let trackRecorder = null;
+    let recStream = null;
+    let recChunks = [];
+    recordBtn.onclick = async function () {
+      if (trackRecorder && trackRecorder.state === 'recording') return; // Already recording
+
+      recordBtn.disabled = true;
+      recordBtn.textContent = 'Recording...';
+      statusLabel.textContent = 'Recording...';
+
+      try {
+        recStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      } catch (err) {
+        alert('Cannot access camera/microphone.');
+        recordBtn.disabled = false;
+        recordBtn.textContent = 'Record';
+        statusLabel.textContent = 'Camera/mic access denied';
+        logDebug(`Camera ${i + 1} - access denied to webcam/mic.`);
+        return;
+      }
+      trackRecorder = new MediaRecorder(recStream, { mimeType: 'video/webm; codecs=vp9,opus' });
+      recChunks = [];
+      trackRecorder.ondataavailable = function(e) {
+        if (e.data.size > 0) recChunks.push(e.data);
+      };
+      trackRecorder.onstop = function() {
+        const blob = new Blob(recChunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        videoTracks[i] = { file: null, url, name: `Camera${i+1}-take.webm`, recordedBlob: blob };
+        prepareTempVideo(i, url, `Camera${i+1}-take.webm`);
+        video.src = url;
+        video.load();
+        statusLabel.textContent = 'Recorded Take';
+        downloadBtn.disabled = false;
+        recordBtn.disabled = false;
+        recordBtn.textContent = 'Record';
+        if (recStream) recStream.getTracks().forEach(track => track.stop());
+        logDebug(`Camera ${i + 1} - video recorded and loaded.`);
+      };
+      trackRecorder.start();
+      setTimeout(() => {
+        if (trackRecorder.state === 'recording') trackRecorder.stop();
+      }, 120000); // Auto-stop after 2 min
+    };
+
+    // Upload/choose file logic
+    uploadInput.onchange = function (e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      videoTracks[i] = { file, url, name: file.name };
+      prepareTempVideo(i, url, file.name);
+      video.src = url;
+      video.load();
+      statusLabel.textContent = file.name;
+      downloadBtn.disabled = false;
+      logDebug(`Camera ${i + 1} video loaded: ${file.name}`);
+    };
+
+    // Download logic
+    downloadBtn.onclick = function() {
+      if (videoTracks[i] && videoTracks[i].url) {
+        const a = document.createElement('a');
+        a.href = videoTracks[i].url;
+        a.download = videoTracks[i].name || `track${i+1}.webm`;
+        a.click();
+        logDebug(`Camera ${i + 1} take downloaded.`);
+      }
+    };
+
+    // Update on load for already set src
+    if (videoTracks[i]) {
+      video.src = videoTracks[i].url;
+      video.load();
+      statusLabel.textContent = videoTracks[i].name || 'Recorded Take';
+      downloadBtn.disabled = false;
+    }
 
     thumbRow.appendChild(col);
   }
@@ -74,8 +216,8 @@ createThumbRow();
 function updateThumbVideos() {
   for (let i = 0; i < NUM_TRACKS; i++) {
     const thumb = document.getElementById('thumb' + i);
-    if (thumb && window.videoTracks && window.videoTracks[i]) {
-      thumb.src = window.videoTracks[i].url;
+    if (thumb && videoTracks[i]) {
+      thumb.src = videoTracks[i].url;
       thumb.style.background = '#000';
       thumb.load();
     } else if (thumb) {
@@ -85,24 +227,7 @@ function updateThumbVideos() {
   }
 }
 
-// Rest of your code...
-function logDebug(msg) {
-  debuglog.textContent += msg + "\n";
-  debuglog.scrollTop = debuglog.scrollHeight;
-  console.log(msg);
-}
-
-const videoTracks = Array(NUM_TRACKS).fill(null);
-const tempVideos = Array(NUM_TRACKS).fill(null); // For playback/drawing
-let activeTrackIndex = 0;
-let isRecording = false;
-let isPlaying = false;
-let mediaRecorder = null;
-let recordedChunks = [];
-let animationFrameId = null;
-let audioContext = null;
-
-// ===== SONG UPLOAD =====
+// ========== SONG UPLOAD ==========
 songInput.addEventListener('change', function (e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -114,164 +239,7 @@ songInput.addEventListener('change', function (e) {
   logDebug(`Audio file loaded: ${file.name}`);
 });
 
-// ===== VIDEO TAKES UPLOAD, RECORD, DOWNLOAD & UI =====
-function createTrackCard(index) {
-  const card = document.createElement('div');
-  card.className = 'switcher-track';
-  if (index === 0) card.classList.add('active');
-  card.style.border = '2px solid #222'; card.style.marginBottom = '16px'; card.style.padding = '10px';
-
-  const title = document.createElement('div');
-  title.className = 'track-title';
-  title.textContent = `Camera ${index + 1}`;
-  card.appendChild(title);
-
-  // Upload button
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'video/*';
-  input.style.margin = '6px 0';
-  input.addEventListener('change', function (e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    videoTracks[index] = { file, url, name: file.name };
-    prepareTempVideo(index, url, file.name);
-    card.update();
-    updateSwitcherBtns();
-    updateThumbVideos();
-    if (index === activeTrackIndex) previewInOutput(index);
-    logDebug(`Camera ${index + 1} video loaded: ${file.name}`);
-  });
-  card.appendChild(input);
-
-  // Record button
-  const recBtn = document.createElement('button');
-  recBtn.textContent = 'Record';
-  recBtn.style.marginLeft = '8px';
-  let trackRecorder = null;
-  let recStream = null;
-  let recChunks = [];
-  recBtn.addEventListener('click', async function () {
-    if (trackRecorder && trackRecorder.state === 'recording') return; // Already recording
-
-    recBtn.disabled = true;
-    recBtn.textContent = 'Recording...';
-    const preview = card.querySelector('.track-preview');
-    preview.style.display = 'block';
-
-    try {
-      recStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    } catch (err) {
-      alert('Cannot access camera/microphone.');
-      recBtn.disabled = false;
-      recBtn.textContent = 'Record';
-      logDebug(`Camera ${index + 1} - access denied to webcam/mic.`);
-      return;
-    }
-    trackRecorder = new MediaRecorder(recStream, { mimeType: 'video/webm; codecs=vp9,opus' });
-    recChunks = [];
-    trackRecorder.ondataavailable = function(e) {
-      if (e.data.size > 0) recChunks.push(e.data);
-    };
-    trackRecorder.onstop = function() {
-      const blob = new Blob(recChunks, { type: 'video/webm' });
-      const url = URL.createObjectURL(blob);
-      videoTracks[index] = { file: null, url, name: `Camera${index+1}-take.webm`, recordedBlob: blob };
-      prepareTempVideo(index, url, `Camera${index+1}-take.webm`);
-      card.update();
-      updateSwitcherBtns();
-      updateThumbVideos();
-      recBtn.disabled = false;
-      recBtn.textContent = 'Record';
-      if (recStream) recStream.getTracks().forEach(track => track.stop());
-      logDebug(`Camera ${index + 1} - video recorded and loaded.`);
-    };
-    trackRecorder.start();
-    setTimeout(() => {
-      if (trackRecorder.state === 'recording') trackRecorder.stop();
-    }, 120000); // Auto-stop after 2 min
-  });
-  card.appendChild(recBtn);
-
-  // Download button
-  const dlBtn = document.createElement('button');
-  dlBtn.textContent = 'Download';
-  dlBtn.style.marginLeft = '8px';
-  dlBtn.style.display = 'none';
-  dlBtn.addEventListener('click', function() {
-    if (videoTracks[index] && videoTracks[index].url) {
-      const a = document.createElement('a');
-      a.href = videoTracks[index].url;
-      a.download = videoTracks[index].name || `track${index+1}.webm`;
-      a.click();
-      logDebug(`Camera ${index + 1} take downloaded.`);
-    }
-  });
-  card.appendChild(dlBtn);
-
-  // Video preview (thumbnail)
-  const preview = document.createElement('video');
-  preview.className = 'track-preview';
-  preview.controls = true;
-  preview.style.display = 'block'; // always visible!
-  preview.style.background = "#000";
-  preview.style.width = '80%';
-  preview.style.marginTop = '6px';
-  card.appendChild(preview);
-
-  // Show error and load events for preview video
-  preview.addEventListener('error', (e) => {
-    logDebug(`Preview video for Camera ${index+1} error: (code ${preview.error && preview.error.code})`);
-    let msg = "Unknown error";
-    if (preview.error) {
-      switch (preview.error.code) {
-        case 1: msg = "MEDIA_ERR_ABORTED: Video fetching process aborted by user."; break;
-        case 2: msg = "MEDIA_ERR_NETWORK: Error occurred when downloading."; break;
-        case 3: msg = "MEDIA_ERR_DECODE: Error occurred when decoding."; break;
-        case 4: msg = "MEDIA_ERR_SRC_NOT_SUPPORTED: Video format is not supported."; break;
-      }
-    }
-    logDebug(`Camera ${index+1} thumbnail: ${msg}`);
-    preview.poster = ""; // Remove any old poster
-    preview.style.background = "#900";
-  });
-  preview.addEventListener('loadeddata', () => {
-    logDebug(`Preview video for Camera ${index+1} loaded: ${preview.src}`);
-    preview.style.background = "#000";
-  });
-
-  // Status label
-  const label = document.createElement('div');
-  label.className = 'upload-video-label';
-  label.textContent = 'No video uploaded or recorded';
-  card.appendChild(label);
-
-  card.update = function () {
-    if (videoTracks[index]) {
-      label.textContent = videoTracks[index].name || 'Recorded Take';
-      dlBtn.style.display = '';
-      preview.src = videoTracks[index].url;
-      preview.style.display = 'block';
-      preview.load();
-    } else {
-      label.textContent = 'No video uploaded or recorded';
-      dlBtn.style.display = 'none';
-      preview.src = '';
-      preview.style.display = 'block';
-      preview.poster = "";
-      preview.style.background = "#000";
-    }
-  };
-
-  card.addEventListener('click', function () {
-    setActiveTrack(index);
-  });
-
-  switcherTracks.appendChild(card);
-  card.update();
-}
-
+// ========== VIDEO PREP ==========
 function prepareTempVideo(idx, url, name = "") {
   tempVideos[idx] = document.createElement('video');
   tempVideos[idx].src = url;
@@ -291,30 +259,9 @@ function prepareTempVideo(idx, url, name = "") {
   if (!tempVideos[idx].parentNode) hiddenVideos.appendChild(tempVideos[idx]);
 }
 
-function updateSwitcherBtns() {
-  switcherBtnsContainer.innerHTML = '';
-  for (let i = 0; i < NUM_TRACKS; i++) {
-    const track = videoTracks[i];
-    const btn = document.createElement('button');
-    btn.className = 'switcher-btn' + (i === activeTrackIndex ? ' active' : '');
-    btn.textContent = `Camera ${i + 1}`;
-    btn.disabled = !track;
-    btn.addEventListener('click', function () {
-      setActiveTrack(i);
-      logDebug(`Switched to Camera ${i + 1}`);
-    });
-    switcherBtnsContainer.appendChild(btn);
-  }
-}
-
+// ========== ACTIVE TRACK ==========
 function setActiveTrack(idx) {
   activeTrackIndex = idx;
-  document.querySelectorAll('.switcher-track').forEach((el, i) => {
-    el.classList.toggle('active', i === idx);
-  });
-  document.querySelectorAll('.switcher-btn').forEach((el, i) => {
-    el.classList.toggle('active', i === idx);
-  });
   document.querySelectorAll('.thumb').forEach((el, i) => {
     el.classList.toggle('active', i === idx);
   });
@@ -328,20 +275,4 @@ function previewInOutput(idx) {
   masterOutputVideo.currentTime = 0;
 }
 
-// ===== INIT =====
-for (let i = 0; i < NUM_TRACKS; i++) createTrackCard(i);
-updateSwitcherBtns();
-updateThumbVideos();
-masterOutputVideo.style.display = 'block';
-exportBtn.disabled = true;
-
-// ===== LIVE RECORDING LOGIC =====
-function getCurrentDrawVideo() {
-  if (tempVideos[activeTrackIndex]) return tempVideos[activeTrackIndex];
-  for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) return tempVideos[i];
-  }
-  return null;
-}
-
-// ... rest of your code remains unchanged ...
+// (Rest of your app: switcherBtns, export, recordFullEditBtn, etc. goes here)
