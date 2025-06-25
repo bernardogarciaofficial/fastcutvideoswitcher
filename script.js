@@ -22,6 +22,8 @@ let recordedChunks = [];
 let animationFrameId = null;
 let audioContext = null;
 let livePreviewStream = null;
+let lastGoodFrame = null;
+let lastDrawnTrack = 0;
 
 // ===== SONG UPLOAD =====
 songInput.addEventListener('change', function (e) {
@@ -218,12 +220,25 @@ function getCurrentDrawVideo() {
   return null;
 }
 
-// --- SYNC IMPROVEMENT: Wait for all tempVideos and audio to be fully ready ---
 async function waitForMediaReady(media) {
   return new Promise(resolve => {
     if (media.readyState >= 2) resolve();
     else media.addEventListener('loadeddata', resolve, { once: true });
   });
+}
+
+let switchingTrack = false;
+async function switchDrawTrack(newIdx, currentAudioTime) {
+  switchingTrack = true;
+  let vid = tempVideos[newIdx];
+  if (!vid) return;
+  try {
+    vid.pause();
+    vid.currentTime = currentAudioTime;
+    await waitForMediaReady(vid);
+    await vid.play();
+  } catch (e) {}
+  switchingTrack = false;
 }
 
 recordFullEditBtn.addEventListener('click', async function () {
@@ -251,13 +266,11 @@ recordFullEditBtn.addEventListener('click', async function () {
   canvas.height = 360;
   const ctx = canvas.getContext('2d');
 
-  // --- SYNC IMPROVEMENT: Wait for all tempVideos to be loaded before playing
   await Promise.all(
     tempVideos.map(tv => tv ? waitForMediaReady(tv) : Promise.resolve())
   );
   await waitForMediaReady(audio);
 
-  // --- SYNC IMPROVEMENT: Reset all videos and audio to 0
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
       try { tempVideos[i].currentTime = 0; tempVideos[i].pause(); tempVideos[i].load(); } catch(e) {}
@@ -265,12 +278,10 @@ recordFullEditBtn.addEventListener('click', async function () {
   }
   audio.currentTime = 0;
 
-  // --- SYNC IMPROVEMENT: Start all videos paused, then play all at once with audio as master clock
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) tempVideos[i].pause();
   }
 
-  // Live preview in main output video
   try {
     livePreviewStream = canvas.captureStream(30);
     masterOutputVideo.srcObject = livePreviewStream;
@@ -278,7 +289,6 @@ recordFullEditBtn.addEventListener('click', async function () {
     masterOutputVideo.play();
   } catch (e) {}
 
-  // --- SYNC IMPROVEMENT: Use audioContext for sync audio output
   audioContext = new (window.AudioContext || window.webkitAudioContext)();
   const source = audioContext.createMediaElementSource(audio);
   const dest = audioContext.createMediaStreamDestination();
@@ -314,26 +324,41 @@ recordFullEditBtn.addEventListener('click', async function () {
     }
   };
 
-  // --- SYNC IMPROVEMENT: Start all videos and audio at same time ---
-  // Use requestAnimationFrame to start all at next frame
+  // Start all videos and audio at once
+  for (let i = 0; i < tempVideos.length; i++) {
+    if (tempVideos[i]) {
+      tempVideos[i].currentTime = 0;
+      await waitForMediaReady(tempVideos[i]);
+      tempVideos[i].pause();
+    }
+  }
   await Promise.all([
     ...tempVideos.map(tv => tv ? tv.play().catch(()=>{}) : Promise.resolve()),
     audio.play().catch(()=>{})
   ]);
 
-  // --- SYNC IMPROVEMENT: Draw according to audio.currentTime as the master clock
+  // Set all videos to paused except the active one
+  for (let i = 0; i < tempVideos.length; i++) {
+    if (tempVideos[i] && i !== activeTrackIndex) tempVideos[i].pause();
+  }
+  let lastDrawnTrack = activeTrackIndex;
+
   const FADE_DURATION = 1.5; // seconds
 
   function drawFrameRAF() {
     if (!isRecording) return;
+    if (switchingTrack) {
+      // Draw last good frame if switching
+      if (lastGoodFrame) ctx.putImageData(lastGoodFrame, 0, 0);
+      animationFrameId = requestAnimationFrame(drawFrameRAF);
+      return;
+    }
     const vid = getCurrentDrawVideo();
-    if (vid && vid.readyState >= 2) {
-      // Synchronize video to audio currentTime
-      if (Math.abs(vid.currentTime - audio.currentTime) > 0.040) {
-        // Small threshold to prevent jank
-        try { vid.currentTime = audio.currentTime; } catch(e){}
-      }
+    if (vid && vid.readyState >= 2 && !vid.ended) {
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+      lastGoodFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    } else if (lastGoodFrame) {
+      ctx.putImageData(lastGoodFrame, 0, 0);
     } else {
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -354,17 +379,17 @@ recordFullEditBtn.addEventListener('click', async function () {
   }
   drawFrameRAF();
 
-  // Switcher cut logic (sync with audio position)
+  // Camera switcher logic: only seek on switch, not every frame
   switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((btn, idx) => {
-    btn.onclick = function() {
+    btn.onclick = async function() {
+      if (activeTrackIndex === idx) return;
       setActiveTrack(idx);
-      const vid = getCurrentDrawVideo();
-      if (vid) {
-        // --- SYNC IMPROVEMENT: Seek video to current audio time ---
-        try { vid.currentTime = audio.currentTime; vid.play().catch(()=>{}); } catch(e){}
-      }
+      await switchDrawTrack(idx, audio.currentTime);
+      lastDrawnTrack = idx;
     };
   });
+
+  await switchDrawTrack(activeTrackIndex, audio.currentTime);
 
   mediaRecorder.start();
 
