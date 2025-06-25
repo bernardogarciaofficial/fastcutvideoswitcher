@@ -1,5 +1,3 @@
-// Fastcut Music Video Maker - SYNC LOGIC RESTORED
-
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
 const audioStatus = document.getElementById('audioStatus');
@@ -15,7 +13,7 @@ const thumbRow = document.getElementById('thumbRow');
 const switcherBtnsContainer = document.getElementById('switcherBtnsContainer');
 
 const videoTracks = Array(NUM_TRACKS).fill(null);
-const tempVideos = Array(NUM_TRACKS).fill(null);
+const tempVideos = Array(NUM_TRACKS).fill(null); // For playback/drawing
 let activeTrackIndex = 0;
 let isRecording = false;
 let isPlaying = false;
@@ -217,27 +215,8 @@ switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((btn, idx) => {
     setActiveTrack(idx);
   };
 });
-
-async function setActiveTrack(idx) {
+function setActiveTrack(idx) {
   activeTrackIndex = idx;
-  const vid = tempVideos[activeTrackIndex];
-  if (vid && audio) {
-    // Pause, seek, and play for perfect sync
-    vid.pause();
-    vid.currentTime = audio.currentTime;
-    await new Promise(resolve => {
-      const handler = () => {
-        vid.removeEventListener('seeked', handler);
-        vid.play();
-        resolve();
-      };
-      vid.addEventListener('seeked', handler);
-      if (Math.abs(vid.currentTime - audio.currentTime) < 0.05) {
-        vid.play();
-        resolve();
-      }
-    });
-  }
   // Highlight switcher btns
   switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((el, i) => {
     el.classList.toggle('active', i === idx);
@@ -246,6 +225,7 @@ async function setActiveTrack(idx) {
   document.querySelectorAll('.thumb').forEach((el, i) => {
     el.classList.toggle('active', i === idx);
   });
+  // Main output preview
   previewInOutput(idx);
 }
 function previewInOutput(idx) {
@@ -259,41 +239,15 @@ function previewInOutput(idx) {
 // Set default
 setActiveTrack(0);
 
-// ====== Frame-perfect Sync Preview ======
-async function startSyncedPlayback() {
-  const video = tempVideos[activeTrackIndex];
-  if (!audio || !video) {
-    alert('Please upload a song and select a video!');
-    return;
-  }
-  // Reset all videos and pause them
+// ====== LIVE RECORDING LOGIC (Main Output) ======
+function getCurrentDrawVideo() {
+  if (tempVideos[activeTrackIndex]) return tempVideos[activeTrackIndex];
   for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) {
-      tempVideos[i].pause();
-      tempVideos[i].currentTime = 0;
-    }
+    if (tempVideos[i]) return tempVideos[i];
   }
-  // Reset audio
-  audio.pause(); audio.currentTime = 0; audio.load();
-  video.load();
-
-  await Promise.all([audio.play(), video.play()]);
-
-  function syncFrame() {
-    if (video.readyState >= 2 && Math.abs(video.currentTime - audio.currentTime) > 0.08) {
-      video.currentTime = audio.currentTime;
-    }
-    animationFrameId = requestAnimationFrame(syncFrame);
-  }
-  syncFrame();
-
-  audio.onended = () => {
-    video.pause();
-    cancelAnimationFrame(animationFrameId);
-  };
+  return null;
 }
 
-// ====== FULL EDIT RECORD & EXPORT (SYNC RESTORED) ======
 recordFullEditBtn.addEventListener('click', async function () {
   if (!audio.src) {
     alert('Please upload a song first.');
@@ -307,7 +261,6 @@ recordFullEditBtn.addEventListener('click', async function () {
     alert('Selected camera has no video.');
     return;
   }
-
   isRecording = true;
   isPlaying = true;
   recordedChunks = [];
@@ -319,55 +272,71 @@ recordFullEditBtn.addEventListener('click', async function () {
   canvas.width = 640;
   canvas.height = 360;
   const ctx = canvas.getContext('2d');
-
-  // Reset and load all temp videos, pause, set currentTime to 0
+  // Prepare all videos
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
-      tempVideos[i].pause();
-      tempVideos[i].currentTime = 0;
-      tempVideos[i].load();
+      if (!tempVideos[i].parentNode) hiddenVideos.appendChild(tempVideos[i]);
+      try { 
+        tempVideos[i].pause(); 
+        tempVideos[i].currentTime = 0; 
+        tempVideos[i].load(); 
+      } catch(e) {}
     }
   }
-
-  // Reset audio
-  audio.pause();
-  audio.currentTime = 0;
-  audio.load();
-
-  // Play audio and active video
-  try {
-    await Promise.all([audio.play(), tempVideos[activeTrackIndex].play()]);
-  } catch (e) {
-    alert("Please interact with the page to allow playback.");
-    isRecording = false;
-    isPlaying = false;
-    recIndicator.style.display = 'none';
+  let currentVideo = getCurrentDrawVideo();
+  if (!currentVideo) {
+    alert('Please upload or record at least one video take.');
+    isRecording = false; isPlaying = false; recIndicator.style.display = 'none';
     return;
   }
-
+  // Wait for all tempVideos to be loaded before playing
+  for (let i = 0; i < tempVideos.length; i++) {
+    if (tempVideos[i]) {
+      if (tempVideos[i].readyState < 2) {
+        await new Promise(resolve => {
+          tempVideos[i].addEventListener('loadeddata', resolve, { once: true });
+        });
+      }
+    }
+  }
+  // Try to play all tempVideos
+  for (let i = 0; i < tempVideos.length; i++) {
+    if (tempVideos[i]) {
+      try {
+        tempVideos[i].currentTime = 0;
+        await tempVideos[i].play();
+      } catch (err) {}
+    }
+  }
+  try {
+    await currentVideo.play();
+  } catch (e) {}
+  // Fade-in/out config
+  const FADE_DURATION = 1.5; // seconds
   function drawFrame() {
     if (!isRecording) return;
-    const vid = tempVideos[activeTrackIndex];
-    // Play video if paused for any reason
-    if (vid && vid.paused && vid.readyState >= 2) {
-      vid.play();
-    }
-    if (
-      vid &&
-      vid.readyState >= 2 &&
-      !vid.ended &&
-      Math.abs(vid.currentTime - audio.currentTime) < 0.16
-    ) {
-      // Resync if needed
-      if (Math.abs(vid.currentTime - audio.currentTime) > 0.08) {
-        vid.currentTime = audio.currentTime;
-      }
+    const vid = getCurrentDrawVideo();
+    if (vid && !vid.ended && vid.readyState >= 2) {
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+    } else {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    // Fade-in/out logic
+    const currentTime = audio.currentTime;
+    const totalDuration = audio.duration || (audio.seekable && audio.seekable.length ? audio.seekable.end(0) : 0);
+    if (currentTime < FADE_DURATION) {
+      let alpha = 1 - (currentTime / FADE_DURATION);
+      ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    } else if (totalDuration && currentTime > totalDuration - FADE_DURATION) {
+      let alpha = (currentTime - (totalDuration - FADE_DURATION)) / FADE_DURATION;
+      ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
     animationFrameId = requestAnimationFrame(drawFrame);
   }
   drawFrame();
-
   // Live preview in main output video
   try {
     livePreviewStream = canvas.captureStream(30);
@@ -375,8 +344,15 @@ recordFullEditBtn.addEventListener('click', async function () {
     masterOutputVideo.src = "";
     masterOutputVideo.play();
   } catch (e) {}
-
-  // Setup audio routing for MediaRecorder
+  switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((btn, idx) => {
+    btn.onclick = function() {
+      setActiveTrack(idx);
+      const vid = getCurrentDrawVideo();
+      if (vid) {
+        vid.play().catch(()=>{});
+      }
+    };
+  });
   audioContext = new (window.AudioContext || window.webkitAudioContext)();
   const source = audioContext.createMediaElementSource(audio);
   const dest = audioContext.createMediaStreamDestination();
@@ -411,17 +387,23 @@ recordFullEditBtn.addEventListener('click', async function () {
       audioContext = null;
     }
   };
-
+  audio.currentTime = 0;
+  audio.play();
+  for (let i = 0; i < tempVideos.length; i++) {
+    if (tempVideos[i]) { 
+      try { 
+        tempVideos[i].currentTime = 0; 
+        await tempVideos[i].play(); 
+      } catch(e) { }
+    }
+  }
   mediaRecorder.start();
-
-  // When audio ends, stop recording
   audio.onended = function () {
     if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
       mediaRecorder.stop();
       audio.onended = null;
     }
   };
-
   stopPreviewBtn.onclick = function () {
     if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
       mediaRecorder.stop();
