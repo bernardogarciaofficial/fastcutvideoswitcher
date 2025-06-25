@@ -1,3 +1,5 @@
+// Fastcut Music Video Maker - Audio/Video Sync Optimized, Frame-perfect Sync, Switcher Bug Fix
+
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
 const audioStatus = document.getElementById('audioStatus');
@@ -5,7 +7,6 @@ const audio = document.getElementById('audio');
 const masterOutputVideo = document.getElementById('masterOutputVideo');
 const recIndicator = document.getElementById('recIndicator');
 const recordFullEditBtn = document.getElementById('recordFullEditBtn');
-const reRecordFullEditBtn = document.getElementById('reRecordFullEditBtn');
 const stopPreviewBtn = document.getElementById('stopPreviewBtn');
 const exportBtn = document.getElementById('exportMusicVideoBtn');
 const exportStatus = document.getElementById('exportStatus');
@@ -14,7 +15,7 @@ const thumbRow = document.getElementById('thumbRow');
 const switcherBtnsContainer = document.getElementById('switcherBtnsContainer');
 
 const videoTracks = Array(NUM_TRACKS).fill(null);
-const tempVideos = Array(NUM_TRACKS).fill(null); // For playback/drawing
+const tempVideos = Array(NUM_TRACKS).fill(null);
 let activeTrackIndex = 0;
 let isRecording = false;
 let isPlaying = false;
@@ -216,8 +217,23 @@ switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((btn, idx) => {
     setActiveTrack(idx);
   };
 });
-function setActiveTrack(idx) {
+
+async function setActiveTrack(idx) {
   activeTrackIndex = idx;
+  const vid = tempVideos[activeTrackIndex];
+  if (vid && audio) {
+    // Seek the video to match current audio time, wait for seek completion
+    vid.currentTime = audio.currentTime;
+    await new Promise(resolve => {
+      const handler = () => {
+        vid.removeEventListener('seeked', handler);
+        resolve();
+      };
+      vid.addEventListener('seeked', handler);
+      // If already at the right place, resolve immediately
+      if (Math.abs(vid.currentTime - audio.currentTime) < 0.05) resolve();
+    });
+  }
   // Highlight switcher btns
   switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((el, i) => {
     el.classList.toggle('active', i === idx);
@@ -240,7 +256,8 @@ function previewInOutput(idx) {
 // Set default
 setActiveTrack(0);
 
-// ====== LIVE RECORDING LOGIC (Main Output) ======
+// ====== LIVE RECORDING LOGIC (Main Output, sync-optimized) ======
+
 function getCurrentDrawVideo() {
   if (tempVideos[activeTrackIndex]) return tempVideos[activeTrackIndex];
   for (let i = 0; i < tempVideos.length; i++) {
@@ -249,6 +266,39 @@ function getCurrentDrawVideo() {
   return null;
 }
 
+// ====== Frame-perfect Sync Preview ======
+/**
+ * Call this function to preview audio and the currently selected video in perfect sync.
+ * For example: add a button that calls startSyncedPlayback() for preview.
+ */
+async function startSyncedPlayback() {
+  const video = tempVideos[activeTrackIndex];
+  if (!audio || !video) {
+    alert('Please upload a song and select a video!');
+    return;
+  }
+  // Reset both
+  audio.pause(); audio.currentTime = 0; audio.load();
+  video.pause(); video.currentTime = 0; video.load();
+
+  await Promise.all([audio.play(), video.play()]);
+
+  function syncFrame() {
+    // On preview, force video to follow audio, but don't update if seeking
+    if (video.readyState >= 2 && Math.abs(video.currentTime - audio.currentTime) > 0.04) {
+      video.currentTime = audio.currentTime;
+    }
+    animationFrameId = requestAnimationFrame(syncFrame);
+  }
+  syncFrame();
+
+  audio.onended = () => {
+    video.pause();
+    cancelAnimationFrame(animationFrameId);
+  };
+}
+
+// ====== FULL EDIT RECORD & EXPORT ======
 recordFullEditBtn.addEventListener('click', async function () {
   if (!audio.src) {
     alert('Please upload a song first.');
@@ -262,6 +312,7 @@ recordFullEditBtn.addEventListener('click', async function () {
     alert('Selected camera has no video.');
     return;
   }
+
   isRecording = true;
   isPlaying = true;
   recordedChunks = [];
@@ -273,71 +324,57 @@ recordFullEditBtn.addEventListener('click', async function () {
   canvas.width = 640;
   canvas.height = 360;
   const ctx = canvas.getContext('2d');
-  // Prepare all videos
-  for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) {
-      if (!tempVideos[i].parentNode) hiddenVideos.appendChild(tempVideos[i]);
-      try { 
-        tempVideos[i].pause(); 
-        tempVideos[i].currentTime = 0; 
-        tempVideos[i].load(); 
-      } catch(e) {}
-    }
-  }
-  let currentVideo = getCurrentDrawVideo();
-  if (!currentVideo) {
-    alert('Please upload or record at least one video take.');
-    isRecording = false; isPlaying = false; recIndicator.style.display = 'none';
-    return;
-  }
-  // Wait for all tempVideos to be loaded before playing
-  for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) {
-      if (tempVideos[i].readyState < 2) {
-        await new Promise(resolve => {
-          tempVideos[i].addEventListener('loadeddata', resolve, { once: true });
-        });
-      }
-    }
-  }
-  // Try to play all tempVideos
+
+  // Reset and load all temp videos
+  let playPromises = [];
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
       try {
+        tempVideos[i].pause();
         tempVideos[i].currentTime = 0;
-        await tempVideos[i].play();
-      } catch (err) {}
+        tempVideos[i].load();
+        playPromises.push(tempVideos[i].play());
+      } catch (e) {}
     }
   }
+
+  // Reset and load audio
+  audio.pause();
+  audio.currentTime = 0;
+  audio.load();
+  playPromises.push(audio.play());
+
+  // Await all play promises (ensures browser is ready)
   try {
-    await currentVideo.play();
-  } catch (e) {}
-  // Fade-in/out config
-  const FADE_DURATION = 1.5; // seconds
+    await Promise.all(playPromises);
+  } catch (e) {
+    alert("Please interact with the page to allow playback.");
+    isRecording = false;
+    isPlaying = false;
+    recIndicator.style.display = 'none';
+    return;
+  }
+
+  // Draw loop: only draw if temp video is ready and in sync, else skip (prevents black flashes)
   function drawFrame() {
     if (!isRecording) return;
-    const vid = getCurrentDrawVideo();
-    if (vid && !vid.ended && vid.readyState >= 2) {
+    const vid = tempVideos[activeTrackIndex];
+    if (
+      vid &&
+      vid.readyState >= 2 &&
+      !vid.ended &&
+      Math.abs(vid.currentTime - audio.currentTime) < 0.12
+    ) {
+      // For even tighter sync, force video time if drift is detected
+      if (Math.abs(vid.currentTime - audio.currentTime) > 0.04) {
+        vid.currentTime = audio.currentTime;
+      }
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
-    } else {
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    // Fade-in/out logic
-    const currentTime = audio.currentTime;
-    const totalDuration = audio.duration || (audio.seekable && audio.seekable.length ? audio.seekable.end(0) : 0);
-    if (currentTime < FADE_DURATION) {
-      let alpha = 1 - (currentTime / FADE_DURATION);
-      ctx.fillStyle = `rgba(0,0,0,${alpha})`;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    } else if (totalDuration && currentTime > totalDuration - FADE_DURATION) {
-      let alpha = (currentTime - (totalDuration - FADE_DURATION)) / FADE_DURATION;
-      ctx.fillStyle = `rgba(0,0,0,${alpha})`;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
     animationFrameId = requestAnimationFrame(drawFrame);
   }
   drawFrame();
+
   // Live preview in main output video
   try {
     livePreviewStream = canvas.captureStream(30);
@@ -345,15 +382,8 @@ recordFullEditBtn.addEventListener('click', async function () {
     masterOutputVideo.src = "";
     masterOutputVideo.play();
   } catch (e) {}
-  switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((btn, idx) => {
-    btn.onclick = function() {
-      setActiveTrack(idx);
-      const vid = getCurrentDrawVideo();
-      if (vid) {
-        vid.play().catch(()=>{});
-      }
-    };
-  });
+
+  // Setup audio routing for MediaRecorder
   audioContext = new (window.AudioContext || window.webkitAudioContext)();
   const source = audioContext.createMediaElementSource(audio);
   const dest = audioContext.createMediaStreamDestination();
@@ -388,23 +418,17 @@ recordFullEditBtn.addEventListener('click', async function () {
       audioContext = null;
     }
   };
-  audio.currentTime = 0;
-  audio.play();
-  for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) { 
-      try { 
-        tempVideos[i].currentTime = 0; 
-        await tempVideos[i].play(); 
-      } catch(e) { }
-    }
-  }
+
   mediaRecorder.start();
+
+  // When audio ends, stop recording
   audio.onended = function () {
     if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
       mediaRecorder.stop();
       audio.onended = null;
     }
   };
+
   stopPreviewBtn.onclick = function () {
     if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
       mediaRecorder.stop();
@@ -413,77 +437,6 @@ recordFullEditBtn.addEventListener('click', async function () {
       exportStatus.textContent = 'Recording stopped.';
     }
   };
-});
-
-// ===== RE-RECORD FULL EDIT BUTTON LOGIC (robust, step-by-step) =====
-reRecordFullEditBtn.addEventListener('click', async function () {
-  // 1. Cancel animation frame
-  if (animationFrameId) {
-    cancelAnimationFrame(animationFrameId);
-    animationFrameId = null;
-  }
-
-  // 2. Stop and reset audio
-  audio.pause();
-  audio.currentTime = 0;
-  audio.load();
-
-  // 3. Stop any ongoing main output recording and wait for cleanup
-  let stopPromise = Promise.resolve();
-  if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
-    stopPromise = new Promise(resolve => {
-      mediaRecorder.onstop = () => resolve();
-      mediaRecorder.stop();
-    });
-  }
-  await stopPromise;
-
-  // 4. Reset all temp video playheads
-  for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) {
-      try {
-        tempVideos[i].pause();
-        tempVideos[i].currentTime = 0;
-        tempVideos[i].load();
-      } catch (e) {}
-    }
-  }
-
-  // 5. Reset output video
-  masterOutputVideo.pause();
-  masterOutputVideo.src = '';
-  masterOutputVideo.srcObject = null;
-  masterOutputVideo.load();
-
-  // 6. Hide REC indicator, reset export and status
-  recIndicator.style.display = 'none';
-  exportBtn.disabled = true;
-  exportStatus.textContent = 'Ready for new full edit recording.';
-
-  // 7. Reset state variables and audio context
-  isRecording = false;
-  isPlaying = false;
-  recordedChunks = [];
-  livePreviewStream = null;
-  if (audioContext) {
-    audioContext.close();
-    audioContext = null;
-  }
-
-  // 8. Reset UI highlights to Camera 1
-  switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((el, i) => {
-    el.classList.toggle('active', i === 0);
-  });
-  document.querySelectorAll('.thumb').forEach((el, i) => {
-    el.classList.toggle('active', i === 0);
-  });
-  activeTrackIndex = 0;
-
-  // 9. Wait a short moment for everything to settle
-  await new Promise(res => setTimeout(res, 100));
-
-  // 10. Start a new full edit recording session
-  recordFullEditBtn.click();
 });
 
 // ===== EXPORT =====
