@@ -11,7 +11,6 @@ const exportStatus = document.getElementById('exportStatus');
 const hiddenVideos = document.getElementById('hiddenVideos');
 const thumbRow = document.getElementById('thumbRow');
 const switcherBtnsContainer = document.getElementById('switcherBtnsContainer');
-const switcherTracks = document.getElementById('switcherTracks');
 
 const videoTracks = Array(NUM_TRACKS).fill(null);
 const tempVideos = Array(NUM_TRACKS).fill(null); // For playback/drawing
@@ -87,7 +86,7 @@ for(let i=0; i<NUM_TRACKS; i++) {
     const idx = +e.target.dataset.idx;
     // Music playback
     audio.currentTime = 0;
-    audio.play().catch(()=>{});
+    await audio.play().catch(()=>{});
     let recStream = null;
     let recChunks = [];
     try {
@@ -218,6 +217,15 @@ function getCurrentDrawVideo() {
   }
   return null;
 }
+
+// --- SYNC IMPROVEMENT: Wait for all tempVideos and audio to be fully ready ---
+async function waitForMediaReady(media) {
+  return new Promise(resolve => {
+    if (media.readyState >= 2) resolve();
+    else media.addEventListener('loadeddata', resolve, { once: true });
+  });
+}
+
 recordFullEditBtn.addEventListener('click', async function () {
   if (!audio.src) {
     alert('Please upload a song first.');
@@ -242,71 +250,26 @@ recordFullEditBtn.addEventListener('click', async function () {
   canvas.width = 640;
   canvas.height = 360;
   const ctx = canvas.getContext('2d');
-  // Prepare all videos
+
+  // --- SYNC IMPROVEMENT: Wait for all tempVideos to be loaded before playing
+  await Promise.all(
+    tempVideos.map(tv => tv ? waitForMediaReady(tv) : Promise.resolve())
+  );
+  await waitForMediaReady(audio);
+
+  // --- SYNC IMPROVEMENT: Reset all videos and audio to 0
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
-      if (!tempVideos[i].parentNode) hiddenVideos.appendChild(tempVideos[i]);
-      try { 
-        tempVideos[i].pause(); 
-        tempVideos[i].currentTime = 0; 
-        tempVideos[i].load(); 
-      } catch(e) {}
+      try { tempVideos[i].currentTime = 0; tempVideos[i].pause(); tempVideos[i].load(); } catch(e) {}
     }
   }
-  let currentVideo = getCurrentDrawVideo();
-  if (!currentVideo) {
-    alert('Please upload or record at least one video take.');
-    isRecording = false; isPlaying = false; recIndicator.style.display = 'none';
-    return;
-  }
-  // Wait for all tempVideos to be loaded before playing
+  audio.currentTime = 0;
+
+  // --- SYNC IMPROVEMENT: Start all videos paused, then play all at once with audio as master clock
   for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) {
-      if (tempVideos[i].readyState < 2) {
-        await new Promise(resolve => {
-          tempVideos[i].addEventListener('loadeddata', resolve, { once: true });
-        });
-      }
-    }
+    if (tempVideos[i]) tempVideos[i].pause();
   }
-  // Try to play all tempVideos
-  for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) {
-      try {
-        tempVideos[i].currentTime = 0;
-        await tempVideos[i].play();
-      } catch (err) {}
-    }
-  }
-  try {
-    await currentVideo.play();
-  } catch (e) {}
-  // Fade-in/out config
-  const FADE_DURATION = 1.5; // seconds
-  function drawFrame() {
-    if (!isRecording) return;
-    const vid = getCurrentDrawVideo();
-    if (vid && !vid.ended && vid.readyState >= 2) {
-      ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
-    } else {
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    // Fade-in/out logic
-    const currentTime = audio.currentTime;
-    const totalDuration = audio.duration || (audio.seekable && audio.seekable.length ? audio.seekable.end(0) : 0);
-    if (currentTime < FADE_DURATION) {
-      let alpha = 1 - (currentTime / FADE_DURATION);
-      ctx.fillStyle = `rgba(0,0,0,${alpha})`;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    } else if (totalDuration && currentTime > totalDuration - FADE_DURATION) {
-      let alpha = (currentTime - (totalDuration - FADE_DURATION)) / FADE_DURATION;
-      ctx.fillStyle = `rgba(0,0,0,${alpha})`;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    animationFrameId = requestAnimationFrame(drawFrame);
-  }
-  drawFrame();
+
   // Live preview in main output video
   try {
     livePreviewStream = canvas.captureStream(30);
@@ -314,15 +277,8 @@ recordFullEditBtn.addEventListener('click', async function () {
     masterOutputVideo.src = "";
     masterOutputVideo.play();
   } catch (e) {}
-  switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((btn, idx) => {
-    btn.onclick = function() {
-      setActiveTrack(idx);
-      const vid = getCurrentDrawVideo();
-      if (vid) {
-        vid.play().catch(()=>{});
-      }
-    };
-  });
+
+  // --- SYNC IMPROVEMENT: Use audioContext for sync audio output
   audioContext = new (window.AudioContext || window.webkitAudioContext)();
   const source = audioContext.createMediaElementSource(audio);
   const dest = audioContext.createMediaStreamDestination();
@@ -357,17 +313,61 @@ recordFullEditBtn.addEventListener('click', async function () {
       audioContext = null;
     }
   };
-  audio.currentTime = 0;
-  audio.play();
-  for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) { 
-      try { 
-        tempVideos[i].currentTime = 0; 
-        await tempVideos[i].play(); 
-      } catch(e) { }
+
+  // --- SYNC IMPROVEMENT: Start all videos and audio at same time ---
+  // Use requestAnimationFrame to start all at next frame
+  await Promise.all([
+    ...tempVideos.map(tv => tv ? tv.play().catch(()=>{}) : Promise.resolve()),
+    audio.play().catch(()=>{})
+  ]);
+
+  // --- SYNC IMPROVEMENT: Draw according to audio.currentTime as the master clock
+  const FADE_DURATION = 1.5; // seconds
+
+  function drawFrameRAF() {
+    if (!isRecording) return;
+    const vid = getCurrentDrawVideo();
+    if (vid && vid.readyState >= 2) {
+      // Synchronize video to audio currentTime
+      if (Math.abs(vid.currentTime - audio.currentTime) > 0.040) {
+        // Small threshold to prevent jank
+        try { vid.currentTime = audio.currentTime; } catch(e){}
+      }
+      ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+    } else {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
+    // Fade-in/out logic
+    const currentTime = audio.currentTime;
+    const totalDuration = audio.duration || (audio.seekable && audio.seekable.length ? audio.seekable.end(0) : 0);
+    if (currentTime < FADE_DURATION) {
+      let alpha = 1 - (currentTime / FADE_DURATION);
+      ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    } else if (totalDuration && currentTime > totalDuration - FADE_DURATION) {
+      let alpha = (currentTime - (totalDuration - FADE_DURATION)) / FADE_DURATION;
+      ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    animationFrameId = requestAnimationFrame(drawFrameRAF);
   }
+  drawFrameRAF();
+
+  // Switcher cut logic (sync with audio position)
+  switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((btn, idx) => {
+    btn.onclick = function() {
+      setActiveTrack(idx);
+      const vid = getCurrentDrawVideo();
+      if (vid) {
+        // --- SYNC IMPROVEMENT: Seek video to current audio time ---
+        try { vid.currentTime = audio.currentTime; vid.play().catch(()=>{}); } catch(e){}
+      }
+    };
+  });
+
   mediaRecorder.start();
+
   audio.onended = function () {
     if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
       mediaRecorder.stop();
