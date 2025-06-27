@@ -94,7 +94,8 @@ function createThumbRow() {
 }
 createThumbRow();
 
-// ====== THUMB BUTTONS LOGIC ======
+// ... (UNCHANGED CODE ABOVE) ...
+
 for (let i = 0; i < NUM_TRACKS; i++) {
   // Record button
   document.querySelector(`.record-btn[data-idx="${i}"]`).onclick = async (e) => {
@@ -127,6 +128,7 @@ for (let i = 0; i < NUM_TRACKS; i++) {
       document.querySelector(`.download-btn[data-idx="${idx}"]`).disabled = false;
       if (recStream) recStream.getTracks().forEach(track => track.stop());
       audio.pause();
+      updateSwitcherBtns(); // FIX: update switcher buttons after recording
     };
     // Show webcam
     preview.srcObject = recStream;
@@ -162,6 +164,7 @@ for (let i = 0; i < NUM_TRACKS; i++) {
     videoTracks[idx] = { file, url, name: file.name };
     prepareTempVideo(idx, url, file.name);
     document.querySelector(`.download-btn[data-idx="${idx}"]`).disabled = false;
+    updateSwitcherBtns(); // FIX: update switcher buttons after upload
   };
   // Download button
   document.querySelector(`.download-btn[data-idx="${i}"]`).onclick = (e) => {
@@ -179,7 +182,8 @@ for (let i = 0; i < NUM_TRACKS; i++) {
   };
 }
 
-// ===== PREPARE TEMP VIDEO =====
+// ... (PREPARE TEMP VIDEO, etc.)
+
 function prepareTempVideo(idx, url, name = "") {
   tempVideos[idx] = document.createElement('video');
   tempVideos[idx].src = url;
@@ -193,7 +197,6 @@ function prepareTempVideo(idx, url, name = "") {
   if (!tempVideos[idx].parentNode) hiddenVideos.appendChild(tempVideos[idx]);
 }
 
-// ===== SWITCHER BUTTONS LOGIC =====
 function updateSwitcherBtns() {
   switcherBtnsContainer.innerHTML = '';
   for (let i = 0; i < NUM_TRACKS; i++) {
@@ -202,7 +205,7 @@ function updateSwitcherBtns() {
     btn.className = 'switcher-btn' + (i === activeTrackIndex ? ' active' : '');
     btn.textContent = `Camera ${i + 1}`;
     btn.disabled = !track;
-    btn.onclick = () => setActiveTrack(i);
+    btn.onclick = () => setActiveTrack(i); // always set for non-recording mode
     switcherBtnsContainer.appendChild(btn);
   }
 }
@@ -317,7 +320,7 @@ recordFullEditBtn.addEventListener('click', async function () {
   }
   drawFrameRAF();
 
-  // Camera switcher logic: seek video to audio time, wait for ready, then resume drawing
+  // FIX: correct switcher handler for live recording
   switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((btn, idx) => {
     btn.onclick = async function () {
       if (activeTrackIndex === idx) return;
