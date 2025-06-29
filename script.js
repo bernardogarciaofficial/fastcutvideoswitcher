@@ -1,4 +1,4 @@
-// FASTCUT STUDIOS - Hollywood Music Video Editor (Robust Sync Version - Video Master)
+// FASTCUT STUDIOS - Hollywood Music Video Editor (Robust Sync Version - Video Master/Audio Slave)
 
 const NUM_TRACKS = 6;
 const songInput = document.getElementById('songInput');
@@ -98,8 +98,10 @@ for (let i = 0; i < NUM_TRACKS; i++) {
   // Record button
   document.querySelector(`.record-btn[data-idx="${i}"]`).onclick = async (e) => {
     const idx = +e.target.dataset.idx;
+    // --- SLAVE: audio song track always obeys record session
+    audio.pause();
     audio.currentTime = 0;
-    audio.play().catch(() => {});
+    await audio.play().catch(() => {});
     let recStream = null;
     let recChunks = [];
     try {
@@ -126,7 +128,7 @@ for (let i = 0; i < NUM_TRACKS; i++) {
       document.querySelector(`.download-btn[data-idx="${idx}"]`).disabled = false;
       if (recStream) recStream.getTracks().forEach(track => track.stop());
       audio.pause();
-      updateSwitcherBtns(); // FIX: update switcher buttons after recording
+      updateSwitcherBtns();
     };
     // Show webcam
     preview.srcObject = recStream;
@@ -162,7 +164,7 @@ for (let i = 0; i < NUM_TRACKS; i++) {
     videoTracks[idx] = { file, url, name: file.name };
     prepareTempVideo(idx, url, file.name);
     document.querySelector(`.download-btn[data-idx="${idx}"]`).disabled = false;
-    updateSwitcherBtns(); // FIX: update switcher buttons after upload
+    updateSwitcherBtns();
   };
   // Download button
   document.querySelector(`.download-btn[data-idx="${i}"]`).onclick = (e) => {
@@ -184,7 +186,7 @@ function prepareTempVideo(idx, url, name = "") {
   tempVideos[idx] = document.createElement('video');
   tempVideos[idx].src = url;
   tempVideos[idx].crossOrigin = "anonymous";
-  tempVideos[idx].muted = false; // IMPORTANT: Play audio from video, not muted!
+  tempVideos[idx].muted = false; // Play audio from video
   tempVideos[idx].preload = "auto";
   tempVideos[idx].setAttribute('playsinline', '');
   tempVideos[idx].setAttribute('webkit-playsinline', '');
@@ -201,7 +203,7 @@ function updateSwitcherBtns() {
     btn.className = 'switcher-btn' + (i === activeTrackIndex ? ' active' : '');
     btn.textContent = `Camera ${i + 1}`;
     btn.disabled = !track;
-    btn.onclick = () => setActiveTrack(i); // always set for non-recording mode
+    btn.onclick = () => setActiveTrack(i);
     switcherBtnsContainer.appendChild(btn);
   }
 }
@@ -217,11 +219,11 @@ function setActiveTrack(idx) {
 }
 function previewInOutput(idx) {
   if (isRecording || isPlaying || !videoTracks[idx]) return;
-  // Play the selected video's audio in the main output
   masterOutputVideo.srcObject = null;
   masterOutputVideo.src = videoTracks[idx].url;
   masterOutputVideo.muted = false;
   masterOutputVideo.style.display = 'block';
+  masterOutputVideo.load(); // <-- ensure video renders
   masterOutputVideo.currentTime = 0;
   masterOutputVideo.play().catch(()=>{});
 }
@@ -297,9 +299,9 @@ recordFullEditBtn.addEventListener('click', async function () {
   masterOutputVideo.srcObject = livePreviewStream;
   masterOutputVideo.src = "";
   masterOutputVideo.muted = false;
+  masterOutputVideo.load(); // <-- ensure video renders
   masterOutputVideo.play();
 
-  // DRAW LOOP: Only seek videos on switch, draw last good frame while seeking
   function drawFrameRAF() {
     if (!isRecording) return;
     if (switchingTrack) {
@@ -348,6 +350,7 @@ recordFullEditBtn.addEventListener('click', async function () {
     masterOutputVideo.srcObject = null;
     masterOutputVideo.controls = true;
     masterOutputVideo.style.display = 'block';
+    masterOutputVideo.load(); // <-- ensure video renders
     recIndicator.style.display = 'none';
     exportBtn.disabled = false;
     isRecording = false;
