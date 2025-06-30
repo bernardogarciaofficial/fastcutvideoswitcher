@@ -113,6 +113,7 @@ for(let i=0; i<NUM_TRACKS; i++) {
       document.querySelector(`.download-btn[data-idx="${idx}"]`).disabled = false;
       if (recStream) recStream.getTracks().forEach(track => track.stop());
       audio.pause();
+      updateSwitcherBtns();
     };
     // Show webcam
     preview.srcObject = recStream;
@@ -148,6 +149,7 @@ for(let i=0; i<NUM_TRACKS; i++) {
     videoTracks[idx] = { file, url, name: file.name };
     prepareTempVideo(idx, url, file.name);
     document.querySelector(`.download-btn[data-idx="${idx}"]`).disabled = false;
+    updateSwitcherBtns();
   };
   // Download button
   document.querySelector(`.download-btn[data-idx="${i}"]`).onclick = (e) => {
@@ -177,6 +179,7 @@ function prepareTempVideo(idx, url, name = "") {
   tempVideos[idx].style.display = "none";
   tempVideos[idx].load();
   if (!tempVideos[idx].parentNode) hiddenVideos.appendChild(tempVideos[idx]);
+  updateSwitcherBtns();
 }
 
 // ===== SWITCHER BUTTONS LOGIC =====
@@ -302,15 +305,48 @@ recordFullEditBtn.addEventListener('click', async function () {
     await currentVideo.play();
   } catch (e) {}
 
-  // SYNC: On each frame, force video to audio clock (eliminate drift)
+  // --- LIVE MODE: Rebuild switcher with correct handlers ---
+  switcherBtnsContainer.innerHTML = '';
+  for(let i=0; i<NUM_TRACKS; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'switcher-btn' + (i === activeTrackIndex ? ' active' : '');
+    btn.textContent = `Camera ${i+1}`;
+    btn.disabled = !videoTracks[i];
+    btn.onclick = function() {
+      activeTrackIndex = i;
+      // Highlight switcher btns
+      switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((el, j) => {
+        el.classList.toggle('active', j === i);
+      });
+      // Highlight thumbnail
+      document.querySelectorAll('.thumb').forEach((el, j) => {
+        el.classList.toggle('active', j === i);
+      });
+      for (let j = 0; j < tempVideos.length; j++) {
+        if (tempVideos[j]) {
+          if (j === i) {
+            tempVideos[j].currentTime = audio.currentTime;
+            tempVideos[j].play().catch(()=>{});
+          } else {
+            tempVideos[j].pause();
+          }
+        }
+      }
+    };
+    switcherBtnsContainer.appendChild(btn);
+  }
+
+  // --- Only seek if out of sync, otherwise let video play ---
   function drawFrame() {
     if (!isRecording) return;
     const vid = getCurrentDrawVideo();
     if (vid && !vid.ended && vid.readyState >= 2) {
-      // Always force video to match audio
       const desync = Math.abs(vid.currentTime - audio.currentTime);
-      if (desync > 0.04) { // 40ms tolerance
-        vid.currentTime = audio.currentTime;
+      // Only force sync if drift > 0.1s, otherwise let it play naturally for smoothness
+      if (desync > 0.1) {
+        try {
+          vid.currentTime = audio.currentTime;
+        } catch(e) {}
       }
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
     } else {
@@ -327,18 +363,6 @@ recordFullEditBtn.addEventListener('click', async function () {
     masterOutputVideo.src = "";
     masterOutputVideo.play();
   } catch (e) {}
-
-  // Update switcher logic for live mode
-  switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((btn, idx) => {
-    btn.onclick = function() {
-      setActiveTrack(idx);
-      const vid = getCurrentDrawVideo();
-      if (vid) {
-        vid.currentTime = audio.currentTime;
-        vid.play().catch(()=>{});
-      }
-    };
-  });
 
   audioContext = new (window.AudioContext || window.webkitAudioContext)();
   const source = audioContext.createMediaElementSource(audio);
