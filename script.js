@@ -14,7 +14,7 @@ const switcherBtnsContainer = document.getElementById('switcherBtnsContainer');
 const switcherTracks = document.getElementById('switcherTracks');
 
 const videoTracks = Array(NUM_TRACKS).fill(null);
-const tempVideos = Array(NUM_TRACKS).fill(null); // For playback/drawing
+const tempVideos = Array(NUM_TRACKS).fill(null);
 let activeTrackIndex = 0;
 let isRecording = false;
 let isPlaying = false;
@@ -85,7 +85,6 @@ for(let i=0; i<NUM_TRACKS; i++) {
   // Record button
   document.querySelector(`.record-btn[data-idx="${i}"]`).onclick = async (e) => {
     const idx = +e.target.dataset.idx;
-    // Music playback
     audio.currentTime = 0;
     audio.play().catch(()=>{});
     let recStream = null;
@@ -181,11 +180,19 @@ function prepareTempVideo(idx, url, name = "") {
 }
 
 // ===== SWITCHER BUTTONS LOGIC =====
-switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((btn, idx) => {
-  btn.onclick = function() {
-    setActiveTrack(idx);
-  };
-});
+function updateSwitcherBtns() {
+  switcherBtnsContainer.innerHTML = '';
+  for(let i=0; i<NUM_TRACKS; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'switcher-btn' + (i === activeTrackIndex ? ' active' : '');
+    btn.textContent = `Camera ${i+1}`;
+    btn.disabled = !videoTracks[i];
+    btn.onclick = () => setActiveTrack(i);
+    switcherBtnsContainer.appendChild(btn);
+  }
+}
+updateSwitcherBtns();
+
 function setActiveTrack(idx) {
   activeTrackIndex = idx;
   // Highlight switcher btns
@@ -196,9 +203,20 @@ function setActiveTrack(idx) {
   document.querySelectorAll('.thumb').forEach((el, i) => {
     el.classList.toggle('active', i === idx);
   });
-  // Main output preview
+  // PAUSE all videos except active, SYNC active video to audio
+  for (let i = 0; i < tempVideos.length; i++) {
+    if (tempVideos[i]) {
+      if (i === idx) {
+        tempVideos[i].currentTime = audio.currentTime;
+        tempVideos[i].play().catch(()=>{});
+      } else {
+        tempVideos[i].pause();
+      }
+    }
+  }
   previewInOutput(idx);
 }
+
 function previewInOutput(idx) {
   if (isRecording || isPlaying) return;
   if (!videoTracks[idx]) return;
@@ -218,6 +236,7 @@ function getCurrentDrawVideo() {
   }
   return null;
 }
+
 recordFullEditBtn.addEventListener('click', async function () {
   if (!audio.src) {
     alert('Please upload a song first.');
@@ -242,14 +261,15 @@ recordFullEditBtn.addEventListener('click', async function () {
   canvas.width = 640;
   canvas.height = 360;
   const ctx = canvas.getContext('2d');
+
   // Prepare all videos
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
       if (!tempVideos[i].parentNode) hiddenVideos.appendChild(tempVideos[i]);
-      try { 
-        tempVideos[i].pause(); 
-        tempVideos[i].currentTime = 0; 
-        tempVideos[i].load(); 
+      try {
+        tempVideos[i].pause();
+        tempVideos[i].currentTime = 0;
+        tempVideos[i].load();
       } catch(e) {}
     }
   }
@@ -281,48 +301,45 @@ recordFullEditBtn.addEventListener('click', async function () {
   try {
     await currentVideo.play();
   } catch (e) {}
-  // Fade-in/out config
-  const FADE_DURATION = 1.5; // seconds
+
+  // SYNC: On each frame, force video to audio clock (eliminate drift)
   function drawFrame() {
     if (!isRecording) return;
     const vid = getCurrentDrawVideo();
     if (vid && !vid.ended && vid.readyState >= 2) {
+      // Always force video to match audio
+      const desync = Math.abs(vid.currentTime - audio.currentTime);
+      if (desync > 0.04) { // 40ms tolerance
+        vid.currentTime = audio.currentTime;
+      }
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
     } else {
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
-    // Fade-in/out logic
-    const currentTime = audio.currentTime;
-    const totalDuration = audio.duration || (audio.seekable && audio.seekable.length ? audio.seekable.end(0) : 0);
-    if (currentTime < FADE_DURATION) {
-      let alpha = 1 - (currentTime / FADE_DURATION);
-      ctx.fillStyle = `rgba(0,0,0,${alpha})`;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    } else if (totalDuration && currentTime > totalDuration - FADE_DURATION) {
-      let alpha = (currentTime - (totalDuration - FADE_DURATION)) / FADE_DURATION;
-      ctx.fillStyle = `rgba(0,0,0,${alpha})`;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
     animationFrameId = requestAnimationFrame(drawFrame);
   }
   drawFrame();
-  // Live preview in main output video
+
   try {
     livePreviewStream = canvas.captureStream(30);
     masterOutputVideo.srcObject = livePreviewStream;
     masterOutputVideo.src = "";
     masterOutputVideo.play();
   } catch (e) {}
+
+  // Update switcher logic for live mode
   switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((btn, idx) => {
     btn.onclick = function() {
       setActiveTrack(idx);
       const vid = getCurrentDrawVideo();
       if (vid) {
+        vid.currentTime = audio.currentTime;
         vid.play().catch(()=>{});
       }
     };
   });
+
   audioContext = new (window.AudioContext || window.webkitAudioContext)();
   const source = audioContext.createMediaElementSource(audio);
   const dest = audioContext.createMediaStreamDestination();
@@ -360,10 +377,10 @@ recordFullEditBtn.addEventListener('click', async function () {
   audio.currentTime = 0;
   audio.play();
   for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) { 
-      try { 
-        tempVideos[i].currentTime = 0; 
-        await tempVideos[i].play(); 
+    if (tempVideos[i]) {
+      try {
+        tempVideos[i].currentTime = 0;
+        await tempVideos[i].play();
       } catch(e) { }
     }
   }
