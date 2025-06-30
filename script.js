@@ -329,19 +329,19 @@ recordFullEditBtn.addEventListener('click', async function () {
           tempVideos[j].pause();
         }
       }
-      // --- Wait for video to seek before playing, to prevent black flashes ---
       if (tempVideos[i]) {
-        let seekPromise = new Promise(resolve => {
-          const handler = () => {
-            tempVideos[i].removeEventListener('seeked', handler);
+        // Wait for a frame to be available after seek (key for no black frame)
+        let canplayPromise = new Promise(resolve => {
+          const onCanPlay = () => {
+            tempVideos[i].removeEventListener('canplay', onCanPlay);
             resolve();
           };
-          tempVideos[i].addEventListener('seeked', handler);
+          tempVideos[i].addEventListener('canplay', onCanPlay);
         });
         try {
           tempVideos[i].currentTime = audio.currentTime;
         } catch(e) {}
-        await seekPromise;
+        await canplayPromise;
         tempVideos[i].play().catch(()=>{});
       }
     };
