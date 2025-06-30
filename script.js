@@ -312,7 +312,8 @@ recordFullEditBtn.addEventListener('click', async function () {
     btn.className = 'switcher-btn' + (i === activeTrackIndex ? ' active' : '');
     btn.textContent = `Camera ${i+1}`;
     btn.disabled = !videoTracks[i];
-    btn.onclick = function() {
+    btn.onclick = async function() {
+      const prevIndex = activeTrackIndex;
       activeTrackIndex = i;
       // Highlight switcher btns
       switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((el, j) => {
@@ -322,15 +323,26 @@ recordFullEditBtn.addEventListener('click', async function () {
       document.querySelectorAll('.thumb').forEach((el, j) => {
         el.classList.toggle('active', j === i);
       });
+      // Pause all videos except the new active
       for (let j = 0; j < tempVideos.length; j++) {
         if (tempVideos[j]) {
-          if (j === i) {
-            tempVideos[j].currentTime = audio.currentTime;
-            tempVideos[j].play().catch(()=>{});
-          } else {
-            tempVideos[j].pause();
-          }
+          tempVideos[j].pause();
         }
+      }
+      // --- Wait for video to seek before playing, to prevent black flashes ---
+      if (tempVideos[i]) {
+        let seekPromise = new Promise(resolve => {
+          const handler = () => {
+            tempVideos[i].removeEventListener('seeked', handler);
+            resolve();
+          };
+          tempVideos[i].addEventListener('seeked', handler);
+        });
+        try {
+          tempVideos[i].currentTime = audio.currentTime;
+        } catch(e) {}
+        await seekPromise;
+        tempVideos[i].play().catch(()=>{});
       }
     };
     switcherBtnsContainer.appendChild(btn);
@@ -342,7 +354,6 @@ recordFullEditBtn.addEventListener('click', async function () {
     const vid = getCurrentDrawVideo();
     if (vid && !vid.ended && vid.readyState >= 2) {
       const desync = Math.abs(vid.currentTime - audio.currentTime);
-      // Only force sync if drift > 0.1s, otherwise let it play naturally for smoothness
       if (desync > 0.1) {
         try {
           vid.currentTime = audio.currentTime;
