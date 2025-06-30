@@ -305,7 +305,7 @@ recordFullEditBtn.addEventListener('click', async function () {
     await currentVideo.play();
   } catch (e) {}
 
-  // --- LIVE MODE: Rebuild switcher with correct handlers ---
+  // === LIVE MODE SWITCHER BUTTON LOGIC ===
   switcherBtnsContainer.innerHTML = '';
   for(let i=0; i<NUM_TRACKS; i++) {
     const btn = document.createElement('button');
@@ -315,22 +315,21 @@ recordFullEditBtn.addEventListener('click', async function () {
     btn.onclick = async function() {
       const prevIndex = activeTrackIndex;
       activeTrackIndex = i;
-      // Highlight switcher btns
+      // Highlight switcher btns/thumbnails
       switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((el, j) => {
         el.classList.toggle('active', j === i);
       });
-      // Highlight thumbnail
       document.querySelectorAll('.thumb').forEach((el, j) => {
         el.classList.toggle('active', j === i);
       });
-      // Pause all videos except the new active
+      // Pause all other videos
       for (let j = 0; j < tempVideos.length; j++) {
-        if (tempVideos[j]) {
-          tempVideos[j].pause();
-        }
+        if (tempVideos[j]) tempVideos[j].pause();
       }
       if (tempVideos[i]) {
-        // Wait for a frame to be available after seek (key for no black frame)
+        // Seek a bit earlier to "catch" the next keyframe
+        let seekTarget = Math.max(0, audio.currentTime - 0.5);
+        tempVideos[i].currentTime = seekTarget;
         let canplayPromise = new Promise(resolve => {
           const onCanPlay = () => {
             tempVideos[i].removeEventListener('canplay', onCanPlay);
@@ -338,25 +337,30 @@ recordFullEditBtn.addEventListener('click', async function () {
           };
           tempVideos[i].addEventListener('canplay', onCanPlay);
         });
-        try {
-          tempVideos[i].currentTime = audio.currentTime;
-        } catch(e) {}
         await canplayPromise;
         tempVideos[i].play().catch(()=>{});
+        // In the drawFrame loop, hold drawing until tempVideos[i].currentTime >= audio.currentTime - 0.05
+        // This ensures you don't draw black frames from before the keyframe is decoded!
       }
     };
     switcherBtnsContainer.appendChild(btn);
   }
 
-  // --- Only seek if out of sync, otherwise let video play ---
+  // === DRAW FRAME LOGIC ===
   function drawFrame() {
     if (!isRecording) return;
     const vid = getCurrentDrawVideo();
-    if (vid && !vid.ended && vid.readyState >= 2) {
+    if (
+      vid &&
+      !vid.ended &&
+      vid.readyState >= 2 &&
+      vid.currentTime >= audio.currentTime - 0.05 // <-- Only draw if we're at the correct time
+    ) {
+      // Sync if drift is too large
       const desync = Math.abs(vid.currentTime - audio.currentTime);
       if (desync > 0.1) {
         try {
-          vid.currentTime = audio.currentTime;
+          vid.currentTime = Math.max(0, audio.currentTime - 0.5);
         } catch(e) {}
       }
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
