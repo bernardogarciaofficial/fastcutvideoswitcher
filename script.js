@@ -344,7 +344,7 @@ recordFullEditBtn.addEventListener('click', async function () {
     switcherBtnsContainer.appendChild(btn);
   }
 
-  // === DRAW FRAME LOGIC (hybrid, prevents permanent black and minimizes flashes) ===
+  // === DRAW FRAME LOGIC (conservative, avoids flashing and stuck black) ===
   function drawFrame() {
     if (!isRecording) return;
     const vid = getCurrentDrawVideo();
@@ -354,21 +354,19 @@ recordFullEditBtn.addEventListener('click', async function () {
       vid.readyState >= 2
     ) {
       const lag = vid.currentTime - audio.currentTime;
-      // Draw as soon as we're almost in sync, or if we're hopelessly behind, draw anyway
-      if (lag >= -0.12 || lag < -0.5) {
+      // Only draw if the video is in sync or slightly behind (no black flash)
+      if (vid.currentTime >= audio.currentTime - 0.12) {
         ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
-      } else {
-        // If we're not ready, fill black (prevents brief flashes)
-        ctx.fillStyle = "#000";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
-      // Try to catch up if desync is very large
-      if (Math.abs(lag) > 0.4) {
+      // Do not clear canvas if frame not ready, so previous frame is held (no black)
+      // Only resync if video is way off
+      if (lag < -0.7 || lag > 0.3) {
         try {
           vid.currentTime = Math.max(0, audio.currentTime - 0.1);
         } catch(e) {}
       }
     } else {
+      // If no video or no frame available, fill black
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
