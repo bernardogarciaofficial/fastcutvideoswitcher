@@ -344,7 +344,7 @@ recordFullEditBtn.addEventListener('click', async function () {
     switcherBtnsContainer.appendChild(btn);
   }
 
-  // === DRAW FRAME LOGIC ===
+  // === DRAW FRAME LOGIC (hybrid, prevents permanent black and minimizes flashes) ===
   function drawFrame() {
     if (!isRecording) return;
     const vid = getCurrentDrawVideo();
@@ -353,14 +353,21 @@ recordFullEditBtn.addEventListener('click', async function () {
       !vid.ended &&
       vid.readyState >= 2
     ) {
-      // Sync if drift is too large
-      const desync = Math.abs(vid.currentTime - audio.currentTime);
-      if (desync > 0.5) { // allow up to half a second drift
+      const lag = vid.currentTime - audio.currentTime;
+      // Draw as soon as we're almost in sync, or if we're hopelessly behind, draw anyway
+      if (lag >= -0.12 || lag < -0.5) {
+        ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+      } else {
+        // If we're not ready, fill black (prevents brief flashes)
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+      // Try to catch up if desync is very large
+      if (Math.abs(lag) > 0.4) {
         try {
-          vid.currentTime = Math.max(0, audio.currentTime - 0.5);
+          vid.currentTime = Math.max(0, audio.currentTime - 0.1);
         } catch(e) {}
       }
-      ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
     } else {
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
