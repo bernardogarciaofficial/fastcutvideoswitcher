@@ -105,19 +105,28 @@ for(let i=0; i<NUM_TRACKS; i++) {
     }
     const recorder = new MediaRecorder(recStream, { mimeType: 'video/webm; codecs=vp9,opus' });
     const preview = document.getElementById('thumb' + idx);
+    // --- FIX: Save reference to the preview video element ---
+    let recordedURL = null;
     recorder.ondataavailable = function(e) {
       if (e.data.size > 0) recChunks.push(e.data);
     };
     recorder.onstop = function() {
       const blob = new Blob(recChunks, { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
+      recordedURL = url; // Save so we can restore after srcObject
       videoTracks[idx] = { file: null, url, name: `Camera${idx+1}-take.webm`, recordedBlob: blob };
       prepareTempVideo(idx, url, `Camera${idx+1}-take.webm`);
       preview.srcObject = null;
+      // --- Ensure the recorded video stays displayed and resets to start! ---
       preview.src = url;
+      preview.currentTime = 0;
       preview.autoplay = false;
       preview.muted = true;
       preview.load();
+      preview.onloadeddata = () => {
+        preview.currentTime = 0;
+        preview.play().catch(()=>{});
+      };
       document.querySelector(`.download-btn[data-idx="${idx}"]`).disabled = false;
       if (recStream) recStream.getTracks().forEach(track => track.stop());
       audio.pause();
