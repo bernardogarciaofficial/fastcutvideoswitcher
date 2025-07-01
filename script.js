@@ -15,6 +15,7 @@ const switcherBtnsContainer = document.getElementById('switcherBtnsContainer');
 const videoTracks = Array(NUM_TRACKS).fill(null);
 const tempVideos = Array(NUM_TRACKS).fill(null);
 let activeTrackIndex = 0;
+let requestedTrackIndex = 0;
 let isRecording = false;
 let isPlaying = false;
 let mediaRecorder = null;
@@ -22,6 +23,14 @@ let recordedChunks = [];
 let animationFrameId = null;
 let audioContext = null;
 let livePreviewStream = null;
+
+// Crossfade config
+const CROSSFADE_DURATION = 0.3; // seconds
+let crossfadeProgress = 1;
+let crossfading = false;
+let crossfadeStartTime = 0;
+let lastSwitchTime = 0;
+let prevTrackIndex = 0;
 
 // ===== SONG UPLOAD =====
 songInput.addEventListener('change', function (e) {
@@ -196,16 +205,24 @@ function updateSwitcherBtns() {
 updateSwitcherBtns();
 
 function setActiveTrack(idx) {
+  // Begin crossfade
+  if (idx !== activeTrackIndex) {
+    prevTrackIndex = activeTrackIndex;
+    requestedTrackIndex = idx;
+    crossfadeProgress = 0;
+    crossfading = true;
+    crossfadeStartTime = performance.now();
+    lastSwitchTime = audio.currentTime;
+  }
+  // UI highlight update
   activeTrackIndex = idx;
-  // Highlight switcher btns
   switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((el, i) => {
     el.classList.toggle('active', i === idx);
   });
-  // Highlight thumbnail
   document.querySelectorAll('.thumb').forEach((el, i) => {
     el.classList.toggle('active', i === idx);
   });
-  // PAUSE all videos except active, SYNC active video to audio
+  // PAUSE all videos except active; SYNC active video to audio
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
       if (i === idx) {
@@ -231,8 +248,8 @@ function previewInOutput(idx) {
 setActiveTrack(0);
 
 // ====== LIVE RECORDING LOGIC (Main Output) ======
-function getCurrentDrawVideo() {
-  if (tempVideos[activeTrackIndex]) return tempVideos[activeTrackIndex];
+function getCurrentDrawVideo(trackIndex) {
+  if (tempVideos[trackIndex]) return tempVideos[trackIndex];
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) return tempVideos[i];
   }
@@ -273,7 +290,7 @@ recordFullEditBtn.addEventListener('click', async function () {
       } catch(e) { console.error("Video play error", e); }
     }
   }
-  let currentVideo = getCurrentDrawVideo();
+  let currentVideo = getCurrentDrawVideo(activeTrackIndex);
   if (!currentVideo) {
     alert('Please upload or record at least one video take.');
     isRecording = false; isPlaying = false; recIndicator.style.display = 'none';
@@ -282,39 +299,59 @@ recordFullEditBtn.addEventListener('click', async function () {
 
   // === FADE CONTROL ===
   let FADE_DURATION = 1.0; // seconds
-  let fadeAlpha = 1.0; // 1 = fully black, 0 = fully visible
+  let fadeAlpha = 1.0;
   let fadeIn = true;
   let fadeOut = false;
   let previousFrame = null;
 
-  // === DRAW FRAME LOGIC (with fade and switch protection) ===
+  // === DRAW FRAME LOGIC (with crossfade and fade-in/out) ===
   function drawFrame() {
     if (!isRecording) return;
-    const vid = getCurrentDrawVideo();
-    let frameDrawn = false;
-    if (
-      vid &&
-      !vid.ended &&
-      vid.readyState >= 2
-    ) {
-      try {
-        ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
-        previousFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        frameDrawn = true;
-      } catch(e) {
-        console.error("drawImage error", e);
+    let now = audio.currentTime;
+    let vidA = getCurrentDrawVideo(prevTrackIndex);
+    let vidB = getCurrentDrawVideo(requestedTrackIndex);
+    let progress = 1;
+
+    if (crossfading) {
+      progress = Math.min(1, (audio.currentTime - lastSwitchTime)/CROSSFADE_DURATION);
+      crossfadeProgress = progress;
+      if (progress >= 1) {
+        crossfading = false;
+        prevTrackIndex = requestedTrackIndex;
       }
-    } else if (previousFrame) {
-      // Draw previous frame to mask switching black frame
-      ctx.putImageData(previousFrame, 0, 0);
-      frameDrawn = true;
+    }
+
+    // Draw crossfade: blend previous and new video
+    if (crossfading && vidA && vidB && vidA.readyState >= 2 && vidB.readyState >= 2) {
+      try {
+        ctx.globalAlpha = 1 - progress;
+        ctx.drawImage(vidA, 0, 0, canvas.width, canvas.height);
+        ctx.globalAlpha = progress;
+        ctx.drawImage(vidB, 0, 0, canvas.width, canvas.height);
+        ctx.globalAlpha = 1.0;
+        previousFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      } catch(e) {
+        console.error("crossfade error", e);
+      }
     } else {
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Not crossfading, draw current camera
+      let vid = getCurrentDrawVideo(requestedTrackIndex);
+      if (vid && !vid.ended && vid.readyState >= 2) {
+        try {
+          ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+          previousFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        } catch(e) {
+          console.error("drawImage error", e);
+        }
+      } else if (previousFrame) {
+        ctx.putImageData(previousFrame, 0, 0);
+      } else {
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
     }
 
     // === FADE IN/OUT LOGIC ===
-    let now = audio.currentTime;
     if (now < FADE_DURATION) {
       fadeIn = true;
       fadeAlpha = Math.min(1, 1 - (now/FADE_DURATION));
@@ -336,7 +373,6 @@ recordFullEditBtn.addEventListener('click', async function () {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.restore();
     }
-
     animationFrameId = requestAnimationFrame(drawFrame);
   }
   drawFrame();
