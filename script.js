@@ -280,10 +280,18 @@ recordFullEditBtn.addEventListener('click', async function () {
     return;
   }
 
-  // === DRAW FRAME LOGIC (draw as soon as any frame is available) ===
+  // === FADE CONTROL ===
+  let FADE_DURATION = 1.0; // seconds
+  let fadeAlpha = 1.0; // 1 = fully black, 0 = fully visible
+  let fadeIn = true;
+  let fadeOut = false;
+  let previousFrame = null;
+
+  // === DRAW FRAME LOGIC (with fade and switch protection) ===
   function drawFrame() {
     if (!isRecording) return;
     const vid = getCurrentDrawVideo();
+    let frameDrawn = false;
     if (
       vid &&
       !vid.ended &&
@@ -291,15 +299,44 @@ recordFullEditBtn.addEventListener('click', async function () {
     ) {
       try {
         ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+        previousFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        frameDrawn = true;
       } catch(e) {
         console.error("drawImage error", e);
-        ctx.fillStyle = "#000";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
+    } else if (previousFrame) {
+      // Draw previous frame to mask switching black frame
+      ctx.putImageData(previousFrame, 0, 0);
+      frameDrawn = true;
     } else {
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
+
+    // === FADE IN/OUT LOGIC ===
+    let now = audio.currentTime;
+    if (now < FADE_DURATION) {
+      fadeIn = true;
+      fadeAlpha = Math.min(1, 1 - (now/FADE_DURATION));
+    } else {
+      fadeIn = false;
+      fadeAlpha = 0;
+    }
+    if (audio.duration && now > audio.duration - FADE_DURATION) {
+      fadeOut = true;
+      fadeAlpha = Math.min(1, (now - (audio.duration - FADE_DURATION))/FADE_DURATION);
+    } else if (!fadeIn) {
+      fadeOut = false;
+    }
+    // Draw fade overlay if needed
+    if (fadeAlpha > 0.01) {
+      ctx.save();
+      ctx.globalAlpha = fadeAlpha;
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.restore();
+    }
+
     animationFrameId = requestAnimationFrame(drawFrame);
   }
   drawFrame();
