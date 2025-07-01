@@ -339,8 +339,6 @@ recordFullEditBtn.addEventListener('click', async function () {
         });
         await canplayPromise;
         tempVideos[i].play().catch(()=>{});
-        // In the drawFrame loop, hold drawing until tempVideos[i].currentTime >= audio.currentTime - 0.05
-        // This ensures you don't draw black frames from before the keyframe is decoded!
       }
     };
     switcherBtnsContainer.appendChild(btn);
@@ -353,12 +351,11 @@ recordFullEditBtn.addEventListener('click', async function () {
     if (
       vid &&
       !vid.ended &&
-      vid.readyState >= 2 &&
-      vid.currentTime >= audio.currentTime - 0.05 // <-- Only draw if we're at the correct time
+      vid.readyState >= 2
     ) {
       // Sync if drift is too large
       const desync = Math.abs(vid.currentTime - audio.currentTime);
-      if (desync > 0.1) {
+      if (desync > 0.5) { // allow up to half a second drift
         try {
           vid.currentTime = Math.max(0, audio.currentTime - 0.5);
         } catch(e) {}
