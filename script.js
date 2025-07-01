@@ -11,7 +11,6 @@ const exportStatus = document.getElementById('exportStatus');
 const hiddenVideos = document.getElementById('hiddenVideos');
 const thumbRow = document.getElementById('thumbRow');
 const switcherBtnsContainer = document.getElementById('switcherBtnsContainer');
-const switcherTracks = document.getElementById('switcherTracks');
 
 const videoTracks = Array(NUM_TRACKS).fill(null);
 const tempVideos = Array(NUM_TRACKS).fill(null);
@@ -265,15 +264,13 @@ recordFullEditBtn.addEventListener('click', async function () {
   canvas.height = 360;
   const ctx = canvas.getContext('2d');
 
-  // Prepare all videos
+  // Play all videos (muted), so frames are always available!
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
-      if (!tempVideos[i].parentNode) hiddenVideos.appendChild(tempVideos[i]);
+      tempVideos[i].muted = true;
       try {
-        tempVideos[i].pause();
-        tempVideos[i].currentTime = 0;
-        tempVideos[i].load();
-      } catch(e) {}
+        await tempVideos[i].play();
+      } catch(e) { console.error("Video play error", e); }
     }
   }
   let currentVideo = getCurrentDrawVideo();
@@ -282,69 +279,8 @@ recordFullEditBtn.addEventListener('click', async function () {
     isRecording = false; isPlaying = false; recIndicator.style.display = 'none';
     return;
   }
-  // Wait for all tempVideos to be loaded before playing
-  for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) {
-      if (tempVideos[i].readyState < 2) {
-        await new Promise(resolve => {
-          tempVideos[i].addEventListener('loadeddata', resolve, { once: true });
-        });
-      }
-    }
-  }
-  // Try to play all tempVideos
-  for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) {
-      try {
-        tempVideos[i].currentTime = 0;
-        await tempVideos[i].play();
-      } catch (err) {}
-    }
-  }
-  try {
-    await currentVideo.play();
-  } catch (e) {}
 
-  // === LIVE MODE SWITCHER BUTTON LOGIC ===
-  switcherBtnsContainer.innerHTML = '';
-  for(let i=0; i<NUM_TRACKS; i++) {
-    const btn = document.createElement('button');
-    btn.className = 'switcher-btn' + (i === activeTrackIndex ? ' active' : '');
-    btn.textContent = `Camera ${i+1}`;
-    btn.disabled = !videoTracks[i];
-    btn.onclick = async function() {
-      const prevIndex = activeTrackIndex;
-      activeTrackIndex = i;
-      // Highlight switcher btns/thumbnails
-      switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((el, j) => {
-        el.classList.toggle('active', j === i);
-      });
-      document.querySelectorAll('.thumb').forEach((el, j) => {
-        el.classList.toggle('active', j === i);
-      });
-      // Pause all other videos
-      for (let j = 0; j < tempVideos.length; j++) {
-        if (tempVideos[j]) tempVideos[j].pause();
-      }
-      if (tempVideos[i]) {
-        // Seek a bit earlier to "catch" the next keyframe
-        let seekTarget = Math.max(0, audio.currentTime - 0.5);
-        tempVideos[i].currentTime = seekTarget;
-        let canplayPromise = new Promise(resolve => {
-          const onCanPlay = () => {
-            tempVideos[i].removeEventListener('canplay', onCanPlay);
-            resolve();
-          };
-          tempVideos[i].addEventListener('canplay', onCanPlay);
-        });
-        await canplayPromise;
-        tempVideos[i].play().catch(()=>{});
-      }
-    };
-    switcherBtnsContainer.appendChild(btn);
-  }
-
-  // === DRAW FRAME LOGIC (conservative, avoids flashing and stuck black) ===
+  // === DRAW FRAME LOGIC (draw as soon as any frame is available) ===
   function drawFrame() {
     if (!isRecording) return;
     const vid = getCurrentDrawVideo();
@@ -353,20 +289,14 @@ recordFullEditBtn.addEventListener('click', async function () {
       !vid.ended &&
       vid.readyState >= 2
     ) {
-      const lag = vid.currentTime - audio.currentTime;
-      // Only draw if the video is in sync or slightly behind (no black flash)
-      if (vid.currentTime >= audio.currentTime - 0.12) {
+      try {
         ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
-      }
-      // Do not clear canvas if frame not ready, so previous frame is held (no black)
-      // Only resync if video is way off
-      if (lag < -0.7 || lag > 0.3) {
-        try {
-          vid.currentTime = Math.max(0, audio.currentTime - 0.1);
-        } catch(e) {}
+      } catch(e) {
+        console.error("drawImage error", e);
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
     } else {
-      // If no video or no frame available, fill black
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
@@ -421,7 +351,7 @@ recordFullEditBtn.addEventListener('click', async function () {
     if (tempVideos[i]) {
       try {
         tempVideos[i].currentTime = 0;
-        await tempVideos[i].play();
+        tempVideos[i].play().catch(()=>{});
       } catch(e) { }
     }
   }
