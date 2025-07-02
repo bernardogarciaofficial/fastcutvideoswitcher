@@ -3,6 +3,7 @@ const audio = document.getElementById('audio');
 const preview = document.getElementById('preview');
 const recordBtn = document.getElementById('recordBtn');
 const downloadBtn = document.getElementById('downloadBtn');
+const resetBtn = document.getElementById('resetBtn');
 const status = document.getElementById('status');
 
 let recStream = null;
@@ -11,7 +12,9 @@ let mediaRecorder = null;
 let recordedBlob = null;
 let audioContext = null;
 let combinedStream = null;
+let isRecording = false;
 
+// Song loading
 songInput.addEventListener('change', function (e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -22,19 +25,21 @@ songInput.addEventListener('change', function (e) {
   status.textContent = "Song loaded!";
 });
 
+// Record logic
 recordBtn.onclick = async () => {
   if (!audio.src) {
     status.textContent = "Please select an audio file first.";
     return;
   }
   recordBtn.disabled = true;
+  resetBtn.disabled = false;
   status.textContent = "Recording...";
+  isRecording = true;
 
   recChunks = [];
   recordedBlob = null;
   downloadBtn.disabled = true;
 
-  // 1. Get webcam video (NO audio from mic)
   try {
     recStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
   } catch (err) {
@@ -43,48 +48,46 @@ recordBtn.onclick = async () => {
     return;
   }
 
-  // 2. Prepare audio track from the song (not mic)
   audioContext = new (window.AudioContext || window.webkitAudioContext)();
   const sourceNode = audioContext.createMediaElementSource(audio);
   const dest = audioContext.createMediaStreamDestination();
   sourceNode.connect(dest);
-  sourceNode.connect(audioContext.destination); // for monitoring
+  sourceNode.connect(audioContext.destination);
 
-  // 3. Combine webcam video track + audioContext's audio track
   combinedStream = new MediaStream([
     ...recStream.getVideoTracks(),
     ...dest.stream.getAudioTracks()
   ]);
 
-  // 4. Show webcam preview (live video only)
   preview.srcObject = recStream;
   preview.muted = true;
   preview.autoplay = true;
   preview.play().catch(()=>{});
 
-  // 5. Wait for user interaction if needed
   audio.currentTime = 0;
   try {
     await audio.play();
   } catch (err) {
-    status.textContent = "Browser blocked audio autoplay. Please click the play button on the audio player, let it play for a second, then hit Record again.";
+    status.textContent = "Browser blocked audio autoplay. Please click the play button on the audio player, then hit Record again.";
     recordBtn.disabled = false;
+    resetBtn.disabled = true;
     if (recStream) recStream.getTracks().forEach(t => t.stop());
     if (audioContext) audioContext.close();
+    isRecording = false;
     return;
   }
-  audio.pause(); // Pause immediately after autoplay to ensure we can control timing
 
-  // 6. Start the recording in sync
-  audio.currentTime = 0;
-  audio.play();
   mediaRecorder = new MediaRecorder(combinedStream, {
     mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
       ? 'video/webm;codecs=vp9,opus'
       : 'video/webm'
   });
+
   mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recChunks.push(e.data); };
+
   mediaRecorder.onstop = () => {
+    if (!isRecording) return; // Prevent double calls
+    isRecording = false;
     recordedBlob = new Blob(recChunks, { type: 'video/webm' });
     const url = URL.createObjectURL(recordedBlob);
     preview.pause();
@@ -104,29 +107,49 @@ recordBtn.onclick = async () => {
     status.textContent = "Recording complete! Preview and download your take.";
     if (recStream) recStream.getTracks().forEach(t => t.stop());
     if (audioContext) { audioContext.close(); audioContext = null; }
+    recordBtn.disabled = false;
+    resetBtn.disabled = true;
   };
-
-  // Start the recording
-  mediaRecorder.start();
 
   // Stop on audio end or video click
   audio.onended = () => {
-    if (mediaRecorder.state === 'recording') mediaRecorder.stop();
+    if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
     audio.onended = null;
   };
   preview.onclick = () => {
-    if (mediaRecorder.state === 'recording') mediaRecorder.stop();
+    if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
   };
-  mediaRecorder.onstop = () => {
-    recordBtn.disabled = false;
-    preview.onclick = null;
-  };
+
+  mediaRecorder.start();
 };
 
+// Download logic
 downloadBtn.onclick = () => {
   if (!recordedBlob) return;
   const a = document.createElement('a');
   a.href = URL.createObjectURL(recordedBlob);
   a.download = 'take.webm';
   a.click();
+};
+
+// Reset logic
+resetBtn.onclick = () => {
+  // Stop recording if in progress
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    isRecording = false;
+    mediaRecorder.stop();
+  }
+  if (recStream) recStream.getTracks().forEach(t => t.stop());
+  if (audioContext) { audioContext.close(); audioContext = null; }
+  audio.pause();
+  audio.currentTime = 0;
+  preview.pause();
+  preview.removeAttribute('src');
+  preview.srcObject = null;
+  recordedBlob = null;
+  recChunks = [];
+  status.textContent = "Reset. Ready for new take.";
+  recordBtn.disabled = false;
+  downloadBtn.disabled = true;
+  resetBtn.disabled = true;
 };
