@@ -14,6 +14,8 @@ let audioContext = null;
 let combinedStream = null;
 let isRecording = false;
 
+let audioUnlocked = false;
+
 // Song loading
 songInput.addEventListener('change', function (e) {
   const file = e.target.files[0];
@@ -22,13 +24,24 @@ songInput.addEventListener('change', function (e) {
   audio.src = url;
   audio.load();
   audio.muted = false;
-  status.textContent = "Song loaded!";
+  audioUnlocked = false;
+  status.textContent = "Song loaded! Click play below to unlock audio before recording.";
+});
+
+// Require user to click play on the audio element at least once
+audio.addEventListener('play', () => {
+  audioUnlocked = true;
+  status.textContent = "Audio unlocked! Ready to record.";
 });
 
 // Record logic
 recordBtn.onclick = async () => {
   if (!audio.src) {
     status.textContent = "Please select an audio file first.";
+    return;
+  }
+  if (!audioUnlocked) {
+    status.textContent = "Please click play on the audio player below, then pause, before recording.";
     return;
   }
   recordBtn.disabled = true;
@@ -45,6 +58,7 @@ recordBtn.onclick = async () => {
   } catch (err) {
     status.textContent = "Could not access camera!";
     recordBtn.disabled = false;
+    resetBtn.disabled = true;
     return;
   }
 
@@ -64,11 +78,14 @@ recordBtn.onclick = async () => {
   preview.autoplay = true;
   preview.play().catch(()=>{});
 
+  // Ensure audio starts at zero and is playing for the take
+  audio.pause();
   audio.currentTime = 0;
   try {
     await audio.play();
+    if (audio.paused) throw new Error("Audio still paused after play()");
   } catch (err) {
-    status.textContent = "Browser blocked audio autoplay. Please click the play button on the audio player, then hit Record again.";
+    status.textContent = "Browser blocked audio autoplay. Please click the play button on the audio player to unlock, then pause and Record.";
     recordBtn.disabled = false;
     resetBtn.disabled = true;
     if (recStream) recStream.getTracks().forEach(t => t.stop());
@@ -148,8 +165,9 @@ resetBtn.onclick = () => {
   preview.srcObject = null;
   recordedBlob = null;
   recChunks = [];
-  status.textContent = "Reset. Ready for new take.";
+  status.textContent = "Reset. Ready for new take. Click play on the audio to unlock.";
   recordBtn.disabled = false;
   downloadBtn.disabled = true;
   resetBtn.disabled = true;
+  audioUnlocked = false;
 };
