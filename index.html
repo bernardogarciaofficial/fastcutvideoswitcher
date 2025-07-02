@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Fastcut Minimal Recorder Demo</title>
+  <title>Webcam + Song Recorder</title>
   <style>
     body { font-family: sans-serif; }
     #preview { width: 320px; height: 180px; background: #222; }
@@ -10,13 +10,14 @@
   </style>
 </head>
 <body>
-  <h1>Fastcut Minimal Recorder Demo</h1>
+  <h1>Record Video With Song</h1>
   <label>Song: <input type="file" id="songInput" accept="audio/*"></label>
   <audio id="audio" controls style="display:block;width:100%;"></audio>
   <hr>
   <video id="preview" controls playsinline muted></video>
   <div>
     <button id="recordBtn">Record</button>
+    <button id="resetBtn" disabled>Reset</button>
     <button id="downloadBtn" disabled>Download</button>
   </div>
   <span id="status"></span>
