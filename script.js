@@ -29,13 +29,16 @@ songInput.addEventListener('change', function (e) {
   audio.src = url;
   audio.load();
   audio.muted = false;
-  status.textContent = "Song loaded! Click play below to unlock audio, then pause and click Record.";
-});
 
-// --- Require user to click play on the audio element at least once ---
-audio.addEventListener('play', () => {
-  audioUnlocked = true;
-  status.textContent = "Audio unlocked! Pause and click Record.";
+  status.textContent = "Song loaded! Click play below to unlock audio, then pause and click Record.";
+
+  // Create context+source+dest once per song load
+  if (audioContext) try { audioContext.close(); } catch {}
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  sourceNode = audioContext.createMediaElementSource(audio);
+  dest = audioContext.createMediaStreamDestination();
+  sourceNode.connect(dest);
+  sourceNode.connect(audioContext.destination);
 });
 
 function cleanupAudio() {
@@ -44,6 +47,12 @@ function cleanupAudio() {
   sourceNode = null;
   dest = null;
 }
+
+// --- Require user to click play on the audio element at least once ---
+audio.addEventListener('play', () => {
+  audioUnlocked = true;
+  status.textContent = "Audio unlocked! Pause and click Record.";
+});
 
 // --- Record logic ---
 recordBtn.onclick = async () => {
@@ -73,14 +82,7 @@ recordBtn.onclick = async () => {
     return;
   }
 
-  // Always recreate context and source for every recording!
-  cleanupAudio();
-  audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  sourceNode = audioContext.createMediaElementSource(audio);
-  dest = audioContext.createMediaStreamDestination();
-  sourceNode.connect(dest);
-  sourceNode.connect(audioContext.destination);
-
+  // --- Combine webcam video + audio ---
   combinedStream = new MediaStream([
     ...recStream.getVideoTracks(),
     ...dest.stream.getAudioTracks()
@@ -93,7 +95,7 @@ recordBtn.onclick = async () => {
 
   audio.pause();
   audio.currentTime = 0;
-  await new Promise(res => setTimeout(res, 20));
+  await new Promise(res => setTimeout(res, 30));
 
   try {
     await audio.play();
@@ -136,7 +138,6 @@ recordBtn.onclick = async () => {
     downloadBtn.disabled = false;
     status.textContent = "Recording complete! Preview and download your take.";
     if (recStream) recStream.getTracks().forEach(t => t.stop());
-    cleanupAudio();
     recordBtn.disabled = false;
     resetBtn.disabled = true;
   };
