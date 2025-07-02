@@ -62,20 +62,27 @@ recordBtn.onclick = async () => {
   preview.autoplay = true;
   preview.play().catch(()=>{});
 
-  // 5. Wait for audio to be able to play
+  // 5. Wait for user interaction if needed
   audio.currentTime = 0;
   try {
     await audio.play();
   } catch (err) {
-    status.textContent = "Browser blocked audio autoplay. Please click the play button on the audio player, then hit Record again.";
+    status.textContent = "Browser blocked audio autoplay. Please click the play button on the audio player, let it play for a second, then hit Record again.";
     recordBtn.disabled = false;
     if (recStream) recStream.getTracks().forEach(t => t.stop());
     if (audioContext) audioContext.close();
     return;
   }
+  audio.pause(); // Pause immediately after autoplay to ensure we can control timing
 
-  // 6. Start recording webcam video + song audio
-  mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm; codecs=vp9,opus' });
+  // 6. Start the recording in sync
+  audio.currentTime = 0;
+  audio.play();
+  mediaRecorder = new MediaRecorder(combinedStream, {
+    mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+      ? 'video/webm;codecs=vp9,opus'
+      : 'video/webm'
+  });
   mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recChunks.push(e.data); };
   mediaRecorder.onstop = () => {
     recordedBlob = new Blob(recChunks, { type: 'video/webm' });
