@@ -105,33 +105,35 @@ for(let i=0; i<NUM_TRACKS; i++) {
     }
     const recorder = new MediaRecorder(recStream, { mimeType: 'video/webm; codecs=vp9,opus' });
     const preview = document.getElementById('thumb' + idx);
-    let recordedURL = null;
     recorder.ondataavailable = function(e) {
       if (e.data.size > 0) recChunks.push(e.data);
     };
     recorder.onstop = function() {
       const blob = new Blob(recChunks, { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
-      recordedURL = url;
       videoTracks[idx] = { file: null, url, name: `Camera${idx+1}-take.webm`, recordedBlob: blob };
       prepareTempVideo(idx, url, `Camera${idx+1}-take.webm`);
       preview.srcObject = null;
-      // --- Ensure the recorded video stays displayed and resets to start! ---
-      preview.src = url;
-      preview.currentTime = 0;
-      preview.autoplay = false;
-      preview.muted = true;
+      // ---- FIX: force thumbnail to display video and show first frame ----
+      preview.removeAttribute('src'); // Remove any old src to force reload
       preview.load();
-      preview.onloadeddata = () => {
+      setTimeout(() => {
+        preview.src = url; // Set new src after removing src
         preview.currentTime = 0;
-        preview.play().catch(()=>{});
-      };
+        preview.autoplay = false;
+        preview.muted = true;
+        preview.load();
+        preview.onloadeddata = () => {
+          preview.currentTime = 0;
+          preview.pause();
+        };
+      }, 20);
       document.querySelector(`.download-btn[data-idx="${idx}"]`).disabled = false;
       if (recStream) recStream.getTracks().forEach(track => track.stop());
       audio.pause();
       updateSwitcherBtns();
     };
-    // Show webcam
+    // Show webcam live in thumb while recording
     preview.srcObject = recStream;
     preview.muted = true;
     preview.autoplay = true;
@@ -161,7 +163,10 @@ for(let i=0; i<NUM_TRACKS; i++) {
     const file = e.target.files[0];
     if (!file) return;
     const url = URL.createObjectURL(file);
-    document.getElementById('thumb' + idx).src = url;
+    const preview = document.getElementById('thumb' + idx);
+    preview.src = url;
+    preview.currentTime = 0;
+    preview.load();
     videoTracks[idx] = { file, url, name: file.name };
     prepareTempVideo(idx, url, file.name);
     document.querySelector(`.download-btn[data-idx="${idx}"]`).disabled = false;
