@@ -9,6 +9,8 @@ let recStream = null;
 let recChunks = [];
 let mediaRecorder = null;
 let recordedBlob = null;
+let audioContext = null;
+let combinedStream = null;
 
 songInput.addEventListener('change', function (e) {
   const file = e.target.files[0];
@@ -16,9 +18,8 @@ songInput.addEventListener('change', function (e) {
   const url = URL.createObjectURL(file);
   audio.src = url;
   audio.load();
-  status.textContent = "Song loaded!";
-  // Make sure audio is not muted
   audio.muted = false;
+  status.textContent = "Song loaded!";
 });
 
 recordBtn.onclick = async () => {
@@ -33,21 +34,35 @@ recordBtn.onclick = async () => {
   recordedBlob = null;
   downloadBtn.disabled = true;
 
+  // 1. Get webcam video (NO audio from mic)
   try {
-    recStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    recStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
   } catch (err) {
-    status.textContent = "Could not access camera/mic!";
+    status.textContent = "Could not access camera!";
     recordBtn.disabled = false;
     return;
   }
 
-  // Prepare preview for live webcam
+  // 2. Prepare audio track from the song (not mic)
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const sourceNode = audioContext.createMediaElementSource(audio);
+  const dest = audioContext.createMediaStreamDestination();
+  sourceNode.connect(dest);
+  sourceNode.connect(audioContext.destination); // for monitoring
+
+  // 3. Combine webcam video track + audioContext's audio track
+  combinedStream = new MediaStream([
+    ...recStream.getVideoTracks(),
+    ...dest.stream.getAudioTracks()
+  ]);
+
+  // 4. Show webcam preview (live video only)
   preview.srcObject = recStream;
   preview.muted = true;
   preview.autoplay = true;
   preview.play().catch(()=>{});
 
-  // Wait for audio to start playing before starting recording
+  // 5. Wait for audio to be able to play
   audio.currentTime = 0;
   try {
     await audio.play();
@@ -55,11 +70,12 @@ recordBtn.onclick = async () => {
     status.textContent = "Browser blocked audio autoplay. Please click the play button on the audio player, then hit Record again.";
     recordBtn.disabled = false;
     if (recStream) recStream.getTracks().forEach(t => t.stop());
+    if (audioContext) audioContext.close();
     return;
   }
 
-  // Start recording AFTER audio starts
-  mediaRecorder = new MediaRecorder(recStream, { mimeType: 'video/webm; codecs=vp9,opus' });
+  // 6. Start recording webcam video + song audio
+  mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm; codecs=vp9,opus' });
   mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recChunks.push(e.data); };
   mediaRecorder.onstop = () => {
     recordedBlob = new Blob(recChunks, { type: 'video/webm' });
@@ -80,12 +96,13 @@ recordBtn.onclick = async () => {
     downloadBtn.disabled = false;
     status.textContent = "Recording complete! Preview and download your take.";
     if (recStream) recStream.getTracks().forEach(t => t.stop());
+    if (audioContext) { audioContext.close(); audioContext = null; }
   };
 
-  // Start recording
+  // Start the recording
   mediaRecorder.start();
 
-  // Stop when audio ends or click preview to stop
+  // Stop on audio end or video click
   audio.onended = () => {
     if (mediaRecorder.state === 'recording') mediaRecorder.stop();
     audio.onended = null;
@@ -97,4 +114,12 @@ recordBtn.onclick = async () => {
     recordBtn.disabled = false;
     preview.onclick = null;
   };
+};
+
+downloadBtn.onclick = () => {
+  if (!recordedBlob) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(recordedBlob);
+  a.download = 'take.webm';
+  a.click();
 };
