@@ -105,7 +105,6 @@ for(let i=0; i<NUM_TRACKS; i++) {
     }
     const recorder = new MediaRecorder(recStream, { mimeType: 'video/webm; codecs=vp9,opus' });
     const preview = document.getElementById('thumb' + idx);
-    // --- FIX: Save reference to the preview video element ---
     let recordedURL = null;
     recorder.ondataavailable = function(e) {
       if (e.data.size > 0) recChunks.push(e.data);
@@ -113,7 +112,7 @@ for(let i=0; i<NUM_TRACKS; i++) {
     recorder.onstop = function() {
       const blob = new Blob(recChunks, { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
-      recordedURL = url; // Save so we can restore after srcObject
+      recordedURL = url;
       videoTracks[idx] = { file: null, url, name: `Camera${idx+1}-take.webm`, recordedBlob: blob };
       prepareTempVideo(idx, url, `Camera${idx+1}-take.webm`);
       preview.srcObject = null;
