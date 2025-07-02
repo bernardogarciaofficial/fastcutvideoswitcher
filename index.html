@@ -2,59 +2,24 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Fastcut Music Video Maker</title>
-  <link rel="stylesheet" href="styles.css">
+  <title>Fastcut Minimal Recorder Demo</title>
+  <style>
+    body { font-family: sans-serif; }
+    #preview { width: 320px; height: 180px; background: #222; }
+    button, input[type="file"] { margin: 8px 0; }
+  </style>
 </head>
 <body>
-  <header>
-    <div class="logo-area">
-      <span class="brand-name">Fastcut Music Video Maker</span>
-    </div>
-    <div class="gala-title">
-      <span class="movie">get your music video filmed and edited instantly—no more long waits or video editing delay</span>
-    </div>
-    <div class="lights-camera-action">🎬 Lights • 🎥 Camera • 🎶 Action!</div>
-  </header>
-  <div class="hollywood-card">
-    <div class="upload-section">
-      <label>Song: <input type="file" id="songInput" accept="audio/*"></label>
-      <span id="warnSong">Please choose a song first!</span>
-      <span id="audioStatus"></span>
-      <audio id="audio" controls style="width:100%;margin:8px 0;"></audio>
-    </div>
-    <div id="thumbRow" class="thumb-row"></div>
-    <div id="switcherBtnsContainer" class="gala-switcher-btns">
-      <button class="switcher-btn" data-idx="0">Camera 1</button>
-      <button class="switcher-btn" data-idx="1">Camera 2</button>
-      <button class="switcher-btn" data-idx="2">Camera 3</button>
-      <button class="switcher-btn" data-idx="3">Camera 4</button>
-      <button class="switcher-btn" data-idx="4">Camera 5</button>
-      <button class="switcher-btn" data-idx="5">Camera 6</button>
-    </div>
-    <div class="hollywood-output">
-      <div class="video-output-card">
-        <div id="recIndicator" class="rec-indicator" style="display:none;">● REC</div>
-        <video id="masterOutputVideo" controls autoplay muted playsinline></video>
-        <div class="controls-section">
-          <button id="recordFullEditBtn" class="action-btn">Record Full Edit</button>
-          <!-- REMOVED: Re-Record Full Edit Button -->
-          <button id="stopPreviewBtn" class="action-btn">Stop</button>
-          <button id="exportMusicVideoBtn" class="export-btn" disabled>Export</button>
-          <span id="exportStatus"></span>
-        </div>
-      </div>
-    </div>
-    <div id="hiddenVideos" style="display:none;"></div>
+  <h1>Fastcut Minimal Recorder Demo</h1>
+  <label>Song: <input type="file" id="songInput" accept="audio/*"></label>
+  <audio id="audio" controls style="display:block;width:100%;"></audio>
+  <hr>
+  <video id="preview" controls playsinline muted></video>
+  <div>
+    <button id="recordBtn">Record</button>
+    <button id="downloadBtn" disabled>Download</button>
   </div>
-  <footer>
-    <div class="footer-content">
-      <span class="ticket-badge">bernardogarciagarcia441@gmail.com</span>
-      <div class="footer-links">
-        <a href="https://github.com/bernardogarciaofficial">GitHub</a>
-      </div>
-      <div class="created-by">Fastcut Music Video Maker © 2025 Bernardo Garcia</div>
-    </div>
-  </footer>
+  <span id="status"></span>
   <script src="script.js"></script>
 </body>
 </html>
