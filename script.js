@@ -10,7 +10,6 @@ let recChunks = [];
 let mediaRecorder = null;
 let recordedBlob = null;
 
-// Audio load logic
 songInput.addEventListener('change', function (e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -18,6 +17,8 @@ songInput.addEventListener('change', function (e) {
   audio.src = url;
   audio.load();
   status.textContent = "Song loaded!";
+  // Make sure audio is not muted
+  audio.muted = false;
 });
 
 recordBtn.onclick = async () => {
@@ -27,6 +28,7 @@ recordBtn.onclick = async () => {
   }
   recordBtn.disabled = true;
   status.textContent = "Recording...";
+
   recChunks = [];
   recordedBlob = null;
   downloadBtn.disabled = true;
@@ -39,14 +41,29 @@ recordBtn.onclick = async () => {
     return;
   }
 
+  // Prepare preview for live webcam
+  preview.srcObject = recStream;
+  preview.muted = true;
+  preview.autoplay = true;
+  preview.play().catch(()=>{});
+
+  // Wait for audio to start playing before starting recording
+  audio.currentTime = 0;
+  try {
+    await audio.play();
+  } catch (err) {
+    status.textContent = "Browser blocked audio autoplay. Please click the play button on the audio player, then hit Record again.";
+    recordBtn.disabled = false;
+    if (recStream) recStream.getTracks().forEach(t => t.stop());
+    return;
+  }
+
+  // Start recording AFTER audio starts
   mediaRecorder = new MediaRecorder(recStream, { mimeType: 'video/webm; codecs=vp9,opus' });
   mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recChunks.push(e.data); };
   mediaRecorder.onstop = () => {
-    // Save the recorded take
     recordedBlob = new Blob(recChunks, { type: 'video/webm' });
     const url = URL.createObjectURL(recordedBlob);
-
-    // --- CRITICAL PART: Update the preview video element robustly ---
     preview.pause();
     preview.srcObject = null;
     preview.removeAttribute('src');
@@ -57,25 +74,15 @@ recordBtn.onclick = async () => {
       preview.load();
       preview.onloadeddata = () => {
         preview.currentTime = 0;
-        preview.pause(); // or preview.play() for autoplay
+        preview.pause();
       };
     }, 20);
-
-    // Enable download
     downloadBtn.disabled = false;
     status.textContent = "Recording complete! Preview and download your take.";
     if (recStream) recStream.getTracks().forEach(t => t.stop());
   };
 
-  // Show webcam preview while recording
-  preview.srcObject = recStream;
-  preview.muted = true;
-  preview.autoplay = true;
-  preview.play().catch(()=>{});
-
-  // Start both audio and video recording in sync
-  audio.currentTime = 0;
-  audio.play();
+  // Start recording
   mediaRecorder.start();
 
   // Stop when audio ends or click preview to stop
@@ -90,12 +97,4 @@ recordBtn.onclick = async () => {
     recordBtn.disabled = false;
     preview.onclick = null;
   };
-};
-
-downloadBtn.onclick = () => {
-  if (!recordedBlob) return;
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(recordedBlob);
-  a.download = 'take.webm';
-  a.click();
 };
