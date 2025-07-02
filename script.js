@@ -1,3 +1,5 @@
+const songInput = document.getElementById('songInput');
+const audio = document.getElementById('audio');
 const preview = document.getElementById('preview');
 const recordBtn = document.getElementById('recordBtn');
 const downloadBtn = document.getElementById('downloadBtn');
@@ -13,16 +15,16 @@ let sourceNode = null;
 let dest = null;
 let combinedStream = null;
 let isRecording = false;
-
 let audioUnlocked = false;
+let mediaSourceCreated = false;
 
 // --- Song loading ---
 songInput.addEventListener('change', function (e) {
-  // Clean up any previous context/source!
   if (audioContext) try { audioContext.close(); } catch {}
   audioContext = null;
   sourceNode = null;
   dest = null;
+  mediaSourceCreated = false;
   audioUnlocked = false;
   audio.pause();
   audio.currentTime = 0;
@@ -33,13 +35,13 @@ songInput.addEventListener('change', function (e) {
   audio.src = url;
   audio.load();
   audio.muted = false;
-  status.textContent = "Song loaded! Click play below to unlock audio before recording.";
+  status.textContent = "Song loaded! Click play below to unlock audio, then pause and click Record.";
 });
 
 // --- Require user to click play on the audio element at least once ---
 audio.addEventListener('play', () => {
   audioUnlocked = true;
-  status.textContent = "Audio unlocked! Ready to record.";
+  status.textContent = "Audio unlocked! Pause and click Record.";
 });
 
 // --- Record logic ---
@@ -61,7 +63,6 @@ recordBtn.onclick = async () => {
   recordedBlob = null;
   downloadBtn.disabled = true;
 
-  // 1. Get webcam video (NO audio from mic)
   try {
     recStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
   } catch (err) {
@@ -71,39 +72,43 @@ recordBtn.onclick = async () => {
     return;
   }
 
-  // 2. Prepare audio context and source
-  if (audioContext) try { audioContext.close(); } catch {}
-  audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  sourceNode = audioContext.createMediaElementSource(audio);
-  dest = audioContext.createMediaStreamDestination();
-  sourceNode.connect(dest);
-  sourceNode.connect(audioContext.destination); // for local monitoring
+  // Only create media source once per audio element per page load
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    sourceNode = audioContext.createMediaElementSource(audio);
+    dest = audioContext.createMediaStreamDestination();
+    sourceNode.connect(dest);
+    sourceNode.connect(audioContext.destination);
+    mediaSourceCreated = true;
+  }
 
-  // 3. Combine webcam video track + audioContext's audio track
   combinedStream = new MediaStream([
     ...recStream.getVideoTracks(),
     ...dest.stream.getAudioTracks()
   ]);
 
-  // 4. Show webcam preview (live video only)
   preview.srcObject = recStream;
   preview.muted = true;
   preview.autoplay = true;
   preview.play().catch(()=>{});
 
-  // 5. Ensure audio starts at zero and is playing for the take
+  // --- Ensure song starts at 0 and plays in sync with recording ---
   audio.pause();
   audio.currentTime = 0;
-  // Resume playback in sync w/ recording
+  
+  // Wait for currentTime to actually change to 0 (browser quirk)
+  await new Promise(res => setTimeout(res, 10));
+  
+  let playResult;
   try {
-    await audio.play();
+    playResult = audio.play();
+    if (playResult instanceof Promise) await playResult;
     if (audio.paused) throw new Error("Audio still paused after play()");
   } catch (err) {
     status.textContent = "Browser blocked audio autoplay. Please click play on the audio player to unlock, then pause and Record.";
     recordBtn.disabled = false;
     resetBtn.disabled = true;
     if (recStream) recStream.getTracks().forEach(t => t.stop());
-    if (audioContext) audioContext.close();
     isRecording = false;
     return;
   }
@@ -137,7 +142,6 @@ recordBtn.onclick = async () => {
     downloadBtn.disabled = false;
     status.textContent = "Recording complete! Preview and download your take.";
     if (recStream) recStream.getTracks().forEach(t => t.stop());
-    if (audioContext) { audioContext.close(); audioContext = null; }
     recordBtn.disabled = false;
     resetBtn.disabled = true;
   };
@@ -165,13 +169,15 @@ downloadBtn.onclick = () => {
 
 // --- Reset logic ---
 resetBtn.onclick = () => {
-  // Stop recording if in progress
   if (mediaRecorder && mediaRecorder.state === 'recording') {
     isRecording = false;
     mediaRecorder.stop();
   }
   if (recStream) recStream.getTracks().forEach(t => t.stop());
   if (audioContext) { audioContext.close(); audioContext = null; }
+  sourceNode = null;
+  dest = null;
+  mediaSourceCreated = false;
   audio.pause();
   audio.currentTime = 0;
   preview.pause();
