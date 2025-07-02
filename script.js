@@ -23,35 +23,26 @@ songInput.addEventListener('change', function (e) {
   audioUnlocked = false;
   audio.pause();
   audio.currentTime = 0;
+  audio.controls = true;
+  recordBtn.disabled = false;
+  resetBtn.disabled = true;
+  downloadBtn.disabled = true;
+  recordedBlob = null;
+  recChunks = [];
   const file = e.target.files[0];
   if (!file) return;
   const url = URL.createObjectURL(file);
   audio.src = url;
   audio.load();
-  audio.muted = false;
-
-  status.textContent = "Song loaded! Click play below to unlock audio, then pause and click Record.";
-
-  // Create context+source+dest once per song load
-  if (audioContext) try { audioContext.close(); } catch {}
-  audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  sourceNode = audioContext.createMediaElementSource(audio);
-  dest = audioContext.createMediaStreamDestination();
-  sourceNode.connect(dest);
-  sourceNode.connect(audioContext.destination);
+  status.textContent = "Song loaded! Click play below to unlock audio, then pause. You can't play the song outside of recording.";
 });
 
-function cleanupAudio() {
-  if (audioContext) try { audioContext.close(); } catch {}
-  audioContext = null;
-  sourceNode = null;
-  dest = null;
-}
-
-// --- Require user to click play on the audio element at least once ---
+// --- User unlocks audio ---
 audio.addEventListener('play', () => {
-  audioUnlocked = true;
-  status.textContent = "Audio unlocked! Pause and click Record.";
+  if (!audioUnlocked) {
+    audioUnlocked = true;
+    status.textContent = "Audio unlocked! Pause, then click Record.";
+  }
 });
 
 // --- Record logic ---
@@ -64,10 +55,13 @@ recordBtn.onclick = async () => {
     status.textContent = "Please click play on the audio player below, then pause, before recording.";
     return;
   }
+
+  // Disable audio controls so user cannot play outside of recording
+  audio.controls = false;
+
   recordBtn.disabled = true;
   resetBtn.disabled = false;
   status.textContent = "Recording...";
-  isRecording = true;
 
   recChunks = [];
   recordedBlob = null;
@@ -82,17 +76,28 @@ recordBtn.onclick = async () => {
     return;
   }
 
+  // --- Create context+source+dest if missing (once per song load) ---
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    sourceNode = audioContext.createMediaElementSource(audio);
+    dest = audioContext.createMediaStreamDestination();
+    sourceNode.connect(dest);
+    sourceNode.connect(audioContext.destination);
+  }
+
   // --- Combine webcam video + audio ---
   combinedStream = new MediaStream([
     ...recStream.getVideoTracks(),
     ...dest.stream.getAudioTracks()
   ]);
 
+  // --- Webcam preview ---
   preview.srcObject = recStream;
   preview.muted = true;
   preview.autoplay = true;
   preview.play().catch(()=>{});
 
+  // --- Ensure song starts at 0 and plays in sync with recording ---
   audio.pause();
   audio.currentTime = 0;
   await new Promise(res => setTimeout(res, 30));
@@ -102,10 +107,10 @@ recordBtn.onclick = async () => {
     if (audio.paused) throw new Error("Audio still paused after play()");
   } catch (err) {
     status.textContent = "Browser blocked audio autoplay. Please click play on the audio player to unlock, then pause and Record.";
+    audio.controls = true;
     recordBtn.disabled = false;
     resetBtn.disabled = true;
     if (recStream) recStream.getTracks().forEach(t => t.stop());
-    isRecording = false;
     return;
   }
 
@@ -118,8 +123,6 @@ recordBtn.onclick = async () => {
   mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recChunks.push(e.data); };
 
   mediaRecorder.onstop = () => {
-    if (!isRecording) return;
-    isRecording = false;
     recordedBlob = new Blob(recChunks, { type: 'video/webm' });
     const url = URL.createObjectURL(recordedBlob);
     preview.pause();
@@ -140,9 +143,10 @@ recordBtn.onclick = async () => {
     if (recStream) recStream.getTracks().forEach(t => t.stop());
     recordBtn.disabled = false;
     resetBtn.disabled = true;
+    audio.controls = false; // keep song locked
   };
 
-  // Stop on audio end or video click
+  // --- Stop on audio end or video click
   audio.onended = () => {
     if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
     audio.onended = null;
@@ -166,13 +170,13 @@ downloadBtn.onclick = () => {
 // --- Reset logic ---
 resetBtn.onclick = () => {
   if (mediaRecorder && mediaRecorder.state === 'recording') {
-    isRecording = false;
     mediaRecorder.stop();
   }
   if (recStream) recStream.getTracks().forEach(t => t.stop());
   cleanupAudio();
   audio.pause();
   audio.currentTime = 0;
+  audio.controls = true;
   preview.pause();
   preview.removeAttribute('src');
   preview.srcObject = null;
@@ -184,3 +188,10 @@ resetBtn.onclick = () => {
   resetBtn.disabled = true;
   audioUnlocked = false;
 };
+
+function cleanupAudio() {
+  if (audioContext) try { audioContext.close(); } catch {}
+  audioContext = null;
+  sourceNode = null;
+  dest = null;
+}
