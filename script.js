@@ -114,20 +114,15 @@ for(let i=0; i<NUM_TRACKS; i++) {
       videoTracks[idx] = { file: null, url, name: `Camera${idx+1}-take.webm`, recordedBlob: blob };
       prepareTempVideo(idx, url, `Camera${idx+1}-take.webm`);
       preview.srcObject = null;
-      // ---- FIX: force thumbnail to display video and show first frame ----
-      preview.removeAttribute('src'); // Remove any old src to force reload
+      preview.src = url;
+      preview.muted = true;
+      preview.currentTime = 0;
       preview.load();
-      setTimeout(() => {
-        preview.src = url; // Set new src after removing src
+      // Wait for the video to be ready, then show first frame and pause
+      preview.onloadeddata = () => {
         preview.currentTime = 0;
-        preview.autoplay = false;
-        preview.muted = true;
-        preview.load();
-        preview.onloadeddata = () => {
-          preview.currentTime = 0;
-          preview.pause();
-        };
-      }, 20);
+        preview.pause();
+      };
       document.querySelector(`.download-btn[data-idx="${idx}"]`).disabled = false;
       if (recStream) recStream.getTracks().forEach(track => track.stop());
       audio.pause();
