@@ -16,19 +16,13 @@ let dest = null;
 let combinedStream = null;
 let isRecording = false;
 let audioUnlocked = false;
-let mediaSourceCreated = false;
 
 // --- Song loading ---
 songInput.addEventListener('change', function (e) {
-  if (audioContext) try { audioContext.close(); } catch {}
-  audioContext = null;
-  sourceNode = null;
-  dest = null;
-  mediaSourceCreated = false;
+  cleanupAudio();
   audioUnlocked = false;
   audio.pause();
   audio.currentTime = 0;
-
   const file = e.target.files[0];
   if (!file) return;
   const url = URL.createObjectURL(file);
@@ -43,6 +37,13 @@ audio.addEventListener('play', () => {
   audioUnlocked = true;
   status.textContent = "Audio unlocked! Pause and click Record.";
 });
+
+function cleanupAudio() {
+  if (audioContext) try { audioContext.close(); } catch {}
+  audioContext = null;
+  sourceNode = null;
+  dest = null;
+}
 
 // --- Record logic ---
 recordBtn.onclick = async () => {
@@ -72,15 +73,13 @@ recordBtn.onclick = async () => {
     return;
   }
 
-  // Only create media source once per audio element per page load
-  if (!audioContext) {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    sourceNode = audioContext.createMediaElementSource(audio);
-    dest = audioContext.createMediaStreamDestination();
-    sourceNode.connect(dest);
-    sourceNode.connect(audioContext.destination);
-    mediaSourceCreated = true;
-  }
+  // Always recreate context and source for every recording!
+  cleanupAudio();
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  sourceNode = audioContext.createMediaElementSource(audio);
+  dest = audioContext.createMediaStreamDestination();
+  sourceNode.connect(dest);
+  sourceNode.connect(audioContext.destination);
 
   combinedStream = new MediaStream([
     ...recStream.getVideoTracks(),
@@ -92,17 +91,12 @@ recordBtn.onclick = async () => {
   preview.autoplay = true;
   preview.play().catch(()=>{});
 
-  // --- Ensure song starts at 0 and plays in sync with recording ---
   audio.pause();
   audio.currentTime = 0;
-  
-  // Wait for currentTime to actually change to 0 (browser quirk)
-  await new Promise(res => setTimeout(res, 10));
-  
-  let playResult;
+  await new Promise(res => setTimeout(res, 20));
+
   try {
-    playResult = audio.play();
-    if (playResult instanceof Promise) await playResult;
+    await audio.play();
     if (audio.paused) throw new Error("Audio still paused after play()");
   } catch (err) {
     status.textContent = "Browser blocked audio autoplay. Please click play on the audio player to unlock, then pause and Record.";
@@ -142,6 +136,7 @@ recordBtn.onclick = async () => {
     downloadBtn.disabled = false;
     status.textContent = "Recording complete! Preview and download your take.";
     if (recStream) recStream.getTracks().forEach(t => t.stop());
+    cleanupAudio();
     recordBtn.disabled = false;
     resetBtn.disabled = true;
   };
@@ -174,10 +169,7 @@ resetBtn.onclick = () => {
     mediaRecorder.stop();
   }
   if (recStream) recStream.getTracks().forEach(t => t.stop());
-  if (audioContext) { audioContext.close(); audioContext = null; }
-  sourceNode = null;
-  dest = null;
-  mediaSourceCreated = false;
+  cleanupAudio();
   audio.pause();
   audio.currentTime = 0;
   preview.pause();
