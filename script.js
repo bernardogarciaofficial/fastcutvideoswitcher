@@ -24,7 +24,7 @@ let animationFrameId = null;
 let audioContext = null;
 let livePreviewStream = null;
 
-const CROSSFADE_DURATION = 0.3; // seconds
+const CROSSFADE_DURATION = 0.3;
 let crossfadeProgress = 1;
 let crossfading = false;
 let crossfadeStartTime = 0;
@@ -49,14 +49,12 @@ function createThumbRow() {
     const col = document.createElement('div');
     col.className = 'thumb-col';
     col.dataset.idx = i;
-
     // Thumbnail video
     const video = document.createElement('video');
     video.className = 'thumb';
     video.id = 'thumb' + i;
     video.muted = true;
     video.playsInline = true;
-
     // Controls under thumbnail
     const controls = document.createElement('div');
     controls.className = 'thumb-controls';
@@ -104,8 +102,7 @@ for(let i=0; i<NUM_TRACKS; i++) {
       alert('Cannot access camera/microphone.');
       return;
     }
-    const controls = document.querySelector(`.thumb-col[data-idx="${idx}"] .thumb-controls`);
-    let preview = document.getElementById('thumb' + idx);
+    const preview = document.getElementById('thumb' + idx);
 
     const recorder = new MediaRecorder(recStream, { mimeType: 'video/webm; codecs=vp9,opus' });
     recorder.ondataavailable = function(e) {
@@ -116,26 +113,20 @@ for(let i=0; i<NUM_TRACKS; i++) {
       const url = URL.createObjectURL(blob);
       videoTracks[idx] = { file: null, url, name: `Camera${idx+1}-take.webm`, recordedBlob: blob };
       prepareTempVideo(idx, url, `Camera${idx+1}-take.webm`);
-
-      // --- Replace the video element with a new one to ensure browser refreshes it! ---
-      const newVideo = document.createElement('video');
-      newVideo.className = 'thumb';
-      newVideo.id = 'thumb' + idx;
-      newVideo.muted = true;
-      newVideo.playsInline = true;
-      newVideo.src = url;
-      newVideo.currentTime = 0;
-      newVideo.load();
-      newVideo.onloadeddata = () => {
-        newVideo.currentTime = 0;
-        newVideo.pause();
-      };
-      newVideo.onclick = () => setActiveTrack(idx);
-
-      // Replace in DOM
-      preview.parentNode.replaceChild(newVideo, preview);
-
-      // Enable download button
+      preview.pause();
+      preview.srcObject = null;
+      preview.removeAttribute('src'); // remove src to force browser refresh
+      preview.load();
+      setTimeout(() => {
+        preview.src = url;
+        preview.muted = true;
+        preview.currentTime = 0;
+        preview.load();
+        preview.onloadeddata = () => {
+          preview.currentTime = 0;
+          preview.pause();
+        };
+      }, 20);
       document.querySelector(`.download-btn[data-idx="${idx}"]`).disabled = false;
       if (recStream) recStream.getTracks().forEach(track => track.stop());
       audio.pause();
@@ -164,8 +155,7 @@ for(let i=0; i<NUM_TRACKS; i++) {
     recorder.onstop = () => {
       e.target.disabled = false;
       e.target.textContent = 'Record';
-      // Remove click-to-stop
-      // (new video will get its own onclick)
+      preview.onclick = null;
     };
   };
   // Upload button
@@ -174,25 +164,20 @@ for(let i=0; i<NUM_TRACKS; i++) {
     const file = e.target.files[0];
     if (!file) return;
     const url = URL.createObjectURL(file);
-    const controls = document.querySelector(`.thumb-col[data-idx="${idx}"] .thumb-controls`);
-    let preview = document.getElementById('thumb' + idx);
-
-    // Replace the video element with a new one
-    const newVideo = document.createElement('video');
-    newVideo.className = 'thumb';
-    newVideo.id = 'thumb' + idx;
-    newVideo.muted = true;
-    newVideo.playsInline = true;
-    newVideo.src = url;
-    newVideo.currentTime = 0;
-    newVideo.load();
-    newVideo.onloadeddata = () => {
-      newVideo.currentTime = 0;
-      newVideo.pause();
-    };
-    newVideo.onclick = () => setActiveTrack(idx);
-
-    preview.parentNode.replaceChild(newVideo, preview);
+    const preview = document.getElementById('thumb' + idx);
+    preview.pause();
+    preview.srcObject = null;
+    preview.removeAttribute('src');
+    preview.load();
+    setTimeout(() => {
+      preview.src = url;
+      preview.currentTime = 0;
+      preview.load();
+      preview.onloadeddata = () => {
+        preview.currentTime = 0;
+        preview.pause();
+      };
+    }, 20);
     videoTracks[idx] = { file, url, name: file.name };
     prepareTempVideo(idx, url, file.name);
     document.querySelector(`.download-btn[data-idx="${idx}"]`).disabled = false;
@@ -244,7 +229,6 @@ function updateSwitcherBtns() {
 updateSwitcherBtns();
 
 function setActiveTrack(idx) {
-  // Begin crossfade
   if (idx !== activeTrackIndex) {
     prevTrackIndex = activeTrackIndex;
     requestedTrackIndex = idx;
@@ -253,7 +237,6 @@ function setActiveTrack(idx) {
     crossfadeStartTime = performance.now();
     lastSwitchTime = audio.currentTime;
   }
-  // UI highlight update
   activeTrackIndex = idx;
   switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((el, i) => {
     el.classList.toggle('active', i === idx);
@@ -261,7 +244,6 @@ function setActiveTrack(idx) {
   document.querySelectorAll('.thumb').forEach((el, i) => {
     el.classList.toggle('active', i === idx);
   });
-  // PAUSE all videos except active; SYNC active video to audio
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
       if (i === idx) {
@@ -283,7 +265,6 @@ function previewInOutput(idx) {
   masterOutputVideo.style.display = 'block';
   masterOutputVideo.currentTime = 0;
 }
-// Set default
 setActiveTrack(0);
 
 // ====== LIVE RECORDING LOGIC (Main Output) ======
@@ -337,20 +318,18 @@ recordFullEditBtn.addEventListener('click', async function () {
   }
 
   // === FADE CONTROL ===
-  let FADE_DURATION = 1.0; // seconds
+  let FADE_DURATION = 1.0;
   let fadeAlpha = 1.0;
   let fadeIn = true;
   let fadeOut = false;
   let previousFrame = null;
 
-  // === DRAW FRAME LOGIC (with crossfade and fade-in/out) ===
   function drawFrame() {
     if (!isRecording) return;
     let now = audio.currentTime;
     let vidA = getCurrentDrawVideo(prevTrackIndex);
     let vidB = getCurrentDrawVideo(requestedTrackIndex);
     let progress = 1;
-
     if (crossfading) {
       progress = Math.min(1, (audio.currentTime - lastSwitchTime)/CROSSFADE_DURATION);
       crossfadeProgress = progress;
@@ -359,8 +338,6 @@ recordFullEditBtn.addEventListener('click', async function () {
         prevTrackIndex = requestedTrackIndex;
       }
     }
-
-    // Draw crossfade: blend previous and new video
     if (crossfading && vidA && vidB && vidA.readyState >= 2 && vidB.readyState >= 2) {
       try {
         ctx.globalAlpha = 1 - progress;
@@ -373,7 +350,6 @@ recordFullEditBtn.addEventListener('click', async function () {
         console.error("crossfade error", e);
       }
     } else {
-      // Not crossfading, draw current camera
       let vid = getCurrentDrawVideo(requestedTrackIndex);
       if (vid && !vid.ended && vid.readyState >= 2) {
         try {
@@ -389,8 +365,6 @@ recordFullEditBtn.addEventListener('click', async function () {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
     }
-
-    // === FADE IN/OUT LOGIC ===
     if (now < FADE_DURATION) {
       fadeIn = true;
       fadeAlpha = Math.min(1, 1 - (now/FADE_DURATION));
@@ -404,7 +378,6 @@ recordFullEditBtn.addEventListener('click', async function () {
     } else if (!fadeIn) {
       fadeOut = false;
     }
-    // Draw fade overlay if needed
     if (fadeAlpha > 0.01) {
       ctx.save();
       ctx.globalAlpha = fadeAlpha;
@@ -484,7 +457,6 @@ recordFullEditBtn.addEventListener('click', async function () {
   };
 });
 
-// ===== EXPORT =====
 exportBtn.addEventListener('click', function () {
   if (!masterOutputVideo.src) {
     exportStatus.textContent = 'Nothing to export yet!';
