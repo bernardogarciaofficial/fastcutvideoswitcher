@@ -24,7 +24,6 @@ let animationFrameId = null;
 let audioContext = null;
 let livePreviewStream = null;
 
-// Crossfade config
 const CROSSFADE_DURATION = 0.3; // seconds
 let crossfadeProgress = 1;
 let crossfading = false;
@@ -50,12 +49,14 @@ function createThumbRow() {
     const col = document.createElement('div');
     col.className = 'thumb-col';
     col.dataset.idx = i;
+
     // Thumbnail video
     const video = document.createElement('video');
     video.className = 'thumb';
     video.id = 'thumb' + i;
     video.muted = true;
     video.playsInline = true;
+
     // Controls under thumbnail
     const controls = document.createElement('div');
     controls.className = 'thumb-controls';
@@ -103,8 +104,10 @@ for(let i=0; i<NUM_TRACKS; i++) {
       alert('Cannot access camera/microphone.');
       return;
     }
+    const controls = document.querySelector(`.thumb-col[data-idx="${idx}"] .thumb-controls`);
+    let preview = document.getElementById('thumb' + idx);
+
     const recorder = new MediaRecorder(recStream, { mimeType: 'video/webm; codecs=vp9,opus' });
-    const preview = document.getElementById('thumb' + idx);
     recorder.ondataavailable = function(e) {
       if (e.data.size > 0) recChunks.push(e.data);
     };
@@ -113,27 +116,39 @@ for(let i=0; i<NUM_TRACKS; i++) {
       const url = URL.createObjectURL(blob);
       videoTracks[idx] = { file: null, url, name: `Camera${idx+1}-take.webm`, recordedBlob: blob };
       prepareTempVideo(idx, url, `Camera${idx+1}-take.webm`);
-      preview.srcObject = null;
-      preview.src = url;
-      preview.muted = true;
-      preview.currentTime = 0;
-      preview.load();
-      // Wait for the video to be ready, then show first frame and pause
-      preview.onloadeddata = () => {
-        preview.currentTime = 0;
-        preview.pause();
+
+      // --- Replace the video element with a new one to ensure browser refreshes it! ---
+      const newVideo = document.createElement('video');
+      newVideo.className = 'thumb';
+      newVideo.id = 'thumb' + idx;
+      newVideo.muted = true;
+      newVideo.playsInline = true;
+      newVideo.src = url;
+      newVideo.currentTime = 0;
+      newVideo.load();
+      newVideo.onloadeddata = () => {
+        newVideo.currentTime = 0;
+        newVideo.pause();
       };
+      newVideo.onclick = () => setActiveTrack(idx);
+
+      // Replace in DOM
+      preview.parentNode.replaceChild(newVideo, preview);
+
+      // Enable download button
       document.querySelector(`.download-btn[data-idx="${idx}"]`).disabled = false;
       if (recStream) recStream.getTracks().forEach(track => track.stop());
       audio.pause();
       updateSwitcherBtns();
     };
+
     // Show webcam live in thumb while recording
     preview.srcObject = recStream;
     preview.muted = true;
     preview.autoplay = true;
     preview.play().catch(()=>{});
     recorder.start();
+
     // Change btn state
     e.target.disabled = true;
     e.target.textContent = 'Recording...';
@@ -149,7 +164,8 @@ for(let i=0; i<NUM_TRACKS; i++) {
     recorder.onstop = () => {
       e.target.disabled = false;
       e.target.textContent = 'Record';
-      preview.onclick = null;
+      // Remove click-to-stop
+      // (new video will get its own onclick)
     };
   };
   // Upload button
@@ -158,10 +174,25 @@ for(let i=0; i<NUM_TRACKS; i++) {
     const file = e.target.files[0];
     if (!file) return;
     const url = URL.createObjectURL(file);
-    const preview = document.getElementById('thumb' + idx);
-    preview.src = url;
-    preview.currentTime = 0;
-    preview.load();
+    const controls = document.querySelector(`.thumb-col[data-idx="${idx}"] .thumb-controls`);
+    let preview = document.getElementById('thumb' + idx);
+
+    // Replace the video element with a new one
+    const newVideo = document.createElement('video');
+    newVideo.className = 'thumb';
+    newVideo.id = 'thumb' + idx;
+    newVideo.muted = true;
+    newVideo.playsInline = true;
+    newVideo.src = url;
+    newVideo.currentTime = 0;
+    newVideo.load();
+    newVideo.onloadeddata = () => {
+      newVideo.currentTime = 0;
+      newVideo.pause();
+    };
+    newVideo.onclick = () => setActiveTrack(idx);
+
+    preview.parentNode.replaceChild(newVideo, preview);
     videoTracks[idx] = { file, url, name: file.name };
     prepareTempVideo(idx, url, file.name);
     document.querySelector(`.download-btn[data-idx="${idx}"]`).disabled = false;
