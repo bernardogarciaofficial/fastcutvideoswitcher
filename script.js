@@ -3,7 +3,6 @@ const audio = document.getElementById('audio');
 const preview = document.getElementById('preview');
 const recordBtn = document.getElementById('recordBtn');
 const downloadBtn = document.getElementById('downloadBtn');
-const resetBtn = document.getElementById('resetBtn');
 const status = document.getElementById('status');
 
 let recStream = null;
@@ -25,7 +24,6 @@ songInput.addEventListener('change', function (e) {
   audio.currentTime = 0;
   audio.controls = true;
   recordBtn.disabled = false;
-  resetBtn.disabled = true;
   downloadBtn.disabled = true;
   recordedBlob = null;
   recChunks = [];
@@ -60,7 +58,6 @@ recordBtn.onclick = async () => {
   audio.controls = false;
 
   recordBtn.disabled = true;
-  resetBtn.disabled = false;
   status.textContent = "Recording...";
 
   recChunks = [];
@@ -72,7 +69,6 @@ recordBtn.onclick = async () => {
   } catch (err) {
     status.textContent = "Could not access camera!";
     recordBtn.disabled = false;
-    resetBtn.disabled = true;
     return;
   }
 
@@ -109,7 +105,6 @@ recordBtn.onclick = async () => {
     status.textContent = "Browser blocked audio autoplay. Please click play on the audio player to unlock, then pause and Record.";
     audio.controls = true;
     recordBtn.disabled = false;
-    resetBtn.disabled = true;
     if (recStream) recStream.getTracks().forEach(t => t.stop());
     return;
   }
@@ -142,7 +137,6 @@ recordBtn.onclick = async () => {
     status.textContent = "Recording complete! Preview and download your take.";
     if (recStream) recStream.getTracks().forEach(t => t.stop());
     recordBtn.disabled = false;
-    resetBtn.disabled = true;
     audio.controls = false; // keep song locked
   };
 
@@ -165,28 +159,6 @@ downloadBtn.onclick = () => {
   a.href = URL.createObjectURL(recordedBlob);
   a.download = 'take.webm';
   a.click();
-};
-
-// --- Reset logic ---
-resetBtn.onclick = () => {
-  if (mediaRecorder && mediaRecorder.state === 'recording') {
-    mediaRecorder.stop();
-  }
-  if (recStream) recStream.getTracks().forEach(t => t.stop());
-  cleanupAudio();
-  audio.pause();
-  audio.currentTime = 0;
-  audio.controls = true;
-  preview.pause();
-  preview.removeAttribute('src');
-  preview.srcObject = null;
-  recordedBlob = null;
-  recChunks = [];
-  status.textContent = "Reset. Ready for new take. Click play on the audio to unlock.";
-  recordBtn.disabled = false;
-  downloadBtn.disabled = true;
-  resetBtn.disabled = true;
-  audioUnlocked = false;
 };
 
 function cleanupAudio() {
