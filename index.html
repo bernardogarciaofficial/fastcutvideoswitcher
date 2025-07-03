@@ -1,26 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Six Take Video Platform</title>
+  <meta charset="UTF-8">
+  <title>Fastcut Minimal Recorder Demo</title>
   <style>
     body { font-family: sans-serif; }
-    .takes { display: flex; flex-wrap: wrap; gap: 16px; }
-    .take { border: 1px solid #bbb; padding: 8px; width: 340px; background: #fafafa; }
-    .take video { width: 320px; height: 180px; background: #222; }
-    .take button, .take .downloadBtn { margin-top: 6px; }
-    .main-audio { margin: 12px 0; }
-    .take-title { font-weight: bold; margin-bottom: 4px; }
-    #status { display: block; margin: 14px 0; color: #0060aa; font-size: 1.1em; }
+    #preview { width: 320px; height: 180px; background: #222; }
+    button, input[type="file"] { margin: 8px 0; }
   </style>
 </head>
 <body>
-  <h1>Record Video Takes (6 Slots)</h1>
+  <h1>Fastcut Minimal Recorder Demo</h1>
   <label>Song: <input type="file" id="songInput" accept="audio/*"></label>
-  <audio id="audio" class="main-audio" controls style="display:block;width:100%;"></audio>
-  <div id="status"></div>
+  <audio id="audio" controls style="display:block;width:100%;"></audio>
   <hr>
-  <div class="takes" id="takes">
-    <!-- JS will populate six .take slots here -->
+  <video id="preview" controls playsinline muted></video>
+  <div>
+    <button id="recordBtn">Record</button>
+    <button id="downloadBtn" disabled>Download</button>
   </div>
+  <span id="status"></span>
   <script src="script.js"></script>
 </body>
 </html>
