@@ -1,212 +1,165 @@
-const NUM_TAKES = 6;
-
 const songInput = document.getElementById('songInput');
 const audio = document.getElementById('audio');
+const preview = document.getElementById('preview');
+const recordBtn = document.getElementById('recordBtn');
+const downloadBtn = document.getElementById('downloadBtn');
 const status = document.getElementById('status');
-const takesContainer = document.getElementById('takes');
 
 let recStream = null;
+let recChunks = [];
+let mediaRecorder = null;
+let recordedBlob = null;
 let audioContext = null;
 let sourceNode = null;
 let dest = null;
+let combinedStream = null;
+let isRecording = false;
 let audioUnlocked = false;
-let audioLoaded = false;
-
-// State for all takes
-const takes = Array.from({length: NUM_TAKES}).map(() => ({
-  preview: null,
-  recordBtn: null,
-  downloadBtn: null,
-  recChunks: [],
-  mediaRecorder: null,
-  recordedBlob: null,
-  combinedStream: null,
-  isRecording: false,
-}));
-
-// --- Populate take slots ---
-takesContainer.innerHTML = takes.map((_, i) => `
-  <div class="take" data-idx="${i}">
-    <div class="take-title">Take #${i+1}</div>
-    <video class="preview" controls playsinline muted></video>
-    <br>
-    <button class="recordBtn">Record</button>
-    <button class="downloadBtn" disabled>Download</button>
-  </div>
-`).join("");
-
-// Bind DOM elements for each take
-takes.forEach((take, i) => {
-  const takeDiv = takesContainer.querySelector(`.take[data-idx="${i}"]`);
-  take.preview = takeDiv.querySelector('.preview');
-  take.recordBtn = takeDiv.querySelector('.recordBtn');
-  take.downloadBtn = takeDiv.querySelector('.downloadBtn');
-});
 
 // --- Song loading ---
 songInput.addEventListener('change', function (e) {
   cleanupAudio();
   audioUnlocked = false;
-  audioLoaded = false;
   audio.pause();
   audio.currentTime = 0;
   audio.controls = true;
-  status.textContent = "Song loaded! Click play below to unlock audio, then pause. You can't play the song outside of recording.";
-  takes.forEach(take => {
-    take.recordBtn.disabled = false;
-    take.downloadBtn.disabled = true;
-    take.recordedBlob = null;
-    take.recChunks = [];
-    take.preview.src = "";
-    take.preview.srcObject = null;
-    take.preview.load();
-  });
+  recordBtn.disabled = false;
+  downloadBtn.disabled = true;
+  recordedBlob = null;
+  recChunks = [];
   const file = e.target.files[0];
   if (!file) return;
   const url = URL.createObjectURL(file);
   audio.src = url;
   audio.load();
-  audioLoaded = true;
+  status.textContent = "Song loaded! Click play below to unlock audio, then pause. You can't play the song outside of recording.";
 });
 
 // --- User unlocks audio ---
 audio.addEventListener('play', () => {
   if (!audioUnlocked) {
     audioUnlocked = true;
-    status.textContent = "Audio unlocked! Pause, then pick a Take to Record.";
+    status.textContent = "Audio unlocked! Pause, then click Record.";
   }
 });
 
-// --- Per-take record logic ---
-takes.forEach((take, idx) => {
-  take.recordBtn.onclick = async () => {
-    if (!audio.src) {
-      status.textContent = "Please select an audio file first.";
-      return;
-    }
-    if (!audioUnlocked) {
-      status.textContent = "Please click play on the audio player below, then pause, before recording.";
-      return;
-    }
-    // Only allow one recording at a time
-    if (takes.some(t => t.isRecording)) {
-      status.textContent = "Can only record one take at a time.";
-      return;
-    }
-    // Disable all other record buttons
-    takes.forEach((t, i) => { if (i !== idx) t.recordBtn.disabled = true; });
-    take.recordBtn.disabled = true;
-    status.textContent = `Recording Take #${idx+1}...`;
+// --- Record logic ---
+recordBtn.onclick = async () => {
+  if (!audio.src) {
+    status.textContent = "Please select an audio file first.";
+    return;
+  }
+  if (!audioUnlocked) {
+    status.textContent = "Please click play on the audio player below, then pause, before recording.";
+    return;
+  }
 
-    take.recChunks = [];
-    take.recordedBlob = null;
-    take.downloadBtn.disabled = true;
-    take.isRecording = true;
+  // Disable audio controls so user cannot play outside of recording
+  audio.controls = false;
 
-    try {
-      recStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-    } catch (err) {
-      status.textContent = "Could not access camera!";
-      take.recordBtn.disabled = false;
-      takes.forEach((t, i) => { if (i !== idx) t.recordBtn.disabled = false; });
-      take.isRecording = false;
-      return;
-    }
+  recordBtn.disabled = true;
+  status.textContent = "Recording...";
 
-    // --- Create context+source+dest if missing (once per song load) ---
-    if (!audioContext) {
-      audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      sourceNode = audioContext.createMediaElementSource(audio);
-      dest = audioContext.createMediaStreamDestination();
-      sourceNode.connect(dest);
-      sourceNode.connect(audioContext.destination);
-    }
+  recChunks = [];
+  recordedBlob = null;
+  downloadBtn.disabled = true;
 
-    // --- Combine webcam video + audio ---
-    take.combinedStream = new MediaStream([
-      ...recStream.getVideoTracks(),
-      ...dest.stream.getAudioTracks()
-    ]);
+  try {
+    recStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+  } catch (err) {
+    status.textContent = "Could not access camera!";
+    recordBtn.disabled = false;
+    return;
+  }
 
-    // --- Webcam preview ---
-    take.preview.srcObject = recStream;
-    take.preview.muted = true;
-    take.preview.autoplay = true;
-    take.preview.play().catch(()=>{});
+  // --- Create context+source+dest if missing (once per song load) ---
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    sourceNode = audioContext.createMediaElementSource(audio);
+    dest = audioContext.createMediaStreamDestination();
+    sourceNode.connect(dest);
+    sourceNode.connect(audioContext.destination);
+  }
 
-    // --- Ensure song starts at 0 and plays in sync with recording ---
-    audio.pause();
-    audio.currentTime = 0;
-    audio.controls = false;
-    await new Promise(res => setTimeout(res, 30));
+  // --- Combine webcam video + audio ---
+  combinedStream = new MediaStream([
+    ...recStream.getVideoTracks(),
+    ...dest.stream.getAudioTracks()
+  ]);
 
-    try {
-      await audio.play();
-      if (audio.paused) throw new Error("Audio still paused after play()");
-    } catch (err) {
-      status.textContent = "Browser blocked audio autoplay. Please click play on the audio player to unlock, then pause and Record.";
-      audio.controls = true;
-      take.recordBtn.disabled = false;
-      takes.forEach((t, i) => { if (i !== idx) t.recordBtn.disabled = false; });
-      take.isRecording = false;
-      if (recStream) recStream.getTracks().forEach(t => t.stop());
-      return;
-    }
+  // --- Webcam preview ---
+  preview.srcObject = recStream;
+  preview.muted = true;
+  preview.autoplay = true;
+  preview.play().catch(()=>{});
 
-    take.mediaRecorder = new MediaRecorder(take.combinedStream, {
-      mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
-        ? 'video/webm;codecs=vp9,opus'
-        : 'video/webm'
-    });
+  // --- Ensure song starts at 0 and plays in sync with recording ---
+  audio.pause();
+  audio.currentTime = 0;
+  await new Promise(res => setTimeout(res, 30));
 
-    take.mediaRecorder.ondataavailable = e => { if (e.data.size > 0) take.recChunks.push(e.data); };
+  try {
+    await audio.play();
+    if (audio.paused) throw new Error("Audio still paused after play()");
+  } catch (err) {
+    status.textContent = "Browser blocked audio autoplay. Please click play on the audio player to unlock, then pause and Record.";
+    audio.controls = true;
+    recordBtn.disabled = false;
+    if (recStream) recStream.getTracks().forEach(t => t.stop());
+    return;
+  }
 
-    take.mediaRecorder.onstop = () => {
-      take.recordedBlob = new Blob(take.recChunks, { type: 'video/webm' });
-      const url = URL.createObjectURL(take.recordedBlob);
-      take.preview.pause();
-      take.preview.srcObject = null;
-      take.preview.removeAttribute('src');
-      take.preview.load();
-      setTimeout(() => {
-        take.preview.src = url;
-        take.preview.currentTime = 0;
-        take.preview.load();
-        take.preview.onloadeddata = () => {
-          take.preview.currentTime = 0;
-          take.preview.pause();
-        };
-      }, 20);
-      take.downloadBtn.disabled = false;
-      status.textContent = `Take #${idx+1} recorded! Play or download, or pick another slot.`;
-      if (recStream) recStream.getTracks().forEach(t => t.stop());
-      audio.controls = false; // keep song locked
-      take.isRecording = false;
-      // Enable all record buttons
-      takes.forEach((t) => t.recordBtn.disabled = false);
-    };
+  mediaRecorder = new MediaRecorder(combinedStream, {
+    mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+      ? 'video/webm;codecs=vp9,opus'
+      : 'video/webm'
+  });
 
-    // --- Stop on audio end or video click
-    audio.onended = () => {
-      if (take.mediaRecorder && take.mediaRecorder.state === 'recording') take.mediaRecorder.stop();
-      audio.onended = null;
-    };
-    take.preview.onclick = () => {
-      if (take.mediaRecorder && take.mediaRecorder.state === 'recording') take.mediaRecorder.stop();
-    };
+  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recChunks.push(e.data); };
 
-    take.mediaRecorder.start();
+  mediaRecorder.onstop = () => {
+    recordedBlob = new Blob(recChunks, { type: 'video/webm' });
+    const url = URL.createObjectURL(recordedBlob);
+    preview.pause();
+    preview.srcObject = null;
+    preview.removeAttribute('src');
+    preview.load();
+    setTimeout(() => {
+      preview.src = url;
+      preview.currentTime = 0;
+      preview.load();
+      preview.onloadeddata = () => {
+        preview.currentTime = 0;
+        preview.pause();
+      };
+    }, 20);
+    downloadBtn.disabled = false;
+    status.textContent = "Recording complete! Preview and download your take.";
+    if (recStream) recStream.getTracks().forEach(t => t.stop());
+    recordBtn.disabled = false;
+    audio.controls = false; // keep song locked
   };
 
-  // --- Download logic ---
-  take.downloadBtn.onclick = () => {
-    if (!take.recordedBlob) return;
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(take.recordedBlob);
-    a.download = `take${idx+1}.webm`;
-    a.click();
+  // --- Stop on audio end or video click
+  audio.onended = () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+    audio.onended = null;
   };
-});
+  preview.onclick = () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+  };
+
+  mediaRecorder.start();
+};
+
+// --- Download logic ---
+downloadBtn.onclick = () => {
+  if (!recordedBlob) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(recordedBlob);
+  a.download = 'take.webm';
+  a.click();
+};
 
 function cleanupAudio() {
   if (audioContext) try { audioContext.close(); } catch {}
