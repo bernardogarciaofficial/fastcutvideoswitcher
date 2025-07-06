@@ -93,18 +93,66 @@ for(let i=0; i<NUM_TRACKS; i++) {
   // Record button
   document.querySelector(`.record-btn[data-idx="${i}"]`).onclick = async (e) => {
     const idx = +e.target.dataset.idx;
-    audio.currentTime = 0;
-    audio.play().catch(()=>{});
-    let recStream = null;
-    let recChunks = [];
-    try {
-      recStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    } catch (err) {
-      alert('Cannot access camera/microphone.');
+    if (!audio.src) {
+      alert("Please choose a song first.");
       return;
     }
-    const recorder = new MediaRecorder(recStream, { mimeType: 'video/webm; codecs=vp9,opus' });
+
+    // --- AudioContext and slave audio logic ---
+    let recChunks = [];
+    let recStream = null;
+    let localAudioContext = null;
+    let localSourceNode = null;
+    let dest = null;
+
+    try {
+      recStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    } catch (err) {
+      alert('Cannot access camera.');
+      return;
+    }
+
+    // --- Create context+source+dest if missing (once per song load) ---
+    localAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+    localSourceNode = localAudioContext.createMediaElementSource(audio);
+    dest = localAudioContext.createMediaStreamDestination();
+    localSourceNode.connect(dest);
+    localSourceNode.connect(localAudioContext.destination);
+
+    // --- Combine webcam video + audio ---
+    const combinedStream = new MediaStream([
+      ...recStream.getVideoTracks(),
+      ...dest.stream.getAudioTracks()
+    ]);
+
     const preview = document.getElementById('thumb' + idx);
+
+    // --- Webcam preview ---
+    preview.srcObject = recStream;
+    preview.muted = true;
+    preview.autoplay = true;
+    preview.play().catch(()=>{});
+
+    // --- Ensure song starts at 0 and plays in sync with recording ---
+    audio.pause();
+    audio.currentTime = 0;
+    await new Promise(res => setTimeout(res, 30));
+
+    try {
+      await audio.play();
+      if (audio.paused) throw new Error("Audio still paused after play()");
+    } catch (err) {
+      alert("Browser blocked audio autoplay. Please click play on the audio player to unlock, then pause and Record.");
+      if (recStream) recStream.getTracks().forEach(t => t.stop());
+      return;
+    }
+
+    const recorder = new MediaRecorder(combinedStream, {
+      mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+        ? 'video/webm;codecs=vp9,opus'
+        : 'video/webm'
+    });
+
     recorder.ondataavailable = function(e) {
       if (e.data.size > 0) recChunks.push(e.data);
     };
@@ -113,12 +161,12 @@ for(let i=0; i<NUM_TRACKS; i++) {
       const url = URL.createObjectURL(blob);
       videoTracks[idx] = { file: null, url, name: `Camera${idx+1}-take.webm`, recordedBlob: blob };
       prepareTempVideo(idx, url, `Camera${idx+1}-take.webm`);
+      preview.pause();
       preview.srcObject = null;
-      // ---- FIX: force thumbnail to display video and show first frame ----
-      preview.removeAttribute('src'); // Remove any old src to force reload
+      preview.removeAttribute('src');
       preview.load();
       setTimeout(() => {
-        preview.src = url; // Set new src after removing src
+        preview.src = url;
         preview.currentTime = 0;
         preview.autoplay = false;
         preview.muted = true;
@@ -130,18 +178,15 @@ for(let i=0; i<NUM_TRACKS; i++) {
       }, 20);
       document.querySelector(`.download-btn[data-idx="${idx}"]`).disabled = false;
       if (recStream) recStream.getTracks().forEach(track => track.stop());
+      if (localAudioContext) localAudioContext.close();
       audio.pause();
       updateSwitcherBtns();
     };
-    // Show webcam live in thumb while recording
-    preview.srcObject = recStream;
-    preview.muted = true;
-    preview.autoplay = true;
-    preview.play().catch(()=>{});
-    recorder.start();
+
     // Change btn state
     e.target.disabled = true;
     e.target.textContent = 'Recording...';
+
     // Stop after song or manual
     audio.onended = function() {
       if (recorder.state === 'recording') recorder.stop();
@@ -156,7 +201,10 @@ for(let i=0; i<NUM_TRACKS; i++) {
       e.target.textContent = 'Record';
       preview.onclick = null;
     };
+
+    recorder.start();
   };
+
   // Upload button
   document.querySelector(`.upload-btn[data-idx="${i}"]`).onchange = (e) => {
     const idx = +e.target.dataset.idx;
@@ -172,6 +220,7 @@ for(let i=0; i<NUM_TRACKS; i++) {
     document.querySelector(`.download-btn[data-idx="${idx}"]`).disabled = false;
     updateSwitcherBtns();
   };
+
   // Download button
   document.querySelector(`.download-btn[data-idx="${i}"]`).onclick = (e) => {
     const idx = +e.target.dataset.idx;
@@ -182,6 +231,7 @@ for(let i=0; i<NUM_TRACKS; i++) {
     a.download = track.name || `track${idx+1}.webm`;
     a.click();
   };
+
   // Thumbnail click: switch active track and highlight
   document.getElementById('thumb' + i).onclick = () => {
     setActiveTrack(i);
@@ -471,6 +521,5 @@ exportBtn.addEventListener('click', function () {
       a.href = URL.createObjectURL(blob);
       a.download = 'fastcut-studios-edit.webm';
       a.click();
-      exportStatus.textContent = 'Video exported – check your downloads!';
     });
 });
