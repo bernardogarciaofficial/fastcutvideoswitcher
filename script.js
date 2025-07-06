@@ -11,6 +11,9 @@ const exportStatus = document.getElementById('exportStatus');
 const hiddenVideos = document.getElementById('hiddenVideos');
 const thumbRow = document.getElementById('thumbRow');
 const switcherBtnsContainer = document.getElementById('switcherBtnsContainer');
+const audioUnlockBtn = document.getElementById('audioUnlockBtn');
+const audioUnlockMsg = document.getElementById('audioUnlockMsg');
+const audioUnlockContainer = document.getElementById('audioUnlockContainer');
 
 const videoTracks = Array(NUM_TRACKS).fill(null);
 const tempVideos = Array(NUM_TRACKS).fill(null);
@@ -23,6 +26,7 @@ let recordedChunks = [];
 let animationFrameId = null;
 let audioContext = null;
 let livePreviewStream = null;
+let audioUnlocked = false;
 
 // ===== SONG UPLOAD =====
 songInput.addEventListener('change', function (e) {
@@ -33,7 +37,34 @@ songInput.addEventListener('change', function (e) {
   audio.style.display = 'block';
   audioStatus.textContent = `Loaded: ${file.name}`;
   audio.load();
+  resetAudioUnlock();
 });
+
+function resetAudioUnlock() {
+  audioUnlocked = false;
+  audioUnlockMsg.textContent = '';
+  audioUnlockBtn.disabled = false;
+  audioUnlockContainer.style.display = '';
+  // Disable all record buttons until unlocked
+  document.querySelectorAll('.record-btn').forEach(btn => btn.disabled = true);
+}
+
+// ===== AUDIO UNLOCK WORKFLOW =====
+audioUnlockBtn.onclick = async () => {
+  try {
+    audio.currentTime = 0;
+    await audio.play();
+    audio.pause();
+    audioUnlocked = true;
+    audioUnlockMsg.textContent = "Audio unlocked! You can now record.";
+    audioUnlockBtn.disabled = true;
+    // Enable all record buttons
+    document.querySelectorAll('.record-btn').forEach(btn => btn.disabled = false);
+    setTimeout(()=>{ audioUnlockContainer.style.display = 'none'; }, 1000);
+  } catch (e) {
+    audioUnlockMsg.textContent = "Please allow audio playback in your browser.";
+  }
+};
 
 // ===== THUMBNAIL ROW WITH BUTTONS =====
 function createThumbRow() {
@@ -56,6 +87,7 @@ function createThumbRow() {
     recordBtn.className = 'record-btn';
     recordBtn.textContent = 'Record';
     recordBtn.dataset.idx = i;
+    recordBtn.disabled = true; // disabled until unlock
     // Upload button
     const uploadInput = document.createElement('input');
     uploadInput.type = 'file';
@@ -89,9 +121,8 @@ for(let i=0; i<NUM_TRACKS; i++) {
       alert("Please choose a song first.");
       return;
     }
-    // Browser policy: user must unlock audio via play/pause
-    if (audio.paused) {
-      alert("Please click play on the audio player below, then pause, before recording.");
+    if (!audioUnlocked) {
+      alert("Please unlock audio for recording first.");
       return;
     }
 
@@ -121,7 +152,6 @@ for(let i=0; i<NUM_TRACKS; i++) {
 
     const preview = document.getElementById('thumb' + idx);
 
-    // Webcam preview while recording
     preview.srcObject = recStream;
     preview.muted = true;
     preview.autoplay = true;
@@ -135,7 +165,7 @@ for(let i=0; i<NUM_TRACKS; i++) {
       await audio.play();
       if (audio.paused) throw new Error("Audio still paused after play()");
     } catch (err) {
-      alert("Browser blocked audio autoplay. Please click play on the audio player to unlock, then pause and Record.");
+      alert("Browser blocked audio autoplay. Please allow audio playback and try again.");
       if (recStream) recStream.getTracks().forEach(t => t.stop());
       return;
     }
