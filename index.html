@@ -1,56 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Fastcut Music Video Maker</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <title>Webcam + Song Recorder (Multi-Track)</title>
+  <style>
+    body { font-family: sans-serif; }
+    .thumb-col { display: inline-block; margin: 8px; vertical-align: top; }
+    .thumb { width: 160px; height: 90px; background: #222; display: block; }
+    .thumb-controls { margin-top: 2px; text-align: center; }
+    #audio { width: 100%; }
+    #status { display:block; margin-top:10px; }
+  </style>
 </head>
 <body>
-  <header>
-    <div class="logo-area">
-      <span class="brand-name">Fastcut Music Video Maker</span>
-    </div>
-    <div class="gala-title">
-      <span class="movie">get your music video filmed and edited instantly—no more long waits or video editing delay</span>
-    </div>
-    <div class="lights-camera-action">🎬 Lights • 🎥 Camera • 🎶 Action!</div>
-  </header>
-  <div class="hollywood-card">
-    <div class="upload-section">
-      <label>Song: <input type="file" id="songInput" accept="audio/*"></label>
-      <span id="warnSong">Please choose a song first!</span>
-      <span id="audioStatus"></span>
-      <audio id="audio" controls style="width:100%;margin:8px 0;"></audio>
-    </div>
-    <div id="audioUnlockContainer" style="margin:1em 0; text-align:center;">
-      <button id="audioUnlockBtn">🔓 Unlock Audio for Recording</button>
-      <span id="audioUnlockMsg" style="color:#ff3333; margin-left:1em;"></span>
-    </div>
-    <div id="thumbRow" class="thumb-row"></div>
-    <div id="switcherBtnsContainer" class="gala-switcher-btns"></div>
-    <div class="hollywood-output">
-      <div class="video-output-card">
-        <div id="recIndicator" class="rec-indicator" style="display:none;">● REC</div>
-        <video id="masterOutputVideo" controls autoplay muted playsinline></video>
-        <div class="controls-section">
-          <button id="recordFullEditBtn" class="action-btn">Record Full Edit</button>
-          <button id="stopPreviewBtn" class="action-btn">Stop</button>
-          <button id="exportMusicVideoBtn" class="export-btn" disabled>Export</button>
-          <span id="exportStatus"></span>
-        </div>
-      </div>
-    </div>
-    <div id="hiddenVideos" style="display:none;"></div>
-  </div>
-  <footer>
-    <div class="footer-content">
-      <span class="ticket-badge">bernardogarciagarcia441@gmail.com</span>
-      <div class="footer-links">
-        <a href="https://github.com/bernardogarciaofficial">GitHub</a>
-      </div>
-      <div class="created-by">Fastcut Music Video Maker © 2025 Bernardo Garcia</div>
-    </div>
-  </footer>
+  <h1>Record Video With Song (Multi-Track)</h1>
+  <label>Song: <input type="file" id="songInput" accept="audio/*"></label>
+  <audio id="audio" controls style="display:block;"></audio>
+  <hr>
+  <div id="thumbRow"></div>
+  <span id="status"></span>
   <script src="script.js"></script>
 </body>
 </html>
