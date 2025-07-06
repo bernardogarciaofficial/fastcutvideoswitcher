@@ -1,14 +1,9 @@
 const NUM_TRACKS = 6;
+
+// DOM elements
 const songInput = document.getElementById('songInput');
 const audioStatus = document.getElementById('audioStatus');
 const audio = document.getElementById('audio');
-const masterOutputVideo = document.getElementById('masterOutputVideo');
-const recIndicator = document.getElementById('recIndicator');
-const recordFullEditBtn = document.getElementById('recordFullEditBtn');
-const stopPreviewBtn = document.getElementById('stopPreviewBtn');
-const exportBtn = document.getElementById('exportMusicVideoBtn');
-const exportStatus = document.getElementById('exportStatus');
-const hiddenVideos = document.getElementById('hiddenVideos');
 const thumbRow = document.getElementById('thumbRow');
 const switcherBtnsContainer = document.getElementById('switcherBtnsContainer');
 const audioUnlockBtn = document.getElementById('audioUnlockBtn');
@@ -18,13 +13,6 @@ const audioUnlockContainer = document.getElementById('audioUnlockContainer');
 const videoTracks = Array(NUM_TRACKS).fill(null);
 let activeTrackIndex = 0;
 let audioUnlocked = false;
-let editRecording = null;
-let editRecChunks = [];
-let editRecStream = null;
-let editRecorder = null;
-let editAudioContext = null;
-let editSourceNode = null;
-let editDest = null;
 
 // ===== SONG UPLOAD =====
 songInput.addEventListener('change', function (e) {
@@ -44,9 +32,9 @@ function resetAudioUnlock() {
   audioUnlockBtn.disabled = false;
   audioUnlockContainer.style.display = '';
   document.querySelectorAll('.record-btn').forEach(btn => btn.disabled = true);
-  recordFullEditBtn.disabled = true;
 }
 
+// ===== AUDIO UNLOCK FLOW =====
 audioUnlockBtn.onclick = async () => {
   try {
     audio.currentTime = 0;
@@ -56,7 +44,6 @@ audioUnlockBtn.onclick = async () => {
     audioUnlockMsg.textContent = "Audio unlocked! You can now record.";
     audioUnlockBtn.disabled = true;
     document.querySelectorAll('.record-btn').forEach(btn => btn.disabled = false);
-    recordFullEditBtn.disabled = false;
     setTimeout(()=>{ audioUnlockContainer.style.display = 'none'; }, 1000);
   } catch (e) {
     audioUnlockMsg.textContent = "Please allow audio playback in your browser.";
@@ -69,9 +56,8 @@ function createThumbRow() {
   for(let i=0; i<NUM_TRACKS; i++) {
     const col = document.createElement('div');
     col.className = 'thumb-col';
-    col.dataset.idx = i;
 
-    // Thumbnail video
+    // Video element
     const video = document.createElement('video');
     video.className = 'thumb';
     video.id = 'thumb' + i;
@@ -119,16 +105,7 @@ function createThumbRow() {
 }
 createThumbRow();
 
-// ===== THUMBNAIL CAMERA SWITCHER BUTTONS =====
-function setActiveTrack(idx) {
-  activeTrackIndex = idx;
-  switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((el, i) => {
-    el.classList.toggle('active', i === idx);
-  });
-  document.querySelectorAll('.thumb').forEach((el, i) => {
-    el.classList.toggle('active', i === idx);
-  });
-}
+// ===== SWITCHER BUTTONS =====
 function updateSwitcherBtns() {
   switcherBtnsContainer.innerHTML = '';
   for(let i=0; i<NUM_TRACKS; i++) {
@@ -140,7 +117,17 @@ function updateSwitcherBtns() {
     switcherBtnsContainer.appendChild(btn);
   }
 }
+function setActiveTrack(idx) {
+  activeTrackIndex = idx;
+  switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+  document.querySelectorAll('.thumb').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+}
 updateSwitcherBtns();
+setActiveTrack(0);
 
 // ===== INDIVIDUAL TRACK RECORD/UPLOAD/DOWNLOAD =====
 async function startRecording(idx, video, recordBtn, downloadBtn) {
@@ -185,15 +172,7 @@ async function startRecording(idx, video, recordBtn, downloadBtn) {
   audio.pause();
   audio.currentTime = 0;
   await new Promise(res => setTimeout(res, 30));
-
-  try {
-    await audio.play();
-    if (audio.paused) throw new Error("Audio still paused after play()");
-  } catch (err) {
-    alert("Browser blocked audio autoplay. Please allow audio playback and try again.");
-    if (recStream) recStream.getTracks().forEach(t => t.stop());
-    return;
-  }
+  await audio.play();
 
   const recorder = new MediaRecorder(combinedStream, {
     mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
@@ -210,7 +189,7 @@ async function startRecording(idx, video, recordBtn, downloadBtn) {
     const url = URL.createObjectURL(blob);
     videoTracks[idx] = { url, blob, name: `Camera${idx+1}-take.webm` };
 
-    // DEMO-MATCHING: Force video element to show the new take
+    // --- The critical logic to update thumbnail ---
     video.pause();
     video.srcObject = null;
     video.removeAttribute('src');
@@ -229,6 +208,8 @@ async function startRecording(idx, video, recordBtn, downloadBtn) {
     if (recStream) recStream.getTracks().forEach(track => track.stop());
     if (localAudioContext) localAudioContext.close();
     audio.pause();
+    recordBtn.disabled = false;
+    recordBtn.textContent = 'Record';
     updateSwitcherBtns();
   };
 
@@ -239,13 +220,9 @@ async function startRecording(idx, video, recordBtn, downloadBtn) {
     if (recorder.state === 'recording') recorder.stop();
     audio.onended = null;
   };
-  video.onclick = () => {
-    if (recorder.state === 'recording') recorder.stop();
-  };
   recorder.onstop = () => {
     recordBtn.disabled = false;
     recordBtn.textContent = 'Record';
-    video.onclick = null;
   };
 
   recorder.start();
@@ -271,122 +248,3 @@ function handleDownload(idx) {
   a.download = track.name || `track${idx+1}.webm`;
   a.click();
 }
-
-// ===== FULL EDIT MULTI-CAMERA RECORDING =====
-recordFullEditBtn.onclick = async () => {
-  if (!audio.src) {
-    alert("Please choose a song first.");
-    return;
-  }
-  if (!audioUnlocked) {
-    alert("Please unlock audio for recording first.");
-    return;
-  }
-  if (!videoTracks.some(track => track)) {
-    alert("Record or upload at least one camera take first.");
-    return;
-  }
-  recordFullEditBtn.disabled = true;
-  recIndicator.style.display = '';
-  stopPreviewBtn.disabled = false;
-  editRecChunks = [];
-
-  // Use the currently active camera as the starting one
-  let curIdx = activeTrackIndex;
-  let recStream = null;
-  try {
-    recStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-  } catch (err) {
-    alert('Cannot access camera for full edit.');
-    recIndicator.style.display = 'none';
-    recordFullEditBtn.disabled = false;
-    return;
-  }
-
-  editAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-  editSourceNode = editAudioContext.createMediaElementSource(audio);
-  editDest = editAudioContext.createMediaStreamDestination();
-  editSourceNode.connect(editDest);
-  editSourceNode.connect(editAudioContext.destination);
-
-  const combinedStream = new MediaStream([
-    ...recStream.getVideoTracks(),
-    ...editDest.stream.getAudioTracks()
-  ]);
-  editRecStream = recStream;
-
-  masterOutputVideo.srcObject = recStream;
-  masterOutputVideo.muted = true;
-  masterOutputVideo.autoplay = true;
-  masterOutputVideo.style.display = '';
-  masterOutputVideo.play().catch(()=>{});
-
-  audio.pause();
-  audio.currentTime = 0;
-  await new Promise(res => setTimeout(res, 30));
-
-  try {
-    await audio.play();
-    if (audio.paused) throw new Error("Audio still paused after play()");
-  } catch (err) {
-    alert("Browser blocked audio autoplay. Please allow audio playback and try again.");
-    if (recStream) recStream.getTracks().forEach(t => t.stop());
-    recIndicator.style.display = 'none';
-    recordFullEditBtn.disabled = false;
-    return;
-  }
-
-  editRecording = new MediaRecorder(combinedStream, {
-    mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
-      ? 'video/webm;codecs=vp9,opus'
-      : 'video/webm'
-  });
-
-  editRecording.ondataavailable = function(e) {
-    if (e.data.size > 0) editRecChunks.push(e.data);
-  };
-
-  editRecording.onstop = function() {
-    const blob = new Blob(editRecChunks, { type: 'video/webm' });
-    const url = URL.createObjectURL(blob);
-    masterOutputVideo.srcObject = null;
-    masterOutputVideo.src = url;
-    masterOutputVideo.load();
-    masterOutputVideo.onloadeddata = () => {
-      masterOutputVideo.currentTime = 0;
-      masterOutputVideo.pause();
-    };
-    exportBtn.disabled = false;
-    recIndicator.style.display = 'none';
-    stopPreviewBtn.disabled = true;
-    recordFullEditBtn.disabled = false;
-    if (editRecStream) editRecStream.getTracks().forEach(track => track.stop());
-    if (editAudioContext) editAudioContext.close();
-    audio.pause();
-    exportStatus.textContent = "Ready for export!";
-    masterOutputVideo.style.display = '';
-  };
-
-  editRecording.start();
-  exportBtn.disabled = true;
-  exportStatus.textContent = "";
-};
-
-stopPreviewBtn.onclick = () => {
-  if (editRecording && editRecording.state === 'recording') {
-    editRecording.stop();
-  }
-  stopPreviewBtn.disabled = true;
-};
-
-exportBtn.onclick = () => {
-  if (!masterOutputVideo.src) {
-    exportStatus.textContent = "Nothing to export!";
-    return;
-  }
-  const a = document.createElement('a');
-  a.href = masterOutputVideo.src;
-  a.download = 'music-video.webm';
-  a.click();
-  exportStatus.textContent = "Exported!";
-};
