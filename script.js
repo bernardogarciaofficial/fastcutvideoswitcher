@@ -45,7 +45,6 @@ function resetAudioUnlock() {
   audioUnlockMsg.textContent = '';
   audioUnlockBtn.disabled = false;
   audioUnlockContainer.style.display = '';
-  // Disable all record buttons until unlocked
   document.querySelectorAll('.record-btn').forEach(btn => btn.disabled = true);
 }
 
@@ -58,7 +57,6 @@ audioUnlockBtn.onclick = async () => {
     audioUnlocked = true;
     audioUnlockMsg.textContent = "Audio unlocked! You can now record.";
     audioUnlockBtn.disabled = true;
-    // Enable all record buttons
     document.querySelectorAll('.record-btn').forEach(btn => btn.disabled = false);
     setTimeout(()=>{ audioUnlockContainer.style.display = 'none'; }, 1000);
   } catch (e) {
@@ -114,7 +112,6 @@ createThumbRow();
 
 // ====== THUMB BUTTONS LOGIC ======
 for(let i=0; i<NUM_TRACKS; i++) {
-  // Record button
   document.querySelector(`.record-btn[data-idx="${i}"]`).onclick = async (e) => {
     const idx = +e.target.dataset.idx;
     if (!audio.src) {
@@ -185,6 +182,7 @@ for(let i=0; i<NUM_TRACKS; i++) {
       const url = URL.createObjectURL(blob);
       videoTracks[idx] = { file: null, url, name: `Camera${idx+1}-take.webm`, recordedBlob: blob };
       prepareTempVideo(idx, url, `Camera${idx+1}-take.webm`);
+      // --- FORCE THUMBNAIL REFRESH like single-take demo ---
       preview.pause();
       preview.srcObject = null;
       preview.removeAttribute('src');
@@ -207,7 +205,6 @@ for(let i=0; i<NUM_TRACKS; i++) {
       updateSwitcherBtns();
     };
 
-    // Change btn state
     e.target.disabled = true;
     e.target.textContent = 'Recording...';
 
@@ -227,7 +224,6 @@ for(let i=0; i<NUM_TRACKS; i++) {
     recorder.start();
   };
 
-  // Upload button
   document.querySelector(`.upload-btn[data-idx="${i}"]`).onchange = (e) => {
     const idx = +e.target.dataset.idx;
     const file = e.target.files[0];
@@ -243,7 +239,6 @@ for(let i=0; i<NUM_TRACKS; i++) {
     updateSwitcherBtns();
   };
 
-  // Download button
   document.querySelector(`.download-btn[data-idx="${i}"]`).onclick = (e) => {
     const idx = +e.target.dataset.idx;
     const track = videoTracks[idx];
@@ -254,13 +249,11 @@ for(let i=0; i<NUM_TRACKS; i++) {
     a.click();
   };
 
-  // Thumbnail click: switch active track and highlight
   document.getElementById('thumb' + i).onclick = () => {
     setActiveTrack(i);
   };
 }
 
-// ===== PREPARE TEMP VIDEO =====
 function prepareTempVideo(idx, url, name = "") {
   tempVideos[idx] = document.createElement('video');
   tempVideos[idx].src = url;
@@ -275,7 +268,6 @@ function prepareTempVideo(idx, url, name = "") {
   updateSwitcherBtns();
 }
 
-// ===== SWITCHER BUTTONS LOGIC =====
 function updateSwitcherBtns() {
   switcherBtnsContainer.innerHTML = '';
   for(let i=0; i<NUM_TRACKS; i++) {
@@ -320,7 +312,7 @@ function previewInOutput(idx) {
 }
 setActiveTrack(0);
 
-// ====== LIVE RECORDING LOGIC (Main Output) ======
+// ====== FULL EDIT RECORDING AND EXPORT =====
 function getCurrentDrawVideo(trackIndex) {
   if (tempVideos[trackIndex]) return tempVideos[trackIndex];
   for (let i = 0; i < tempVideos.length; i++) {
