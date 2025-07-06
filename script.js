@@ -182,7 +182,7 @@ for(let i=0; i<NUM_TRACKS; i++) {
       const url = URL.createObjectURL(blob);
       videoTracks[idx] = { file: null, url, name: `Camera${idx+1}-take.webm`, recordedBlob: blob };
       prepareTempVideo(idx, url, `Camera${idx+1}-take.webm`);
-      // --- FORCE THUMBNAIL REFRESH like single-take demo ---
+      // --- FORCE THUMBNAIL REFRESH using your working logic ---
       preview.pause();
       preview.srcObject = null;
       preview.removeAttribute('src');
