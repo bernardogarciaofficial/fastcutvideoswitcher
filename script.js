@@ -190,8 +190,6 @@ for(let i=0; i<NUM_TRACKS; i++) {
       setTimeout(() => {
         preview.src = url;
         preview.currentTime = 0;
-        preview.autoplay = false;
-        preview.muted = true;
         preview.load();
         preview.onloadeddata = () => {
           preview.currentTime = 0;
