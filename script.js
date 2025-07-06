@@ -16,7 +16,6 @@ const audioUnlockMsg = document.getElementById('audioUnlockMsg');
 const audioUnlockContainer = document.getElementById('audioUnlockContainer');
 
 const videoTracks = Array(NUM_TRACKS).fill(null);
-const tempVideos = Array(NUM_TRACKS).fill(null);
 let activeTrackIndex = 0;
 let isRecording = false;
 let isPlaying = false;
@@ -165,7 +164,7 @@ for(let i=0; i<NUM_TRACKS; i++) {
       const blob = new Blob(recChunks, { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
       videoTracks[idx] = { file: null, url, name: `Camera${idx+1}-take.webm`, recordedBlob: blob };
-      // Minimal, CORRECT, DEMO-MATCHING thumbnail refresh logic:
+      // DEMO-MATCHING thumbnail refresh logic:
       preview.pause();
       preview.srcObject = null;
       preview.removeAttribute('src');
@@ -249,4 +248,11 @@ updateSwitcherBtns();
 
 function setActiveTrack(idx) {
   activeTrackIndex = idx;
-  switcherBtnsContainer.querySelectorAll
+  switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+  document.querySelectorAll('.thumb').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+}
+setActiveTrack(0);
