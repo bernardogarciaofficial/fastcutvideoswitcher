@@ -420,16 +420,45 @@ recordFullEditBtn.addEventListener('click', async function () {
   // Fade-in/out config
   const FADE_DURATION = 1.5; // seconds
 
-  function drawFrame() {
-    if (!isRecording) return;
-    const vid = getCurrentDrawVideo();
-    if (vid && !vid.ended && vid.readyState >= 2) {
+function drawFrame() {
+  if (!isRecording) return;
+
+  const vid = getCurrentDrawVideo();
+  if (vid && audio && audio.currentTime <= vid.duration) {
+    // Sync video frame to audio
+    if (Math.abs(vid.currentTime - audio.currentTime) > 0.03) { // 30ms tolerance
+      try {
+        vid.currentTime = audio.currentTime;
+      } catch (e) {
+        // Sometimes seeking fails briefly, that's ok
+      }
+    }
+    if (vid.readyState >= 2) {
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
     } else {
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
-    // Fade-in/out logic
+  } else {
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  // Fade-in/out logic (keep your existing fade logic here)
+  const currentTime = audio.currentTime;
+  const totalDuration = audio.duration || (audio.seekable && audio.seekable.length ? audio.seekable.end(0) : 0);
+  if (currentTime < FADE_DURATION) {
+    let alpha = 1 - (currentTime / FADE_DURATION);
+    ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  } else if (totalDuration && currentTime > totalDuration - FADE_DURATION) {
+    let alpha = (currentTime - (totalDuration - FADE_DURATION)) / FADE_DURATION;
+    ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  animationFrameId = requestAnimationFrame(drawFrame);
+}
     const currentTime = audio.currentTime;
     const totalDuration = audio.duration || (audio.seekable && audio.seekable.length ? audio.seekable.end(0) : 0);
     if (currentTime < FADE_DURATION) {
