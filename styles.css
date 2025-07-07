@@ -168,8 +168,8 @@ button:hover:not(:disabled), .switcher-btn.active, .action-btn:hover, .export-bt
 }
 
 #masterOutputVideo {
-  width: 96%;
-  max-width: 800px;
+  width: 70%;
+  max-width: 500px;
   min-height: 180px;
   border-radius: 8px;
   background: #111;
