@@ -223,7 +223,7 @@ button:hover:not(:disabled), .switcher-btn.active, .action-btn:hover, .export-bt
   opacity: 0.8;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1200px) {
   .hollywood-card, .video-output-card { max-width: 99vw; padding: 7px; }
   #masterOutputVideo { max-width: 99vw; }
   .thumb { max-width: 100vw; }
