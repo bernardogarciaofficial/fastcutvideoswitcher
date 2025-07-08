@@ -361,8 +361,8 @@ recordFullEditBtn.addEventListener('click', async function () {
   logDebug('Recording started.');
 
   const canvas = document.createElement('canvas');
-  canvas.width = 320;
-  canvas.height = 180;
+  canvas.width = 640;
+  canvas.height = 360;
   const ctx = canvas.getContext('2d');
 
   // Ensure tempVideos are loaded and ready
