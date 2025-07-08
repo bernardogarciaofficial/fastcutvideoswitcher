@@ -421,14 +421,13 @@ recordFullEditBtn.addEventListener('click', async function () {
   const FADE_DURATION = 1.5; // seconds
 
   function drawFrame() {
-  if (!isRecording) return;
-  const vid = getCurrentDrawVideo();
-  ctx.fillStyle = "#000";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  if (vid && audio && audio.currentTime <= vid.duration) {
-    if (Math.abs(vid.currentTime - audio.currentTime) > 0.04) try { vid.currentTime = audio.currentTime; } catch (e) {}
-    if (vid.readyState >= 2) ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
-  }
+    if (!isRecording) return;
+    const vid = getCurrentDrawVideo();
+    if (vid && !vid.ended && vid.readyState >= 2) {
+      ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+    } else {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
     // Fade-in/out logic
     const currentTime = audio.currentTime;
