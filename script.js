@@ -424,7 +424,7 @@ recordFullEditBtn.addEventListener('click', async function () {
     if (!isRecording) return;
     const vid = getCurrentDrawVideo();
     if (vid && audio && audio.currentTime <= vid.duration && vid.readyState > 1) {
-      if (Math.abs(vid.currentTime - audio.currentTime) > 0.08) try { vid.currentTime = audio.currentTime; } catch (e) {}
+      if (Math.abs(vid.currentTime - audio.currentTime) > 0.2) try { vid.currentTime = audio.currentTime; } catch (e) {}
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
     } else {
       ctx.fillStyle = "#000";
