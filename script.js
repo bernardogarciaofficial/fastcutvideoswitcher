@@ -198,7 +198,7 @@ function createTrackCard(index) {
   preview.controls = true;
   preview.style.display = 'block'; // always visible!
   preview.style.background = "#000";
-  preview.style.width = '60%';
+  preview.style.width = '40%';
   preview.style.marginTop = '6px';
   preview.autoplay = false; // Do not autoplay on uploaded videos!
   preview.muted = true;
