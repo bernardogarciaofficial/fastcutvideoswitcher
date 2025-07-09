@@ -1,7 +1,7 @@
 // FASTCUT STUDIOS - Hollywood Music Video Editor
 // Author: Bernardo Garcia
 
-const NUM_TRACKS = 6;
+const NUM_TRACKS = 2;
 const songInput = document.getElementById('songInput');
 const audioStatus = document.getElementById('audioStatus');
 const audio = document.getElementById('audio');
