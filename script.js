@@ -1,4 +1,4 @@
-// FASTCUT STUDIOS - Hollywood Music Video Editor
+// Fastcut Two Channels Music Video Maker
 // Author: Bernardo Garcia
 
 const NUM_TRACKS = 2;
