@@ -15,7 +15,40 @@ const exportBtn = document.getElementById('exportMusicVideoBtn');
 const exportStatus = document.getElementById('exportStatus');
 const hiddenVideos = document.getElementById('hiddenVideos');
 const debuglog = document.getElementById('debuglog');
+const timelineClock = document.getElementById('timelineClock');
 
+// Helper function to format seconds as mm:ss
+function formatTime(secs) {
+  secs = Math.floor(secs || 0);
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
+// Update the timeline clock every animation frame when playing or recording
+function updateTimelineClock() {
+  let current = 0, total = 0;
+  if (isRecording || isPlaying) {
+    current = audio.currentTime;
+    total = audio.duration || audio.seekable?.end(0) || 0;
+  } else if (masterOutputVideo.src && masterOutputVideo.currentTime) {
+    current = masterOutputVideo.currentTime;
+    total = masterOutputVideo.duration || 0;
+  }
+  timelineClock.textContent = `${formatTime(current)} / ${formatTime(total)}`;
+  requestAnimationFrame(updateTimelineClock);
+}
+
+// Start updating the clock when preview/recording starts
+audio.addEventListener('play', () => requestAnimationFrame(updateTimelineClock));
+masterOutputVideo.addEventListener('play', () => requestAnimationFrame(updateTimelineClock));
+
+// Reset clock when stopped
+audio.addEventListener('pause', () => timelineClock.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`);
+masterOutputVideo.addEventListener('pause', () => timelineClock.textContent = `${formatTime(masterOutputVideo.currentTime)} / ${formatTime(masterOutputVideo.duration)}`);
+
+// Initial clock value
+timelineClock.textContent = '00:00 / 00:00';
 function logDebug(msg) {
   if (debuglog) {
     debuglog.textContent += msg + "\n";
