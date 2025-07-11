@@ -81,11 +81,52 @@ songInput.addEventListener('change', function (e) {
 });
 
 // ===== VIDEO TAKES UPLOAD, RECORD, DOWNLOAD & UI =====
+// ...other code above...
+
+// Replace your old createTrackCard function with this:
 function createTrackCard(index) {
   const card = document.createElement('div');
-  card.className = 'switcher-track';
-  if (index === 0) card.classList.add('active');
-  card.style.border = '2px solid #222'; card.style.marginBottom = '16px'; card.style.padding = '10px';
+  card.className = 'track-card';
+
+  // RADIO BUTTON TO SELECT TRACK FOR RECORDING
+  const radio = document.createElement('input');
+  radio.type = 'radio';
+  radio.name = 'selectTrackForRecording';
+  radio.value = index;
+  if (index === 0) radio.checked = true; // Default to first track selected
+  radio.addEventListener('change', function() {
+    updateRecordButtonStates();
+  });
+  card.appendChild(radio);
+
+  // LABEL
+  const label = document.createElement('label');
+  label.textContent = `Camera ${index + 1}`;
+  card.appendChild(label);
+
+  // RECORD BUTTON
+  const recordBtn = document.createElement('button');
+  recordBtn.className = 'record-btn';
+  recordBtn.textContent = 'Record';
+  recordBtn.disabled = !radio.checked;
+  recordBtn.addEventListener('click', function() {
+    startRecordingForTrack(index);
+  });
+  card.appendChild(recordBtn);
+
+  // UPLOAD BUTTON
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'video/*';
+  input.addEventListener('change', function (e) {
+    handleVideoUpload(index, e.target.files[0]);
+  });
+  card.appendChild(input);
+
+  switcherTracks.appendChild(card);
+}
+
+// ...other code below...
 
   const title = document.createElement('div');
   title.className = 'track-title';
