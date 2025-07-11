@@ -236,3 +236,13 @@ button:hover:not(:disabled), .switcher-btn.active, .action-btn:hover, .export-bt
   .brand-name { font-size: 1.2rem; }
   .gala-title { font-size: 1rem; }
 }
+.timeline-clock {
+  font-size: 1.6rem;
+  color: #FFD700;
+  text-align: center;
+  margin: 10px 0 8px 0;
+  letter-spacing: 0.1em;
+  font-family: 'Bebas Neue', Arial, sans-serif;
+  font-weight: bold;
+  text-shadow: 0 2px 6px #000c;
+}
