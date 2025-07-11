@@ -128,11 +128,6 @@ function createTrackCard(index) {
 
 // ...other code below...
 
-  const title = document.createElement('div');
-  title.className = 'track-title';
-  title.textContent = `Camera ${index + 1}`;
-  card.appendChild(title);
-
   // Upload button
   const input = document.createElement('input');
   input.type = 'file';
