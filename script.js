@@ -80,15 +80,40 @@ songInput.addEventListener('change', function (e) {
   logDebug(`Audio file loaded: ${file.name}`);
 });
 
-// ===== VIDEO TAKES UI (new, simplified) =====
+// ===== VIDEO TAKES UI WITH PREVIEW =====
 
 function createTrackCard(index) {
   const card = document.createElement('div');
   card.className = 'track-card';
 
-  // ... radio, label, recordBtn, input as before
+  // RADIO BUTTON TO SELECT TRACK FOR RECORDING
+  const radio = document.createElement('input');
+  radio.type = 'radio';
+  radio.name = 'selectTrackForRecording';
+  radio.value = index;
+  if (index === 0) radio.checked = true;
+  radio.addEventListener('change', updateRecordButtonStates);
+  card.appendChild(radio);
 
-  // VIDEO PREVIEW (add this)
+  // LABEL
+  const label = document.createElement('label');
+  label.textContent = `Camera ${index + 1}`;
+  card.appendChild(label);
+
+  // RECORD BUTTON
+  const recordBtn = document.createElement('button');
+  recordBtn.className = 'record-btn';
+  recordBtn.textContent = 'Record';
+  recordBtn.disabled = !radio.checked;
+  card.appendChild(recordBtn);
+
+  // UPLOAD BUTTON
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'video/*';
+  card.appendChild(input);
+
+  // VIDEO PREVIEW
   const preview = document.createElement('video');
   preview.className = 'track-preview';
   preview.controls = true;
@@ -99,7 +124,7 @@ function createTrackCard(index) {
   preview.muted = true;
   card.appendChild(preview);
 
-  // Update preview when a video is loaded/uploaded
+  // Update preview when a video is loaded/uploaded/recorded
   card.updatePreview = function() {
     if (videoTracks[index] && videoTracks[index].url) {
       preview.srcObject = null;
@@ -113,30 +138,42 @@ function createTrackCard(index) {
     }
   };
 
-  // UPLOAD BUTTON (update handle to call updatePreview)
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'video/*';
+  // UPLOAD BUTTON event
   input.addEventListener('change', function (e) {
     handleVideoUpload(index, e.target.files[0]);
     card.updatePreview();
   });
-  card.appendChild(input);
 
-  // RECORD BUTTON (update to show webcam in preview)
+  // RECORD BUTTON event
   recordBtn.addEventListener('click', function() {
-    // ... your recording start logic
     navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
       preview.srcObject = stream;
       preview.style.display = 'block';
       preview.muted = true;
       preview.controls = false;
       preview.play();
-      // ... rest of recording logic
+
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9,opus' });
+      const chunks = [];
+      mediaRecorder.ondataavailable = e => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        videoTracks[index] = { file: null, url, name: `Camera${index + 1}-recorded.webm`, recordedBlob: blob };
+        prepareTempVideo(index, url, `Camera${index + 1}-recorded.webm`);
+        updateSwitcherBtns();
+        if (index === activeTrackIndex) previewInOutput(index);
+        card.updatePreview();
+        stream.getTracks().forEach(track => track.stop());
+        logDebug(`Camera ${index + 1} - video recorded and loaded.`);
+      };
+      mediaRecorder.start();
+      alert("Recording started. Click OK to stop.");
+      mediaRecorder.stop();
     });
   });
-
-  // ...rest of your card setup
 
   switcherTracks.appendChild(card);
   card.updatePreview();
@@ -154,14 +191,13 @@ function updateRecordButtonStates() {
   if (checked !== -1) setActiveTrack(checked);
 }
 
-// Helper: Start recording video for one track (simple webcam logic)
+// Helper: Start recording video for one track (simple webcam logic) [used by legacy code, not by updated cards]
 function startRecordingForTrack(index) {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     alert("Camera/microphone not available.");
     return;
   }
   logDebug(`Start recording for track ${index + 1}`);
-  // We'll make a simple video recording and store it as a Blob
   navigator.mediaDevices.getUserMedia({ video: true, audio: true })
     .then(stream => {
       const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9,opus' });
@@ -188,7 +224,7 @@ function startRecordingForTrack(index) {
     });
 }
 
-// Helper: Handle video file upload for one track (stub)
+// Helper: Handle video file upload for one track
 function handleVideoUpload(index, file) {
   if (!file) return;
   const url = URL.createObjectURL(file);
