@@ -130,6 +130,8 @@ function createTrackCard(index) {
       preview.srcObject = null;
       preview.src = videoTracks[index].url;
       preview.style.display = 'block';
+      preview.controls = true;
+      preview.muted = true;
       preview.load();
     } else {
       preview.src = '';
@@ -146,55 +148,52 @@ function createTrackCard(index) {
 
   // RECORD BUTTON event with live webcam preview
   recordBtn.addEventListener('click', function() {
-  navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-    // Show the live webcam in the preview
-    preview.srcObject = stream;
-    preview.muted = true;
-    preview.controls = false;
-    preview.style.display = 'block';
-    preview.play().catch(() => {
-      logDebug('Autoplay prevented: click the preview to start live view.');
-      preview.addEventListener('click', () => preview.play(), { once: true });
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+      // Show the live webcam in the preview
+      preview.srcObject = stream;
+      preview.muted = true;
+      preview.controls = false;
+      preview.style.display = 'block';
+      preview.play().catch(() => {
+        logDebug('Autoplay prevented: click the preview to start live view.');
+        preview.addEventListener('click', () => preview.play(), { once: true });
+      });
+
+      // Recording logic
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9,opus' });
+      const chunks = [];
+      mediaRecorder.ondataavailable = e => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        videoTracks[index] = { file: null, url, name: `Camera${index + 1}-recorded.webm`, recordedBlob: blob };
+        prepareTempVideo(index, url, `Camera${index + 1}-recorded.webm`);
+        updateSwitcherBtns();
+        if (index === activeTrackIndex) previewInOutput(index);
+        card.updatePreview(); // Call this ONLY after recording is done
+        stream.getTracks().forEach(track => track.stop());
+        logDebug(`Camera ${index + 1} - video recorded and loaded.`);
+      };
+      mediaRecorder.start();
+
+      // Show a dialog to stop the recording
+      const stopRec = () => {
+        if (mediaRecorder.state === "recording") {
+          mediaRecorder.stop();
+        }
+        window.removeEventListener('keydown', escHandler);
+      };
+      const escHandler = (e) => { if (e.key === 'Escape') stopRec(); };
+      window.addEventListener('keydown', escHandler);
+      alert("Recording started. Press OK or ESC to stop.");
+      stopRec();
+    }).catch((err) => {
+      alert("Could not access camera/microphone.");
+      logDebug("getUserMedia error: " + err.message || err);
     });
-
-    // Recording logic
-    const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9,opus' });
-    const chunks = [];
-    mediaRecorder.ondataavailable = e => {
-      if (e.data.size > 0) chunks.push(e.data);
-    };
-    mediaRecorder.onstop = () => {
-      const blob = new Blob(chunks, { type: 'video/webm' });
-      const url = URL.createObjectURL(blob);
-      videoTracks[index] = { file: null, url, name: `Camera${index + 1}-recorded.webm`, recordedBlob: blob };
-      prepareTempVideo(index, url, `Camera${index + 1}-recorded.webm`);
-      updateSwitcherBtns();
-      if (index === activeTrackIndex) previewInOutput(index);
-      card.updatePreview(); // <-- OK to call here, after saving the video
-      stream.getTracks().forEach(track => track.stop());
-      logDebug(`Camera ${index + 1} - video recorded and loaded.`);
-    };
-    mediaRecorder.start();
-
-    // Show a dialog to stop the recording
-    const stopRec = () => {
-      if (mediaRecorder.state === "recording") {
-        mediaRecorder.stop();
-      }
-      // Remove the event so it doesn't fire twice
-      window.removeEventListener('keydown', escHandler);
-      // Optional: reset preview to recorded video after stop
-    };
-    // Stop on ESC key or after alert closes
-    const escHandler = (e) => { if (e.key === 'Escape') stopRec(); };
-    window.addEventListener('keydown', escHandler);
-    alert("Recording started. Press OK or ESC to stop.");
-    stopRec();
-  }).catch((err) => {
-    alert("Could not access camera/microphone.");
-    logDebug("getUserMedia error: " + err.message || err);
   });
-});
 
   switcherTracks.appendChild(card);
   card.updatePreview();
@@ -210,39 +209,6 @@ function updateRecordButtonStates() {
   // Also update activeTrackIndex for preview logic
   const checked = Array.from(radios).findIndex(r => r.checked);
   if (checked !== -1) setActiveTrack(checked);
-}
-
-// Helper: Start recording video for one track (simple webcam logic) [used by legacy code, not by updated cards]
-function startRecordingForTrack(index) {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    alert("Camera/microphone not available.");
-    return;
-  }
-  logDebug(`Start recording for track ${index + 1}`);
-  navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-    .then(stream => {
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9,opus' });
-      const chunks = [];
-      mediaRecorder.ondataavailable = e => {
-        if (e.data.size > 0) chunks.push(e.data);
-      };
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'video/webm' });
-        const url = URL.createObjectURL(blob);
-        videoTracks[index] = { file: null, url, name: `Camera${index + 1}-recorded.webm`, recordedBlob: blob };
-        prepareTempVideo(index, url, `Camera${index + 1}-recorded.webm`);
-        updateSwitcherBtns();
-        if (index === activeTrackIndex) previewInOutput(index);
-        logDebug(`Camera ${index + 1} - video recorded and loaded.`);
-        stream.getTracks().forEach(track => track.stop());
-      };
-      mediaRecorder.start();
-      alert("Recording started. Click OK to stop.");
-      mediaRecorder.stop();
-    })
-    .catch(() => {
-      alert("Could not access camera/microphone.");
-    });
 }
 
 // Helper: Handle video file upload for one track
@@ -503,7 +469,10 @@ recordFullEditBtn.addEventListener('click', async function () {
   };
 
   audio.currentTime = 0;
-  audio.play();
+  audio.play().catch((err) => {
+    logDebug('Audio play error: ' + err.message);
+    alert('Unable to start audio playback. Please interact with the page first (e.g., click on the page) then try again.');
+  });
   // Play all tempVideos again to be sure
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) { 
