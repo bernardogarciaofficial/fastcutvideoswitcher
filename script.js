@@ -86,42 +86,60 @@ function createTrackCard(index) {
   const card = document.createElement('div');
   card.className = 'track-card';
 
-  // RADIO BUTTON TO SELECT TRACK FOR RECORDING
-  const radio = document.createElement('input');
-  radio.type = 'radio';
-  radio.name = 'selectTrackForRecording';
-  radio.value = index;
-  if (index === 0) radio.checked = true; // Default to first track selected
-  radio.addEventListener('change', function() {
-    updateRecordButtonStates();
-  });
-  card.appendChild(radio);
+  // ... radio, label, recordBtn, input as before
 
-  // LABEL
-  const label = document.createElement('label');
-  label.textContent = `Camera ${index + 1}`;
-  card.appendChild(label);
+  // VIDEO PREVIEW (add this)
+  const preview = document.createElement('video');
+  preview.className = 'track-preview';
+  preview.controls = true;
+  preview.style.width = '180px';
+  preview.style.height = '100px';
+  preview.style.background = '#111';
+  preview.style.display = 'block';
+  preview.muted = true;
+  card.appendChild(preview);
 
-  // RECORD BUTTON
-  const recordBtn = document.createElement('button');
-  recordBtn.className = 'record-btn';
-  recordBtn.textContent = 'Record';
-  recordBtn.disabled = !radio.checked;
-  recordBtn.addEventListener('click', function() {
-    startRecordingForTrack(index);
-  });
-  card.appendChild(recordBtn);
+  // Update preview when a video is loaded/uploaded
+  card.updatePreview = function() {
+    if (videoTracks[index] && videoTracks[index].url) {
+      preview.srcObject = null;
+      preview.src = videoTracks[index].url;
+      preview.style.display = 'block';
+      preview.load();
+    } else {
+      preview.src = '';
+      preview.srcObject = null;
+      preview.style.display = 'none';
+    }
+  };
 
-  // UPLOAD BUTTON
+  // UPLOAD BUTTON (update handle to call updatePreview)
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'video/*';
   input.addEventListener('change', function (e) {
     handleVideoUpload(index, e.target.files[0]);
+    card.updatePreview();
   });
   card.appendChild(input);
 
+  // RECORD BUTTON (update to show webcam in preview)
+  recordBtn.addEventListener('click', function() {
+    // ... your recording start logic
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+      preview.srcObject = stream;
+      preview.style.display = 'block';
+      preview.muted = true;
+      preview.controls = false;
+      preview.play();
+      // ... rest of recording logic
+    });
+  });
+
+  // ...rest of your card setup
+
   switcherTracks.appendChild(card);
+  card.updatePreview();
 }
 
 // Helper: Update which record button is enabled
