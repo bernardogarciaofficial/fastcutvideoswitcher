@@ -171,7 +171,16 @@ button:hover:not(:disabled), .switcher-btn.active, .action-btn:hover, .export-bt
   gap: 14px;
   min-height: 48px;
 }
-
+.track-preview {
+  width: 180px;
+  height: 100px;
+  background: #111;
+  border-radius: 4px;
+  margin-left: 10px;
+  border: 1.5px solid #ff3333;
+  object-fit: cover;
+  display: block;
+}
 .track-card input[type="radio"] {
   margin-right: 10px;
   accent-color: #ff3333;
