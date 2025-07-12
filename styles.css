@@ -159,6 +159,91 @@ button:hover:not(:disabled), .switcher-btn.active, .action-btn:hover, .export-bt
   justify-content: center;
 }
 
+/* === NEW TRACK CARD STYLES === */
+.track-card {
+  border: 2px solid #ff3333;
+  border-radius: 7px;
+  margin-bottom: 15px;
+  padding: 12px 8px;
+  background: #111;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 48px;
+}
+
+.track-card input[type="radio"] {
+  margin-right: 10px;
+  accent-color: #ff3333;
+  transform: scale(1.18);
+}
+
+.track-card label {
+  margin-right: 10px;
+  font-weight: bold;
+  color: #FFD700;
+  font-size: 1.1em;
+  letter-spacing: 0.03em;
+}
+
+.track-card .record-btn {
+  background: #d33;
+  color: #fff;
+  border: none;
+  padding: 7px 18px;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: background 0.13s, color 0.13s;
+  font-size: 1rem;
+}
+.track-card .record-btn:disabled {
+  background: #444;
+  color: #ccc;
+  cursor: not-allowed;
+}
+
+.track-card input[type="file"] {
+  margin-left: 12px;
+  color: #fff;
+  background: transparent;
+  border: none;
+  font-size: 1em;
+}
+
+.track-card input[type="file"]::-webkit-file-upload-button {
+  background: #222;
+  color: #fff;
+  border: 1.5px solid #ff3333;
+  border-radius: 3px;
+  padding: 5px 12px;
+  cursor: pointer;
+  margin-right: 2px;
+  transition: background 0.13s;
+}
+.track-card input[type="file"]:hover::-webkit-file-upload-button {
+  background: #ff3333;
+  color: #fff;
+}
+
+.track-card input[type="file"]::file-selector-button {
+  background: #222;
+  color: #fff;
+  border: 1.5px solid #ff3333;
+  border-radius: 3px;
+  padding: 5px 12px;
+  cursor: pointer;
+  margin-right: 2px;
+  transition: background 0.13s;
+}
+.track-card input[type="file"]:hover::file-selector-button {
+  background: #ff3333;
+  color: #fff;
+}
+
+/* END NEW TRACK CARD STYLES */
+
 .video-output-card {
   text-align: center;
   background: #000;
@@ -235,7 +320,9 @@ button:hover:not(:disabled), .switcher-btn.active, .action-btn:hover, .export-bt
   .controls-section { flex-direction: column; gap: 10px; }
   .brand-name { font-size: 1.2rem; }
   .gala-title { font-size: 1rem; }
+  .track-card { flex-direction: column; align-items: flex-start; min-height: 38px; gap: 10px; }
 }
+
 .timeline-clock {
   font-size: 1.6rem;
   color: #FFD700;
