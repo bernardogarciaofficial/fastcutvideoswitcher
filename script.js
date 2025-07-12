@@ -133,11 +133,12 @@ function createTrackCard(index) {
       preview.controls = true;
       preview.muted = true;
       preview.load();
-    } else {
-      preview.src = '';
-      preview.srcObject = null;
-      preview.style.display = 'none';
-    }
+      } else {
+    preview.src = '';
+    preview.srcObject = null;
+    preview.style.display = 'block'; // Always show the preview box
+    preview.poster = ''; // (optional) You can set a default image here if you want
+  }
   };
 
   // UPLOAD BUTTON event
