@@ -66,7 +66,8 @@ let mediaRecorder = null;
 let recordedChunks = [];
 let animationFrameId = null;
 let audioContext = null;
-let livePreviewStream = null;  // for live canvas preview
+let livePreviewStream = null;
+let webcamStreams = Array(NUM_TRACKS).fill(null); // For previewing webcams per track
 
 // ===== SONG UPLOAD =====
 songInput.addEventListener('change', function (e) {
@@ -91,6 +92,7 @@ function createTrackCard(index) {
   radio.type = 'radio';
   radio.name = 'selectTrackForRecording';
   radio.value = index;
+  // Default to track 0 armed
   if (index === 0) radio.checked = true;
   radio.addEventListener('change', updateRecordButtonStates);
   card.appendChild(radio);
@@ -100,12 +102,12 @@ function createTrackCard(index) {
   label.textContent = `Camera ${index + 1}`;
   card.appendChild(label);
 
-  // RECORD BUTTON
-  const recordBtn = document.createElement('button');
-  recordBtn.className = 'record-btn';
-  recordBtn.textContent = 'Record';
-  recordBtn.disabled = !radio.checked;
-  card.appendChild(recordBtn);
+  // REMOVE per-track Record Button
+  // Instead, add "Preview Webcam" button for live preview only
+  const previewBtn = document.createElement('button');
+  previewBtn.className = 'preview-btn';
+  previewBtn.textContent = 'Preview Webcam';
+  card.appendChild(previewBtn);
 
   // UPLOAD BUTTON
   const input = document.createElement('input');
@@ -124,9 +126,15 @@ function createTrackCard(index) {
   preview.muted = true;
   card.appendChild(preview);
 
-  // Update preview when a video is loaded/uploaded/recorded
+  // Update preview when a video is loaded/uploaded
   card.updatePreview = function() {
-    if (videoTracks[index] && videoTracks[index].url) {
+    if (webcamStreams[index]) {
+      preview.srcObject = webcamStreams[index];
+      preview.muted = true;
+      preview.controls = false;
+      preview.style.display = 'block';
+      if (preview.paused) preview.play().catch(()=>{});
+    } else if (videoTracks[index] && videoTracks[index].url) {
       preview.srcObject = null;
       preview.src = videoTracks[index].url;
       preview.style.display = 'block';
@@ -137,9 +145,29 @@ function createTrackCard(index) {
       preview.src = '';
       preview.srcObject = null;
       preview.style.display = 'block'; // Always visible!
-      preview.poster = ''; // (optional)
+      preview.poster = '';
     }
   };
+
+  // Webcam preview logic
+  previewBtn.addEventListener('click', function() {
+    if (webcamStreams[index]) {
+      // Stop preview
+      webcamStreams[index].getTracks().forEach(t=>t.stop());
+      webcamStreams[index] = null;
+      card.updatePreview();
+      previewBtn.textContent = "Preview Webcam";
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+      webcamStreams[index] = stream;
+      card.updatePreview();
+      previewBtn.textContent = "Stop Webcam";
+    }).catch((err) => {
+      alert("Could not access camera/microphone.");
+      logDebug("getUserMedia error: " + (err.message || err));
+    });
+  });
 
   // UPLOAD BUTTON event
   input.addEventListener('change', function (e) {
@@ -147,66 +175,13 @@ function createTrackCard(index) {
     card.updatePreview();
   });
 
-  // RECORD BUTTON event with live webcam preview
-  recordBtn.addEventListener('click', function() {
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-      // Show the live webcam in the preview
-      preview.srcObject = stream;
-      preview.muted = true;
-      preview.controls = false;
-      preview.style.display = 'block';
-      preview.play().catch(() => {
-        logDebug('Autoplay prevented: click the preview to start live view.');
-        preview.addEventListener('click', () => preview.play(), { once: true });
-      });
-
-      // Recording logic
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9,opus' });
-      const chunks = [];
-      mediaRecorder.ondataavailable = e => {
-        if (e.data.size > 0) chunks.push(e.data);
-      };
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'video/webm' });
-        const url = URL.createObjectURL(blob);
-        videoTracks[index] = { file: null, url, name: `Camera${index + 1}-recorded.webm`, recordedBlob: blob };
-        prepareTempVideo(index, url, `Camera${index + 1}-recorded.webm`);
-        updateSwitcherBtns();
-        if (index === activeTrackIndex) previewInOutput(index);
-        card.updatePreview(); // Call this ONLY after recording is done
-        stream.getTracks().forEach(track => track.stop());
-        logDebug(`Camera ${index + 1} - video recorded and loaded.`);
-      };
-      mediaRecorder.start();
-
-      // Show a dialog to stop the recording
-      const stopRec = () => {
-        if (mediaRecorder.state === "recording") {
-          mediaRecorder.stop();
-        }
-        window.removeEventListener('keydown', escHandler);
-      };
-      const escHandler = (e) => { if (e.key === 'Escape') stopRec(); };
-      window.addEventListener('keydown', escHandler);
-      alert("Recording started. Press OK or ESC to stop.");
-      stopRec();
-    }).catch((err) => {
-      alert("Could not access camera/microphone.");
-      logDebug("getUserMedia error: " + err.message || err);
-    });
-  });
-
   switcherTracks.appendChild(card);
   card.updatePreview();
 }
 
-// Helper: Update which record button is enabled
+// Helper: Update which track is armed for recording
 function updateRecordButtonStates() {
   const radios = document.querySelectorAll('input[name="selectTrackForRecording"]');
-  const recordBtns = document.querySelectorAll('.track-card .record-btn');
-  radios.forEach((radio, idx) => {
-    if (recordBtns[idx]) recordBtns[idx].disabled = !radio.checked;
-  });
   // Also update activeTrackIndex for preview logic
   const checked = Array.from(radios).findIndex(r => r.checked);
   if (checked !== -1) setActiveTrack(checked);
@@ -250,7 +225,7 @@ function updateSwitcherBtns() {
     const btn = document.createElement('button');
     btn.className = 'switcher-btn' + (i === activeTrackIndex ? ' active' : '');
     btn.textContent = `Camera ${i + 1}`;
-    btn.disabled = !track;
+    btn.disabled = !track && !webcamStreams[i];
     btn.addEventListener('click', function () {
       setActiveTrack(i);
       logDebug(`Switched to Camera ${i + 1}`);
@@ -273,11 +248,16 @@ function setActiveTrack(idx) {
 function previewInOutput(idx) {
   // If we are recording, the output video is showing the canvas stream.
   if (isRecording || isPlaying) return;
-  if (!videoTracks[idx]) return;
-  masterOutputVideo.srcObject = null;
-  masterOutputVideo.src = videoTracks[idx].url;
-  masterOutputVideo.style.display = 'block';
-  masterOutputVideo.currentTime = 0;
+  if (videoTracks[idx]) {
+    masterOutputVideo.srcObject = null;
+    masterOutputVideo.src = videoTracks[idx].url;
+    masterOutputVideo.style.display = 'block';
+    masterOutputVideo.currentTime = 0;
+  } else if (webcamStreams[idx]) {
+    masterOutputVideo.src = "";
+    masterOutputVideo.srcObject = webcamStreams[idx];
+    masterOutputVideo.style.display = 'block';
+  }
 }
 
 // ===== INIT =====
@@ -288,6 +268,23 @@ exportBtn.disabled = true;
 
 // ===== LIVE MIXING/RECORDING LOGIC =====
 function getCurrentDrawVideo() {
+  // If webcam is armed for this track, use live webcam
+  if (webcamStreams[activeTrackIndex]) {
+    // Create a hidden <video> element for drawing (one per armed webcam)
+    if (!webcamStreams[activeTrackIndex].__videoEl) {
+      const videoEl = document.createElement('video');
+      videoEl.style.display = "none";
+      videoEl.muted = true;
+      videoEl.autoplay = true;
+      videoEl.playsInline = true;
+      videoEl.srcObject = webcamStreams[activeTrackIndex];
+      hiddenVideos.appendChild(videoEl);
+      webcamStreams[activeTrackIndex].__videoEl = videoEl;
+      // Play the webcam video element
+      videoEl.play().catch(()=>{});
+    }
+    return webcamStreams[activeTrackIndex].__videoEl;
+  }
   if (tempVideos[activeTrackIndex]) return tempVideos[activeTrackIndex];
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) return tempVideos[i];
@@ -301,14 +298,10 @@ recordFullEditBtn.addEventListener('click', async function () {
     logDebug('Attempted to record with no audio uploaded.');
     return;
   }
-  if (!videoTracks.some(Boolean)) {
-    alert('Please upload or record at least one video take.');
+  // Only allow if at least one video track or webcam is available
+  if (![...videoTracks, ...webcamStreams].some(Boolean)) {
+    alert('Please upload, record, or arm at least one video take.');
     logDebug('Attempted to record with no video takes uploaded.');
-    return;
-  }
-  if (!tempVideos[activeTrackIndex]) {
-    alert('Selected camera has no video.');
-    logDebug('Attempted to record with no video in active camera.');
     return;
   }
 
@@ -325,7 +318,7 @@ recordFullEditBtn.addEventListener('click', async function () {
   canvas.height = 360;
   const ctx = canvas.getContext('2d');
 
-  // Ensure tempVideos are loaded and ready
+  // Prepare tempVideos
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
       if (!tempVideos[i].parentNode) hiddenVideos.appendChild(tempVideos[i]);
@@ -340,9 +333,9 @@ recordFullEditBtn.addEventListener('click', async function () {
   }
   let currentVideo = getCurrentDrawVideo();
   if (!currentVideo) {
-    alert('Please upload or record at least one video take.');
+    alert('Please upload or arm at least one video take.');
     isRecording = false; isPlaying = false; recIndicator.style.display = 'none';
-    logDebug('No tempVideos available for drawing.');
+    logDebug('No tempVideos or webcam available for drawing.');
     return;
   }
 
@@ -357,7 +350,7 @@ recordFullEditBtn.addEventListener('click', async function () {
     }
   }
 
-  // Try to play all tempVideos
+  // Try to play all tempVideos and webcam preview videos
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
       try {
@@ -369,12 +362,10 @@ recordFullEditBtn.addEventListener('click', async function () {
       }
     }
   }
-
-  // Also play the currentVideo again to be sure
-  try {
-    await currentVideo.play();
-  } catch (e) {
-    logDebug(`Error playing initial currentVideo: ${e.message || e}`);
+  for (let i = 0; i < webcamStreams.length; i++) {
+    if (webcamStreams[i] && webcamStreams[i].__videoEl) {
+      try { await webcamStreams[i].__videoEl.play(); } catch(e){}
+    }
   }
 
   // Fade-in/out config
@@ -385,8 +376,8 @@ recordFullEditBtn.addEventListener('click', async function () {
     const vid = getCurrentDrawVideo();
     const audioTime = audio.currentTime;
     if (vid && !vid.ended && vid.readyState >= 2) {
-      // Seek the video to match audio timeline
-      if (Math.abs(vid.currentTime - audioTime) > 0.04) { // allow small drift
+      // Seek the video to match audio timeline for uploaded/recorded videos
+      if (vid.srcObject === null && Math.abs(vid.currentTime - audioTime) > 0.04) {
         vid.currentTime = audioTime;
       }
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
@@ -425,10 +416,10 @@ recordFullEditBtn.addEventListener('click', async function () {
       if (vid) {
         vid.play()
           .then(() => {
-            logDebug(`Switched & played tempVideo ${idx}`);
+            logDebug(`Switched & played video ${idx}`);
           })
           .catch(err => {
-            logDebug(`Error playing tempVideo after switch ${idx}: ${err.message || err}`);
+            logDebug(`Error playing video after switch ${idx}: ${err.message || err}`);
           });
       }
     };
@@ -470,22 +461,20 @@ recordFullEditBtn.addEventListener('click', async function () {
     logDebug('Recording stopped. Video ready for export.');
   };
 
+  // Start all webcam preview videos if any
+  for (let i = 0; i < webcamStreams.length; i++) {
+    if (webcamStreams[i] && webcamStreams[i].__videoEl) {
+      webcamStreams[i].__videoEl.currentTime = 0;
+      try { webcamStreams[i].__videoEl.play(); } catch(e){}
+    }
+  }
+
   audio.currentTime = 0;
   audio.play().catch((err) => {
     logDebug('Audio play error: ' + err.message);
     alert('Unable to start audio playback. Please interact with the page first (e.g., click on the page) then try again.');
   });
-  // Play all tempVideos again to be sure
-  for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) { 
-      try { 
-        tempVideos[i].currentTime = 0; 
-        await tempVideos[i].play(); 
-      } catch(e) { 
-        logDebug(`Could not play tempVideo ${i}: ${e.message || e}`);
-      }
-    }
-  }
+
   mediaRecorder.start();
 
   audio.onended = function () {
