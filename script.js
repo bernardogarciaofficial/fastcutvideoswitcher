@@ -112,19 +112,7 @@ function createTrackCard(index) {
   recordBtn.addEventListener('click', function() {
     startRecordingForTrack(index);
   });
-  card.appendChild(recordBtn);
-
-  // UPLOAD BUTTON
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'video/*';
-  input.addEventListener('change', function (e) {
-    handleVideoUpload(index, e.target.files[0]);
-  });
-  card.appendChild(input);
-
-  switcherTracks.appendChild(card);
-}
+  card.appendChild(recordBtn) 
 
 // ...other code below...
 
