@@ -133,12 +133,12 @@ function createTrackCard(index) {
       preview.controls = true;
       preview.muted = true;
       preview.load();
-      } else {
-    preview.src = '';
-    preview.srcObject = null;
-    preview.style.display = 'block'; // Always show the preview box
-    preview.poster = ''; // (optional) You can set a default image here if you want
-  }
+    } else {
+      preview.src = '';
+      preview.srcObject = null;
+      preview.style.display = 'block'; // Always visible!
+      preview.poster = ''; // (optional)
+    }
   };
 
   // UPLOAD BUTTON event
@@ -383,23 +383,24 @@ recordFullEditBtn.addEventListener('click', async function () {
   function drawFrame() {
     if (!isRecording) return;
     const vid = getCurrentDrawVideo();
+    const audioTime = audio.currentTime;
     if (vid && !vid.ended && vid.readyState >= 2) {
+      // Seek the video to match audio timeline
+      if (Math.abs(vid.currentTime - audioTime) > 0.04) { // allow small drift
+        vid.currentTime = audioTime;
+      }
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
     } else {
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
     // Fade-in/out logic
-    const currentTime = audio.currentTime;
-    const totalDuration = audio.duration || (audio.seekable && audio.seekable.length ? audio.seekable.end(0) : 0);
-    if (currentTime < FADE_DURATION) {
-      // Fade in
-      let alpha = 1 - (currentTime / FADE_DURATION);
+    if (audioTime < FADE_DURATION) {
+      let alpha = 1 - (audioTime / FADE_DURATION);
       ctx.fillStyle = `rgba(0,0,0,${alpha})`;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-    } else if (totalDuration && currentTime > totalDuration - FADE_DURATION) {
-      // Fade out
-      let alpha = (currentTime - (totalDuration - FADE_DURATION)) / FADE_DURATION;
+    } else if (audio.duration && audioTime > audio.duration - FADE_DURATION) {
+      let alpha = (audioTime - (audio.duration - FADE_DURATION)) / FADE_DURATION;
       ctx.fillStyle = `rgba(0,0,0,${alpha})`;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
