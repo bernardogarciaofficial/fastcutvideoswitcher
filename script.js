@@ -80,10 +80,8 @@ songInput.addEventListener('change', function (e) {
   logDebug(`Audio file loaded: ${file.name}`);
 });
 
-// ===== VIDEO TAKES UPLOAD, RECORD, DOWNLOAD & UI =====
-// ...other code above...
+// ===== VIDEO TAKES UI (new, simplified) =====
 
-// Replace your old createTrackCard function with this:
 function createTrackCard(index) {
   const card = document.createElement('div');
   card.className = 'track-card';
@@ -112,215 +110,78 @@ function createTrackCard(index) {
   recordBtn.addEventListener('click', function() {
     startRecordingForTrack(index);
   });
-  card.appendChild(recordBtn) 
+  card.appendChild(recordBtn);
 
-// ...other code below...
-
-  // Upload button
+  // UPLOAD BUTTON
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'video/*';
-  input.style.margin = '6px 0';
   input.addEventListener('change', function (e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    videoTracks[index] = { file, url, name: file.name };
-    prepareTempVideo(index, url, file.name);
-    card.update();
-    updateSwitcherBtns();
-    if (index === activeTrackIndex) previewInOutput(index);
-    logDebug(`Camera ${index + 1} video loaded: ${file.name}`);
+    handleVideoUpload(index, e.target.files[0]);
   });
   card.appendChild(input);
 
-  // Record button
-  const recBtn = document.createElement('button');
-  recBtn.textContent = 'Record';
-  recBtn.style.marginLeft = '8px';
-  let trackRecorder = null;
-  let recStream = null;
-  let recChunks = [];
-  // Stop Recording button (new)
-  const stopRecBtn = document.createElement('button');
-  stopRecBtn.textContent = 'Stop';
-  stopRecBtn.style.marginLeft = '8px';
-  stopRecBtn.style.display = 'none'; // Only show while recording
-  card.appendChild(recBtn);
-  card.appendChild(stopRecBtn);
-
-  // --- MUSIC SYNC FEATURE: Play song during camera take recording ---
-  let prevAudioTime = 0;
-  let prevAudioPaused = true;
-
-  recBtn.addEventListener('click', async function () {
-    if (trackRecorder && trackRecorder.state === 'recording') return; // Already recording
-
-    recBtn.disabled = true;
-    recBtn.textContent = 'Recording...';
-    stopRecBtn.style.display = '';
-    const preview = card.querySelector('.track-preview');
-    preview.style.display = 'block';
-
-    try {
-      recStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    } catch (err) {
-      alert('Cannot access camera/microphone.');
-      recBtn.disabled = false;
-      recBtn.textContent = 'Record';
-      stopRecBtn.style.display = 'none';
-      logDebug(`Camera ${index + 1} - access denied to webcam/mic.`);
-      return;
-    }
-    trackRecorder = new MediaRecorder(recStream, { mimeType: 'video/webm; codecs=vp9,opus' });
-    recChunks = [];
-    // Show webcam live in the preview
-    preview.srcObject = recStream;
-    preview.muted = true;
-    preview.autoplay = true;
-    preview.loop = false;
-    preview.play().catch(()=>{});
-    trackRecorder.ondataavailable = function(e) {
-      if (e.data.size > 0) recChunks.push(e.data);
-    };
-    trackRecorder.onstop = function() {
-      const blob = new Blob(recChunks, { type: 'video/webm' });
-      const url = URL.createObjectURL(blob);
-      videoTracks[index] = { file: null, url, name: `Camera${index+1}-take.webm`, recordedBlob: blob };
-      prepareTempVideo(index, url, `Camera${index+1}-take.webm`);
-      // Replace webcam preview with recorded video (but do not autoplay)
-      preview.srcObject = null;
-      preview.src = url;
-      preview.autoplay = false;
-      preview.muted = true;
-      preview.loop = false;
-      preview.load();
-      // Do NOT call preview.play(); -- for sync!
-      card.update();
-      updateSwitcherBtns();
-      stopRecBtn.style.display = 'none';
-      recBtn.disabled = false;
-      recBtn.textContent = 'Record';
-      if (recStream) recStream.getTracks().forEach(track => track.stop());
-      logDebug(`Camera ${index + 1} - video recorded and loaded.`);
-      // --- MUSIC SYNC FEATURE: Stop song after camera recording ---
-      if (!isRecording) { // Only pause if not live-editing
-        audio.pause();
-        audio.currentTime = 0;
-      }
-    };
-
-    // --- MUSIC SYNC FEATURE: Play song while recording camera take ---
-    if (audio.src) {
-      prevAudioTime = audio.currentTime;
-      prevAudioPaused = audio.paused;
-      audio.currentTime = 0;
-      audio.volume = 0.4; // Lower volume so user can hear themselves
-      audio.play().catch(()=>{});
-      logDebug("Song playback started for camera take recording.");
-    }
-
-    trackRecorder.start();
-    // No auto-stop timeout; user must click stop!
-  });
-
-  stopRecBtn.addEventListener('click', function() {
-    if (trackRecorder && trackRecorder.state === 'recording') {
-      trackRecorder.stop();
-      stopRecBtn.style.display = 'none';
-      recBtn.disabled = false;
-      recBtn.textContent = 'Record';
-    }
-  });
-
-  // Download button
-  const dlBtn = document.createElement('button');
-  dlBtn.textContent = 'Download';
-  dlBtn.style.marginLeft = '8px';
-  dlBtn.style.display = 'none';
-  dlBtn.addEventListener('click', function() {
-    if (videoTracks[index] && videoTracks[index].url) {
-      const a = document.createElement('a');
-      a.href = videoTracks[index].url;
-      a.download = videoTracks[index].name || `track${index+1}.webm`;
-      a.click();
-      logDebug(`Camera ${index + 1} take downloaded.`);
-    }
-  });
-  card.appendChild(dlBtn);
-
-  // Video preview (thumbnail)
-  const preview = document.createElement('video');
-  preview.className = 'track-preview';
-  preview.controls = true;
-  preview.style.display = 'block'; // always visible!
-  preview.style.background = "#000";
-  preview.style.width = '80%';
-  preview.style.marginTop = '6px';
-  preview.autoplay = false; // Do not autoplay on uploaded videos!
-  preview.muted = true;
-  preview.loop = false;
-  preview.playsInline = true;
-  card.appendChild(preview);
-
-  // Show error and load events for preview video
-  preview.addEventListener('error', (e) => {
-    logDebug(`Preview video for Camera ${index+1} error: (code ${preview.error && preview.error.code})`);
-    let msg = "Unknown error";
-    if (preview.error) {
-      switch (preview.error.code) {
-        case 1: msg = "MEDIA_ERR_ABORTED: Video fetching process aborted by user."; break;
-        case 2: msg = "MEDIA_ERR_NETWORK: Error occurred when downloading."; break;
-        case 3: msg = "MEDIA_ERR_DECODE: Error occurred when decoding."; break;
-        case 4: msg = "MEDIA_ERR_SRC_NOT_SUPPORTED: Video format is not supported."; break;
-      }
-    }
-    logDebug(`Camera ${index+1} thumbnail: ${msg}`);
-    preview.poster = ""; // Remove any old poster
-    preview.style.background = "#900";
-  });
-  preview.addEventListener('loadeddata', () => {
-    logDebug(`Preview video for Camera ${index+1} loaded: ${preview.src}`);
-    preview.style.background = "#000";
-    // Do NOT autoplay here for uploaded videos!
-  });
-
-  // Status label
-  const label = document.createElement('div');
-  label.className = 'upload-video-label';
-  label.textContent = 'No video uploaded or recorded';
-  card.appendChild(label);
-
-  card.update = function () {
-    if (videoTracks[index]) {
-      label.textContent = videoTracks[index].name || 'Recorded Take';
-      dlBtn.style.display = '';
-      preview.srcObject = null;
-      preview.src = videoTracks[index].url;
-      preview.autoplay = false; // Do not autoplay!
-      preview.muted = true;
-      preview.loop = false;
-      preview.load();
-      // Do NOT call preview.play();
-    } else {
-      label.textContent = 'No video uploaded or recorded';
-      dlBtn.style.display = 'none';
-      preview.srcObject = null;
-      preview.src = '';
-      preview.style.display = 'block';
-      preview.poster = "";
-      preview.style.background = "#000";
-    }
-  };
-
-  card.addEventListener('click', function () {
-    setActiveTrack(index);
-  });
-
   switcherTracks.appendChild(card);
-  card.update();
 }
 
+// Helper: Update which record button is enabled
+function updateRecordButtonStates() {
+  const radios = document.querySelectorAll('input[name="selectTrackForRecording"]');
+  const recordBtns = document.querySelectorAll('.track-card .record-btn');
+  radios.forEach((radio, idx) => {
+    if (recordBtns[idx]) recordBtns[idx].disabled = !radio.checked;
+  });
+  // Also update activeTrackIndex for preview logic
+  const checked = Array.from(radios).findIndex(r => r.checked);
+  if (checked !== -1) setActiveTrack(checked);
+}
+
+// Helper: Start recording video for one track (simple webcam logic)
+function startRecordingForTrack(index) {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert("Camera/microphone not available.");
+    return;
+  }
+  logDebug(`Start recording for track ${index + 1}`);
+  // We'll make a simple video recording and store it as a Blob
+  navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+    .then(stream => {
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9,opus' });
+      const chunks = [];
+      mediaRecorder.ondataavailable = e => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        videoTracks[index] = { file: null, url, name: `Camera${index + 1}-recorded.webm`, recordedBlob: blob };
+        prepareTempVideo(index, url, `Camera${index + 1}-recorded.webm`);
+        updateSwitcherBtns();
+        if (index === activeTrackIndex) previewInOutput(index);
+        logDebug(`Camera ${index + 1} - video recorded and loaded.`);
+        stream.getTracks().forEach(track => track.stop());
+      };
+      mediaRecorder.start();
+      alert("Recording started. Click OK to stop.");
+      mediaRecorder.stop();
+    })
+    .catch(() => {
+      alert("Could not access camera/microphone.");
+    });
+}
+
+// Helper: Handle video file upload for one track (stub)
+function handleVideoUpload(index, file) {
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  videoTracks[index] = { file, url, name: file.name };
+  prepareTempVideo(index, url, file.name);
+  updateSwitcherBtns();
+  if (index === activeTrackIndex) previewInOutput(index);
+  logDebug(`Camera ${index + 1} video loaded: ${file.name}`);
+}
+
+// Helper: Prepare hidden video for playback
 function prepareTempVideo(idx, url, name = "") {
   tempVideos[idx] = document.createElement('video');
   tempVideos[idx].src = url;
@@ -358,7 +219,7 @@ function updateSwitcherBtns() {
 
 function setActiveTrack(idx) {
   activeTrackIndex = idx;
-  document.querySelectorAll('.switcher-track').forEach((el, i) => {
+  document.querySelectorAll('.track-card').forEach((el, i) => {
     el.classList.toggle('active', i === idx);
   });
   document.querySelectorAll('.switcher-btn').forEach((el, i) => {
@@ -383,7 +244,7 @@ updateSwitcherBtns();
 masterOutputVideo.style.display = 'block';
 exportBtn.disabled = true;
 
-// ===== LIVE RECORDING LOGIC =====
+// ===== LIVE MIXING/RECORDING LOGIC =====
 function getCurrentDrawVideo() {
   if (tempVideos[activeTrackIndex]) return tempVideos[activeTrackIndex];
   for (let i = 0; i < tempVideos.length; i++) {
