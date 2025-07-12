@@ -144,14 +144,20 @@ function createTrackCard(index) {
     card.updatePreview();
   });
 
-  // RECORD BUTTON event
+  // RECORD BUTTON event with live webcam preview
   recordBtn.addEventListener('click', function() {
     navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+      // Show the live webcam in the preview
       preview.srcObject = stream;
-      preview.style.display = 'block';
       preview.muted = true;
       preview.controls = false;
-      preview.play();
+      preview.style.display = 'block';
+      // Try to play immediately (some browsers require user gesture)
+      preview.play().catch(() => {
+        // If not allowed, show a message or retry on user interaction
+        logDebug('Autoplay prevented: click the preview to start live view.');
+        preview.addEventListener('click', () => preview.play(), { once: true });
+      });
 
       const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9,opus' });
       const chunks = [];
@@ -172,6 +178,9 @@ function createTrackCard(index) {
       mediaRecorder.start();
       alert("Recording started. Click OK to stop.");
       mediaRecorder.stop();
+    }).catch((err) => {
+      alert("Could not access camera/microphone.");
+      logDebug("getUserMedia error: " + err.message || err);
     });
   });
 
