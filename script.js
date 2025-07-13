@@ -89,7 +89,7 @@ songInput.addEventListener('change', function (e) {
   audioPauseBtn.disabled = true;
 });
 
-// ==== Play Song button now records webcam for ARMED TRACK ====
+// ==== Play Song button now records webcam for ARMED TRACK and PREVIEWS it ====
 audioPlayBtn.addEventListener('click', async function() {
   // Find the armed track
   const radios = document.querySelectorAll('input[name="selectTrackForRecording"]');
@@ -107,6 +107,12 @@ audioPlayBtn.addEventListener('click', async function() {
     alert("Could not access camera/microphone.");
     return;
   }
+
+  // Show webcam live preview while recording
+  masterOutputVideo.srcObject = webcamStream;
+  masterOutputVideo.src = "";
+  masterOutputVideo.muted = true;
+  masterOutputVideo.play();
 
   // Set up MediaRecorder for webcam
   const mediaRecorder = new MediaRecorder(webcamStream, { mimeType: 'video/webm; codecs=vp9,opus' });
@@ -129,6 +135,8 @@ audioPlayBtn.addEventListener('click', async function() {
       mediaRecorder.stop();
     }
     webcamStream.getTracks().forEach(track => track.stop());
+    masterOutputVideo.srcObject = null; // Remove live preview
+    masterOutputVideo.muted = false;
     audioPlayBtn.disabled = false;
     recIndicator.style.display = 'none';
     isRecording = false;
