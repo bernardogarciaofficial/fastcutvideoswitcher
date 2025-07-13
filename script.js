@@ -167,6 +167,7 @@ audioPlayBtn.addEventListener('click', async function() {
     videoTracks[armedIndex] = { file: null, url: URL.createObjectURL(blob), name: 'Recorded Webcam Video' };
     prepareTempVideo(armedIndex, videoTracks[armedIndex].url, 'Recorded Webcam Video');
     trackCards[armedIndex].updatePreview();
+    previewInOutput(armedIndex);
     logDebug(`Webcam recording finished for Camera ${armedIndex + 1}`);
   };
 });
@@ -277,6 +278,7 @@ function prepareTempVideo(idx, url, name = "") {
   tempVideos[idx].load();
   tempVideos[idx].addEventListener('loadeddata', () => {
     logDebug(`tempVideos[${idx}] loaded: ${name}`);
+    if (idx === activeTrackIndex) previewInOutput(idx);
   });
   tempVideos[idx].addEventListener('error', (e) => {
     logDebug(`tempVideos[${idx}] failed to load: ${e.message || e}`);
@@ -294,6 +296,7 @@ function updateSwitcherBtns() {
     btn.disabled = !track;
     btn.addEventListener('click', function () {
       setActiveTrack(i);
+      previewInOutput(i);
       logDebug(`Switched to Camera ${i + 1}`);
     });
     switcherBtnsContainer.appendChild(btn);
@@ -314,10 +317,16 @@ function setActiveTrack(idx) {
 function previewInOutput(idx) {
   if (isRecording || isPlaying) return;
   if (videoTracks[idx]) {
+    masterOutputVideo.pause();
     masterOutputVideo.srcObject = null;
     masterOutputVideo.src = videoTracks[idx].url;
     masterOutputVideo.style.display = 'block';
     masterOutputVideo.currentTime = 0;
+    masterOutputVideo.load();
+    masterOutputVideo.play().catch(()=>{});
+  } else {
+    masterOutputVideo.srcObject = null;
+    masterOutputVideo.src = "";
   }
 }
 
@@ -443,6 +452,7 @@ recordFullEditBtn.addEventListener('click', async function () {
   switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((btn, idx) => {
     btn.onclick = function() {
       setActiveTrack(idx);
+      previewInOutput(idx);
       const vid = getCurrentDrawVideo();
       if (vid) {
         vid.play()
