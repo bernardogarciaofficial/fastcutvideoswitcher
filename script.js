@@ -431,7 +431,6 @@ recordFullEditBtn.addEventListener('click', async function () {
       ctx.drawImage(lastGoodFrameCanvas, 0, 0, canvas.width, canvas.height);
       drewVideoFrame = true;
     } else {
-      // Only draw black if no good frame ever rendered
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
@@ -446,8 +445,10 @@ recordFullEditBtn.addEventListener('click', async function () {
       ctx.fillStyle = `rgba(0,0,0,${alpha})`;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
-    let drawLoopInterval = setInterval(drawFrame, 1000 / FPS);
-  drawFrame();
+  }
+
+  // Start the draw loop with setInterval at the desired FPS
+  let drawLoopInterval = setInterval(drawFrame, 1000 / FPS);
 
   // Use FPS everywhere captureStream is called
   const livePreviewStream = canvas.captureStream(FPS);
@@ -495,7 +496,7 @@ recordFullEditBtn.addEventListener('click', async function () {
     if (e.data.size > 0) recordedChunks.push(e.data);
   };
   mediaRecorder.onstop = function() {
-    cancelAnimationFrame(animationFrameId);
+    clearInterval(drawLoopInterval); // Stop the draw loop when done
     const blob = new Blob(recordedChunks, { type: 'video/webm' });
     masterOutputVideo.src = URL.createObjectURL(blob);
     masterOutputVideo.srcObject = null;
