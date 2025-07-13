@@ -167,6 +167,8 @@ audioPlayBtn.addEventListener('click', async function() {
     videoTracks[armedIndex] = { file: null, url: URL.createObjectURL(blob), name: 'Recorded Webcam Video' };
     prepareTempVideo(armedIndex, videoTracks[armedIndex].url, 'Recorded Webcam Video');
     trackCards[armedIndex].updatePreview();
+    updateSwitcherBtns(); // <-- critical so buttons get enabled!
+    setActiveTrack(armedIndex);
     previewInOutput(armedIndex);
     logDebug(`Webcam recording finished for Camera ${armedIndex + 1}`);
   };
@@ -294,11 +296,11 @@ function updateSwitcherBtns() {
     btn.className = 'switcher-btn' + (i === activeTrackIndex ? ' active' : '');
     btn.textContent = `Camera ${i + 1}`;
     btn.disabled = !track;
-    btn.addEventListener('click', function () {
+    btn.onclick = function () {
       setActiveTrack(i);
       previewInOutput(i);
       logDebug(`Switched to Camera ${i + 1}`);
-    });
+    };
     switcherBtnsContainer.appendChild(btn);
   }
 }
