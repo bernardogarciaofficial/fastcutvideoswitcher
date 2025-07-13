@@ -65,7 +65,7 @@ function logDebug(msg) {
     debuglog.textContent += msg + "\n";
     debuglog.scrollTop = debuglog.scrollHeight;
   }
-  console.log(msg);
+  // console.log(msg);
 }
 
 const videoTracks = Array(NUM_TRACKS).fill(null);
@@ -163,11 +163,12 @@ audioPlayBtn.addEventListener('click', async function() {
     trackCards[armedIndex].updatePreview();
     updateSwitcherBtns();
     setActiveTrack(armedIndex);
+    // After recording, do NOT autoplay the finished take in the main output
     masterOutputVideo.pause();
     masterOutputVideo.srcObject = null;
     masterOutputVideo.src = videoTracks[armedIndex].url;
     masterOutputVideo.load();
-    masterOutputVideo.play().catch(()=>{});
+    // masterOutputVideo.play().catch(()=>{}); // <-- REMOVE AUTOPLAY
     logDebug(`Webcam recording finished for Camera ${armedIndex + 1}`);
   };
 });
@@ -318,7 +319,8 @@ function previewInOutput(idx) {
     masterOutputVideo.style.display = 'block';
     masterOutputVideo.currentTime = 0;
     masterOutputVideo.load();
-    masterOutputVideo.play().catch(()=>{});
+    // Do NOT autoplay when previewing
+    // masterOutputVideo.play().catch(()=>{});
   }
 }
 
@@ -394,6 +396,13 @@ recordFullEditBtn.addEventListener('click', async function () {
     }
   }
 
+  // For smoother output: cache last good frame so we don't draw black unless no frame yet
+  const lastGoodFrameCanvas = document.createElement('canvas');
+  lastGoodFrameCanvas.width = canvas.width;
+  lastGoodFrameCanvas.height = canvas.height;
+  const lastGoodFrameCtx = lastGoodFrameCanvas.getContext('2d');
+  let hasGoodFrame = false;
+
   // Canvas mix draw loop
   const FADE_DURATION = 1.5; // seconds
 
@@ -401,6 +410,8 @@ recordFullEditBtn.addEventListener('click', async function () {
     if (!isRecording) return;
     const vid = getCurrentDrawVideo();
     const audioTime = audio.currentTime;
+    let drewVideoFrame = false;
+
     if (
       vid &&
       vid.readyState >= 2 &&
@@ -413,10 +424,19 @@ recordFullEditBtn.addEventListener('click', async function () {
         try { vid.currentTime = audioTime; } catch (e) {}
       }
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+      lastGoodFrameCtx.drawImage(vid, 0, 0, lastGoodFrameCanvas.width, lastGoodFrameCanvas.height);
+      hasGoodFrame = true;
+      drewVideoFrame = true;
+    } else if (hasGoodFrame) {
+      ctx.drawImage(lastGoodFrameCanvas, 0, 0, canvas.width, canvas.height);
+      drewVideoFrame = true;
     } else {
+      // Only draw black if no good frame ever rendered
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
+
+    // Fade in/out
     if (audioTime < FADE_DURATION) {
       let alpha = 1 - (audioTime / FADE_DURATION);
       ctx.fillStyle = `rgba(0,0,0,${alpha})`;
