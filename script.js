@@ -89,7 +89,7 @@ songInput.addEventListener('change', function (e) {
   audioPauseBtn.disabled = true;
 });
 
-// ==== Play Song button now records webcam for ARMED TRACK and PREVIEWS it ====
+// ==== Play Song button now records webcam for ARMED TRACK and PREVIEWS it on the correct track preview, not the master output ====
 audioPlayBtn.addEventListener('click', async function() {
   // Find the armed track
   const radios = document.querySelectorAll('input[name="selectTrackForRecording"]');
@@ -108,11 +108,14 @@ audioPlayBtn.addEventListener('click', async function() {
     return;
   }
 
-  // Show webcam live preview while recording
-  masterOutputVideo.srcObject = webcamStream;
-  masterOutputVideo.src = "";
-  masterOutputVideo.muted = true;
-  masterOutputVideo.play();
+  // Get the preview video element for the armed track card
+  const trackCards = document.querySelectorAll('.track-card');
+  const previewVideo = trackCards[armedIndex].querySelector('video');
+  previewVideo.srcObject = webcamStream;
+  previewVideo.src = "";
+  previewVideo.muted = true;
+  previewVideo.controls = false;
+  previewVideo.play();
 
   // Set up MediaRecorder for webcam
   const mediaRecorder = new MediaRecorder(webcamStream, { mimeType: 'video/webm; codecs=vp9,opus' });
@@ -135,8 +138,10 @@ audioPlayBtn.addEventListener('click', async function() {
       mediaRecorder.stop();
     }
     webcamStream.getTracks().forEach(track => track.stop());
-    masterOutputVideo.srcObject = null; // Remove live preview
-    masterOutputVideo.muted = false;
+    // Remove webcam from preview, restore to normal
+    previewVideo.srcObject = null;
+    previewVideo.controls = true;
+    previewVideo.muted = true;
     audioPlayBtn.disabled = false;
     recIndicator.style.display = 'none';
     isRecording = false;
@@ -161,7 +166,7 @@ audioPlayBtn.addEventListener('click', async function() {
     const blob = new Blob(chunks, { type: 'video/webm' });
     videoTracks[armedIndex] = { file: null, url: URL.createObjectURL(blob), name: 'Recorded Webcam Video' };
     prepareTempVideo(armedIndex, videoTracks[armedIndex].url, 'Recorded Webcam Video');
-    document.querySelectorAll('.track-card')[armedIndex].updatePreview();
+    trackCards[armedIndex].updatePreview();
     logDebug(`Webcam recording finished for Camera ${armedIndex + 1}`);
   };
 });
@@ -220,12 +225,14 @@ function createTrackCard(index) {
   // Update preview when a video is loaded/uploaded/recorded
   card.updatePreview = function() {
     if (videoTracks[index] && videoTracks[index].url) {
+      preview.srcObject = null;
       preview.src = videoTracks[index].url;
       preview.style.display = 'block';
       preview.controls = true;
       preview.muted = true;
       preview.load();
     } else {
+      preview.srcObject = null;
       preview.src = '';
       preview.style.display = 'block';
       preview.poster = '';
