@@ -91,7 +91,6 @@ songInput.addEventListener('change', function (e) {
 
 // ==== Play Song button now records webcam for ARMED TRACK and PREVIEWS it ONLY in the correct track preview, never the master output ====
 audioPlayBtn.addEventListener('click', async function() {
-  // Find the armed track
   const radios = document.querySelectorAll('input[name="selectTrackForRecording"]');
   const armedIndex = Array.from(radios).findIndex(r => r.checked);
   if (armedIndex === -1) {
@@ -99,7 +98,6 @@ audioPlayBtn.addEventListener('click', async function() {
     return;
   }
 
-  // Request webcam
   let webcamStream;
   try {
     webcamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -108,7 +106,6 @@ audioPlayBtn.addEventListener('click', async function() {
     return;
   }
 
-  // Get the preview video element for the armed track card
   const trackCards = document.querySelectorAll('.track-card');
   const previewVideo = trackCards[armedIndex].querySelector('video');
   previewVideo.srcObject = webcamStream;
@@ -117,12 +114,10 @@ audioPlayBtn.addEventListener('click', async function() {
   previewVideo.controls = false;
   previewVideo.play();
 
-  // Set up MediaRecorder for webcam
   const mediaRecorder = new MediaRecorder(webcamStream, { mimeType: 'video/webm; codecs=vp9,opus' });
   let chunks = [];
   mediaRecorder.ondataavailable = e => e.data.size && chunks.push(e.data);
 
-  // Start recording webcam and audio
   mediaRecorder.start();
   audio.currentTime = 0;
   audio.play();
@@ -138,7 +133,6 @@ audioPlayBtn.addEventListener('click', async function() {
       mediaRecorder.stop();
     }
     webcamStream.getTracks().forEach(track => track.stop());
-    // Remove webcam from preview, restore to normal
     previewVideo.srcObject = null;
     previewVideo.controls = true;
     previewVideo.muted = true;
@@ -169,7 +163,6 @@ audioPlayBtn.addEventListener('click', async function() {
     trackCards[armedIndex].updatePreview();
     updateSwitcherBtns();
     setActiveTrack(armedIndex);
-    // Reset main output to only show the finished take, never a stream
     masterOutputVideo.pause();
     masterOutputVideo.srcObject = null;
     masterOutputVideo.src = videoTracks[armedIndex].url;
@@ -199,7 +192,6 @@ function createTrackCard(index) {
   const card = document.createElement('div');
   card.className = 'track-card';
 
-  // RADIO BUTTON TO SELECT TRACK FOR RECORDING
   const radio = document.createElement('input');
   radio.type = 'radio';
   radio.name = 'selectTrackForRecording';
@@ -208,18 +200,15 @@ function createTrackCard(index) {
   radio.addEventListener('change', updateRecordButtonStates);
   card.appendChild(radio);
 
-  // LABEL
   const label = document.createElement('label');
   label.textContent = `Camera ${index + 1}`;
   card.appendChild(label);
 
-  // UPLOAD BUTTON
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'video/*';
   card.appendChild(input);
 
-  // VIDEO PREVIEW
   const preview = document.createElement('video');
   preview.className = 'track-preview';
   preview.controls = true;
@@ -230,7 +219,6 @@ function createTrackCard(index) {
   preview.muted = true;
   card.appendChild(preview);
 
-  // Update preview when a video is loaded/uploaded/recorded
   card.updatePreview = function() {
     if (videoTracks[index] && videoTracks[index].url) {
       preview.srcObject = null;
@@ -247,7 +235,6 @@ function createTrackCard(index) {
     }
   };
 
-  // UPLOAD BUTTON event
   input.addEventListener('change', function (e) {
     handleVideoUpload(index, e.target.files[0]);
     card.updatePreview();
@@ -322,7 +309,6 @@ function setActiveTrack(idx) {
 }
 
 function previewInOutput(idx) {
-  // Only show finished takes in master output, never webcam stream
   if (isRecording || isPlaying) return;
   masterOutputVideo.pause();
   masterOutputVideo.srcObject = null;
@@ -392,7 +378,7 @@ recordFullEditBtn.addEventListener('click', async function () {
     }
   }
 
-  // Wait for all videos to be ready
+  // Wait for all videos to be ready and playing
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
       if (tempVideos[i].readyState < 2) {
@@ -418,6 +404,7 @@ recordFullEditBtn.addEventListener('click', async function () {
     if (
       vid &&
       vid.readyState >= 2 &&
+      !vid.paused &&
       !vid.ended &&
       vid.currentTime > 0 &&
       vid.currentTime < vid.duration
@@ -430,7 +417,6 @@ recordFullEditBtn.addEventListener('click', async function () {
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
-    // Fade in/out
     if (audioTime < FADE_DURATION) {
       let alpha = 1 - (audioTime / FADE_DURATION);
       ctx.fillStyle = `rgba(0,0,0,${alpha})`;
@@ -444,7 +430,6 @@ recordFullEditBtn.addEventListener('click', async function () {
   }
   drawFrame();
 
-  // Only set srcObject for canvas mix
   try {
     const livePreviewStream = canvas.captureStream(30);
     masterOutputVideo.srcObject = livePreviewStream;
@@ -458,21 +443,13 @@ recordFullEditBtn.addEventListener('click', async function () {
   switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((btn, idx) => {
     btn.onclick = function() {
       setActiveTrack(idx);
-      // Don't call previewInOutput here, as we're mixing live
       const vid = getCurrentDrawVideo();
-      if (vid) {
-        vid.play()
-          .then(() => {
-            logDebug(`Switched & played video ${idx}`);
-          })
-          .catch(err => {
-            logDebug(`Error playing video after switch ${idx}: ${err.message || err}`);
-          });
+      if (vid && vid.paused) {
+        vid.play().catch(()=>{});
       }
     };
   });
 
-  // Audio mixdown
   let audioContext = new (window.AudioContext || window.webkitAudioContext)();
   const source = audioContext.createMediaElementSource(audio);
   const dest = audioContext.createMediaStreamDestination();
