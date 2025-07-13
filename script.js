@@ -2,6 +2,7 @@
 // Author: Bernardo Garcia
 
 const NUM_TRACKS = 2;
+const FPS = 30; // Set your intended output frame rate here. Try 60 if your hardware can handle it.
 
 const songInput = document.getElementById('songInput');
 const audioStatus = document.getElementById('audioStatus');
@@ -65,7 +66,6 @@ function logDebug(msg) {
     debuglog.textContent += msg + "\n";
     debuglog.scrollTop = debuglog.scrollHeight;
   }
-  // console.log(msg);
 }
 
 const videoTracks = Array(NUM_TRACKS).fill(null);
@@ -450,8 +450,10 @@ recordFullEditBtn.addEventListener('click', async function () {
   }
   drawFrame();
 
+  // Use FPS everywhere captureStream is called
+  const livePreviewStream = canvas.captureStream(FPS);
+
   try {
-    const livePreviewStream = canvas.captureStream(30);
     masterOutputVideo.srcObject = livePreviewStream;
     masterOutputVideo.src = "";
     masterOutputVideo.play();
@@ -476,13 +478,20 @@ recordFullEditBtn.addEventListener('click', async function () {
   source.connect(dest);
   source.connect(audioContext.destination);
 
-  const canvasStream = canvas.captureStream(30);
+  // Build combinedStream with the chosen FPS
+  const canvasStream = canvas.captureStream(FPS);
   const combinedStream = new MediaStream([
     ...canvasStream.getVideoTracks(),
     ...dest.stream.getAudioTracks()
   ]);
 
-  let mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm; codecs=vp9,opus' });
+  // Add videoBitsPerSecond for higher quality and better timing
+  let mediaRecorder = new MediaRecorder(combinedStream, {
+    mimeType: 'video/webm; codecs=vp9,opus',
+    videoBitsPerSecond: 5000000 // 5Mbps, adjust if needed
+    // frameRate: FPS // You can try this if your browser supports it, but it's not standard
+  });
+
   mediaRecorder.ondataavailable = function(e) {
     if (e.data.size > 0) recordedChunks.push(e.data);
   };
