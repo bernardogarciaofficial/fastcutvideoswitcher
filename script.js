@@ -169,7 +169,12 @@ audioPlayBtn.addEventListener('click', async function() {
     trackCards[armedIndex].updatePreview();
     updateSwitcherBtns();
     setActiveTrack(armedIndex);
-    previewInOutput(armedIndex); // Ensure main output shows new take, but only after recording is finished
+    // Reset main output to only show the finished take, never a stream
+    masterOutputVideo.pause();
+    masterOutputVideo.srcObject = null;
+    masterOutputVideo.src = videoTracks[armedIndex].url;
+    masterOutputVideo.load();
+    masterOutputVideo.play().catch(()=>{});
     logDebug(`Webcam recording finished for Camera ${armedIndex + 1}`);
   };
 });
@@ -362,7 +367,7 @@ recordFullEditBtn.addEventListener('click', async function () {
 
   isRecording = true;
   isPlaying = true;
-  recordedChunks = [];
+  let recordedChunks = [];
   exportStatus.textContent = '';
   recIndicator.style.display = 'block';
   exportBtn.disabled = true;
@@ -373,6 +378,7 @@ recordFullEditBtn.addEventListener('click', async function () {
   canvas.height = 360;
   const ctx = canvas.getContext('2d');
 
+  // Prepare all temp videos for drawing
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
       if (!tempVideos[i].parentNode) hiddenVideos.appendChild(tempVideos[i]);
@@ -385,14 +391,8 @@ recordFullEditBtn.addEventListener('click', async function () {
       }
     }
   }
-  let currentVideo = getCurrentDrawVideo();
-  if (!currentVideo) {
-    alert('Please upload or record at least one video take.');
-    isRecording = false; isPlaying = false; recIndicator.style.display = 'none';
-    logDebug('No tempVideos available for drawing.');
-    return;
-  }
 
+  // Wait for all videos to be ready
   for (let i = 0; i < tempVideos.length; i++) {
     if (tempVideos[i]) {
       if (tempVideos[i].readyState < 2) {
@@ -400,36 +400,37 @@ recordFullEditBtn.addEventListener('click', async function () {
           tempVideos[i].addEventListener('loadeddata', resolve, { once: true });
         });
       }
-    }
-  }
-
-  for (let i = 0; i < tempVideos.length; i++) {
-    if (tempVideos[i]) {
       try {
-        tempVideos[i].currentTime = 0;
         await tempVideos[i].play();
-        logDebug(`Playing tempVideo ${i}`);
       } catch (err) {
         logDebug(`Error playing tempVideo ${i}: ${err.message || err}`);
       }
     }
   }
 
+  // Canvas mix draw loop
   const FADE_DURATION = 1.5; // seconds
 
   function drawFrame() {
     if (!isRecording) return;
     const vid = getCurrentDrawVideo();
     const audioTime = audio.currentTime;
-    if (vid && !vid.ended && vid.readyState >= 2) {
-      if (vid.srcObject === null && Math.abs(vid.currentTime - audioTime) > 0.04) {
-        vid.currentTime = audioTime;
+    if (
+      vid &&
+      vid.readyState >= 2 &&
+      !vid.ended &&
+      vid.currentTime > 0 &&
+      vid.currentTime < vid.duration
+    ) {
+      if (Math.abs(vid.currentTime - audioTime) > 0.04) {
+        try { vid.currentTime = audioTime; } catch (e) {}
       }
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
     } else {
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
+    // Fade in/out
     if (audioTime < FADE_DURATION) {
       let alpha = 1 - (audioTime / FADE_DURATION);
       ctx.fillStyle = `rgba(0,0,0,${alpha})`;
@@ -443,8 +444,9 @@ recordFullEditBtn.addEventListener('click', async function () {
   }
   drawFrame();
 
+  // Only set srcObject for canvas mix
   try {
-    livePreviewStream = canvas.captureStream(30);
+    const livePreviewStream = canvas.captureStream(30);
     masterOutputVideo.srcObject = livePreviewStream;
     masterOutputVideo.src = "";
     masterOutputVideo.play();
@@ -452,10 +454,11 @@ recordFullEditBtn.addEventListener('click', async function () {
     logDebug("Live preview error: " + e.message);
   }
 
+  // Switcher buttons live update
   switcherBtnsContainer.querySelectorAll('.switcher-btn').forEach((btn, idx) => {
     btn.onclick = function() {
       setActiveTrack(idx);
-      previewInOutput(idx);
+      // Don't call previewInOutput here, as we're mixing live
       const vid = getCurrentDrawVideo();
       if (vid) {
         vid.play()
@@ -469,7 +472,8 @@ recordFullEditBtn.addEventListener('click', async function () {
     };
   });
 
-  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  // Audio mixdown
+  let audioContext = new (window.AudioContext || window.webkitAudioContext)();
   const source = audioContext.createMediaElementSource(audio);
   const dest = audioContext.createMediaStreamDestination();
   source.connect(dest);
@@ -481,7 +485,7 @@ recordFullEditBtn.addEventListener('click', async function () {
     ...dest.stream.getAudioTracks()
   ]);
 
-  mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm; codecs=vp9,opus' });
+  let mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm; codecs=vp9,opus' });
   mediaRecorder.ondataavailable = function(e) {
     if (e.data.size > 0) recordedChunks.push(e.data);
   };
@@ -496,7 +500,6 @@ recordFullEditBtn.addEventListener('click', async function () {
     exportBtn.disabled = false;
     isRecording = false;
     isPlaying = false;
-    livePreviewStream = null;
     exportStatus.textContent = 'Recording finished! Preview your cut below.';
     if (audioContext) {
       audioContext.close();
