@@ -2,6 +2,7 @@
 // Author: Bernardo Garcia
 
 const NUM_TRACKS = 2;
+
 const songInput = document.getElementById('songInput');
 const audioStatus = document.getElementById('audioStatus');
 const audio = document.getElementById('audio');
@@ -16,6 +17,8 @@ const exportStatus = document.getElementById('exportStatus');
 const hiddenVideos = document.getElementById('hiddenVideos');
 const debuglog = document.getElementById('debuglog');
 const timelineClock = document.getElementById('timelineClock');
+const audioPlayBtn = document.getElementById('audioPlayBtn');
+const audioPauseBtn = document.getElementById('audioPauseBtn');
 
 // Helper function to format seconds as mm:ss
 function formatTime(secs) {
@@ -69,7 +72,9 @@ let audioContext = null;
 let livePreviewStream = null;
 let webcamStreams = Array(NUM_TRACKS).fill(null); // For previewing webcams per track
 
-// ===== SONG UPLOAD =====
+// --- AUDIO MASTER BUTTONS LOGIC ---
+
+// On song upload, show Play/Pause buttons
 songInput.addEventListener('change', function (e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -79,6 +84,34 @@ songInput.addEventListener('change', function (e) {
   audioStatus.textContent = `Loaded: ${file.name}`;
   audio.load();
   logDebug(`Audio file loaded: ${file.name}`);
+  audioPlayBtn.style.display = 'inline-block';
+  audioPauseBtn.style.display = 'inline-block';
+  audioPlayBtn.disabled = false;
+  audioPauseBtn.disabled = true;
+});
+
+// Play Song
+audioPlayBtn.addEventListener('click', function() {
+  audio.play();
+  audioPlayBtn.disabled = true;
+  audioPauseBtn.disabled = false;
+});
+
+// Pause Song
+audioPauseBtn.addEventListener('click', function() {
+  audio.pause();
+  audioPlayBtn.disabled = false;
+  audioPauseBtn.disabled = true;
+});
+
+// Keep buttons in sync with audio state
+audio.addEventListener('play', function() {
+  audioPlayBtn.disabled = true;
+  audioPauseBtn.disabled = false;
+});
+audio.addEventListener('pause', function() {
+  audioPlayBtn.disabled = false;
+  audioPauseBtn.disabled = true;
 });
 
 // ===== VIDEO TAKES UI WITH PREVIEW =====
