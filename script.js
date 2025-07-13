@@ -89,7 +89,7 @@ songInput.addEventListener('change', function (e) {
   audioPauseBtn.disabled = true;
 });
 
-// ==== Play Song button now records webcam for ARMED TRACK and PREVIEWS it on the correct track preview, not the master output ====
+// ==== Play Song button now records webcam for ARMED TRACK and PREVIEWS it ONLY in the correct track preview, never the master output ====
 audioPlayBtn.addEventListener('click', async function() {
   // Find the armed track
   const radios = document.querySelectorAll('input[name="selectTrackForRecording"]');
@@ -167,9 +167,9 @@ audioPlayBtn.addEventListener('click', async function() {
     videoTracks[armedIndex] = { file: null, url: URL.createObjectURL(blob), name: 'Recorded Webcam Video' };
     prepareTempVideo(armedIndex, videoTracks[armedIndex].url, 'Recorded Webcam Video');
     trackCards[armedIndex].updatePreview();
-    updateSwitcherBtns(); // <-- critical so buttons get enabled!
+    updateSwitcherBtns();
     setActiveTrack(armedIndex);
-    previewInOutput(armedIndex);
+    previewInOutput(armedIndex); // Ensure main output shows new take, but only after recording is finished
     logDebug(`Webcam recording finished for Camera ${armedIndex + 1}`);
   };
 });
@@ -317,22 +317,23 @@ function setActiveTrack(idx) {
 }
 
 function previewInOutput(idx) {
+  // Only show finished takes in master output, never webcam stream
   if (isRecording || isPlaying) return;
-  if (videoTracks[idx]) {
-    masterOutputVideo.pause();
-    masterOutputVideo.srcObject = null;
+  masterOutputVideo.pause();
+  masterOutputVideo.srcObject = null;
+  masterOutputVideo.src = "";
+  if (videoTracks[idx] && videoTracks[idx].url) {
     masterOutputVideo.src = videoTracks[idx].url;
     masterOutputVideo.style.display = 'block';
     masterOutputVideo.currentTime = 0;
     masterOutputVideo.load();
     masterOutputVideo.play().catch(()=>{});
-  } else {
-    masterOutputVideo.srcObject = null;
-    masterOutputVideo.src = "";
   }
 }
 
 // ===== INIT =====
+masterOutputVideo.srcObject = null;
+masterOutputVideo.src = "";
 for (let i = 0; i < NUM_TRACKS; i++) createTrackCard(i);
 updateSwitcherBtns();
 masterOutputVideo.style.display = 'block';
