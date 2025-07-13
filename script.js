@@ -446,8 +446,7 @@ recordFullEditBtn.addEventListener('click', async function () {
       ctx.fillStyle = `rgba(0,0,0,${alpha})`;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
-    animationFrameId = requestAnimationFrame(drawFrame);
-  }
+    let drawLoopInterval = setInterval(drawFrame, 1000 / FPS);
   drawFrame();
 
   // Use FPS everywhere captureStream is called
