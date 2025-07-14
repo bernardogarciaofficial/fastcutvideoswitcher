@@ -2,7 +2,7 @@
 // Author: Bernardo Garcia
 
 const NUM_TRACKS = 2;
-const FPS = 30; // Set your intended output frame rate here.
+const FPS = 15; // Set your intended output frame rate here.
 
 const songInput = document.getElementById('songInput');
 const audioStatus = document.getElementById('audioStatus');
