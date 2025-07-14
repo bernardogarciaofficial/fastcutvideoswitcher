@@ -341,12 +341,27 @@ function getCurrentDrawVideo() {
   return null;
 }
 
-// === NEW: Fixed FPS draw loop using setInterval ===
+// === Improved: Fixed FPS draw loop with dropped/duplicated frame handling ===
 let drawIntervalId;
+const FRAME_DURATION = 1 / FPS;
+let lastAudioTime = 0;
+
 function startFixedFPSDrawLoop(drawFrame) {
+  lastAudioTime = 0;
   drawIntervalId = setInterval(() => {
     if (!isRecording) return;
-    drawFrame();
+    const audioTime = audio.currentTime;
+    // Only draw a new frame if audio has advanced enough
+    if (audioTime - lastAudioTime >= FRAME_DURATION * 0.8) {
+      drawFrame();
+      lastAudioTime = audioTime;
+    }
+    // If we're lagging far behind, force catch up
+    else if (audioTime - lastAudioTime > FRAME_DURATION * 2.5) {
+      drawFrame();
+      lastAudioTime = audioTime;
+    }
+    // Otherwise, skip this interval to avoid duplicate frames
   }, 1000 / FPS);
 }
 function stopFixedFPSDrawLoop() {
@@ -436,7 +451,11 @@ recordFullEditBtn.addEventListener('click', async function () {
     const vid = getCurrentDrawVideo();
     const audioTime = audio.currentTime;
 
-    // Always sync video to audio time
+    // Force video to exactly match audio (may cause some jank, but keeps sync)
+    if (vid && Math.abs(vid.currentTime - audioTime) > 0.02) {
+      try { vid.currentTime = audioTime; } catch (e) {}
+    }
+
     let drewVideoFrame = false;
 
     if (
@@ -447,9 +466,6 @@ recordFullEditBtn.addEventListener('click', async function () {
       vid.currentTime > 0 &&
       vid.currentTime < vid.duration
     ) {
-      if (Math.abs(vid.currentTime - audioTime) > 0.04) {
-        try { vid.currentTime = audioTime; } catch (e) {}
-      }
       ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
       lastGoodFrameCtx.drawImage(vid, 0, 0, lastGoodFrameCanvas.width, lastGoodFrameCanvas.height);
       hasGoodFrame = true;
@@ -590,3 +606,13 @@ exportBtn.addEventListener('click', function () {
       logDebug('Video exported.');
     });
 });
+
+// ===== USER WARNING =====
+if (exportStatus) {
+  exportStatus.insertAdjacentHTML('beforebegin', `
+    <div style="color: orange; font-size: 14px; margin-bottom: 0.5em;">
+      For best results, keep this tab visible and avoid heavy multitasking while exporting video.<br>
+      If your computer is under heavy load, the video may export at a lower frame rate.
+    </div>
+  `);
+}
