@@ -341,6 +341,18 @@ function getCurrentDrawVideo() {
   return null;
 }
 
+// === NEW: Fixed FPS draw loop using setInterval ===
+let drawIntervalId;
+function startFixedFPSDrawLoop(drawFrame) {
+  drawIntervalId = setInterval(() => {
+    if (!isRecording) return;
+    drawFrame();
+  }, 1000 / FPS);
+}
+function stopFixedFPSDrawLoop() {
+  clearInterval(drawIntervalId);
+}
+
 recordFullEditBtn.addEventListener('click', async function () {
   if (!audio.src) {
     alert('Please upload a song first.');
@@ -407,11 +419,10 @@ recordFullEditBtn.addEventListener('click', async function () {
   let lastDrawTime = performance.now();
   let frameCount = 0;
 
-  // Canvas mix draw loop - using requestAnimationFrame and audio clock pace
+  // Canvas mix draw loop - using setInterval for fixed FPS
   const FADE_DURATION = 1.5; // seconds
-  let lastDrawAudioTime = -1;
 
-  function drawFrameRAF() {
+  function drawFrame() {
     if (!isRecording) return;
 
     frameCount++;
@@ -425,51 +436,43 @@ recordFullEditBtn.addEventListener('click', async function () {
     const vid = getCurrentDrawVideo();
     const audioTime = audio.currentTime;
 
-    // Only draw a new frame if the audio time has advanced by at least 1/FPS
-    if (lastDrawAudioTime === -1 || audioTime - lastDrawAudioTime >= 1 / FPS) {
-      let drewVideoFrame = false;
+    // Always sync video to audio time
+    let drewVideoFrame = false;
 
-      if (
-        vid &&
-        vid.readyState >= 2 &&
-        !vid.paused &&
-        !vid.ended &&
-        vid.currentTime > 0 &&
-        vid.currentTime < vid.duration
-      ) {
-        if (Math.abs(vid.currentTime - audioTime) > 0.04) {
-          try { vid.currentTime = audioTime; } catch (e) {}
-        }
-        ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
-        lastGoodFrameCtx.drawImage(vid, 0, 0, lastGoodFrameCanvas.width, lastGoodFrameCanvas.height);
-        hasGoodFrame = true;
-        drewVideoFrame = true;
-      } else if (hasGoodFrame) {
-        ctx.drawImage(lastGoodFrameCanvas, 0, 0, canvas.width, canvas.height);
-        drewVideoFrame = true;
-      } else {
-        ctx.fillStyle = "#000";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (
+      vid &&
+      vid.readyState >= 2 &&
+      !vid.paused &&
+      !vid.ended &&
+      vid.currentTime > 0 &&
+      vid.currentTime < vid.duration
+    ) {
+      if (Math.abs(vid.currentTime - audioTime) > 0.04) {
+        try { vid.currentTime = audioTime; } catch (e) {}
       }
-
-      // Fade in/out
-      if (audioTime < FADE_DURATION) {
-        let alpha = 1 - (audioTime / FADE_DURATION);
-        ctx.fillStyle = `rgba(0,0,0,${alpha})`;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      } else if (audio.duration && audioTime > audio.duration - FADE_DURATION) {
-        let alpha = (audioTime - (audio.duration - FADE_DURATION)) / FADE_DURATION;
-        ctx.fillStyle = `rgba(0,0,0,${alpha})`;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
-
-      lastDrawAudioTime = audioTime;
+      ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+      lastGoodFrameCtx.drawImage(vid, 0, 0, lastGoodFrameCanvas.width, lastGoodFrameCanvas.height);
+      hasGoodFrame = true;
+      drewVideoFrame = true;
+    } else if (hasGoodFrame) {
+      ctx.drawImage(lastGoodFrameCanvas, 0, 0, canvas.width, canvas.height);
+      drewVideoFrame = true;
+    } else {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    animationFrameId = requestAnimationFrame(drawFrameRAF);
+    // Fade in/out
+    if (audioTime < FADE_DURATION) {
+      let alpha = 1 - (audioTime / FADE_DURATION);
+      ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    } else if (audio.duration && audioTime > audio.duration - FADE_DURATION) {
+      let alpha = (audioTime - (audio.duration - FADE_DURATION)) / FADE_DURATION;
+      ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
   }
-
-  animationFrameId = requestAnimationFrame(drawFrameRAF);
 
   // Use FPS everywhere captureStream is called
   const livePreviewStream = canvas.captureStream(FPS);
@@ -517,7 +520,7 @@ recordFullEditBtn.addEventListener('click', async function () {
     if (e.data.size > 0) recordedChunks.push(e.data);
   };
   mediaRecorder.onstop = function() {
-    cancelAnimationFrame(animationFrameId); // Stop the draw loop when done
+    stopFixedFPSDrawLoop();
     const blob = new Blob(recordedChunks, { type: 'video/webm' });
     // Clean up old object URL if any
     if (masterOutputVideo.src && masterOutputVideo.src.startsWith('blob:')) {
@@ -546,6 +549,9 @@ recordFullEditBtn.addEventListener('click', async function () {
   });
 
   mediaRecorder.start();
+
+  // Start fixed FPS draw loop!
+  startFixedFPSDrawLoop(drawFrame);
 
   audio.onended = function () {
     if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
