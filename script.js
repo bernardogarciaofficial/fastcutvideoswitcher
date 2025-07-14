@@ -168,7 +168,6 @@ audioPlayBtn.addEventListener('click', async function() {
     masterOutputVideo.srcObject = null;
     masterOutputVideo.src = videoTracks[armedIndex].url;
     masterOutputVideo.load();
-    // masterOutputVideo.play().catch(()=>{}); // <-- REMOVE AUTOPLAY
     logDebug(`Webcam recording finished for Camera ${armedIndex + 1}`);
   };
 });
@@ -319,8 +318,6 @@ function previewInOutput(idx) {
     masterOutputVideo.style.display = 'block';
     masterOutputVideo.currentTime = 0;
     masterOutputVideo.load();
-    // Do NOT autoplay when previewing
-    // masterOutputVideo.play().catch(()=>{});
   }
 }
 
@@ -341,7 +338,6 @@ function getCurrentDrawVideo() {
   return null;
 }
 
-// === Improved: Fixed FPS draw loop with dropped/duplicated frame handling ===
 let drawIntervalId;
 const FRAME_DURATION = 1 / FPS;
 let lastAudioTime = 0;
@@ -351,17 +347,8 @@ function startFixedFPSDrawLoop(drawFrame) {
   drawIntervalId = setInterval(() => {
     if (!isRecording) return;
     const audioTime = audio.currentTime;
-    // Only draw a new frame if audio has advanced enough
-    if (audioTime - lastAudioTime >= FRAME_DURATION * 0.8) {
-      drawFrame();
-      lastAudioTime = audioTime;
-    }
-    // If we're lagging far behind, force catch up
-    else if (audioTime - lastAudioTime > FRAME_DURATION * 2.5) {
-      drawFrame();
-      lastAudioTime = audioTime;
-    }
-    // Otherwise, skip this interval to avoid duplicate frames
+    drawFrame();
+    lastAudioTime = audioTime;
   }, 1000 / FPS);
 }
 function stopFixedFPSDrawLoop() {
@@ -451,28 +438,27 @@ recordFullEditBtn.addEventListener('click', async function () {
     const vid = getCurrentDrawVideo();
     const audioTime = audio.currentTime;
 
-    // Force video to exactly match audio (may cause some jank, but keeps sync)
-    if (vid && Math.abs(vid.currentTime - audioTime) > 0.02) {
-      try { vid.currentTime = audioTime; } catch (e) {}
-    }
+    if (vid) {
+      // Only set .currentTime if a big difference (avoid stalling the video)
+      if (Math.abs(vid.currentTime - audioTime) > 0.10) {
+        try { vid.currentTime = audioTime; } catch (e) {}
+      }
 
-    let drewVideoFrame = false;
-
-    if (
-      vid &&
-      vid.readyState >= 2 &&
-      !vid.paused &&
-      !vid.ended &&
-      vid.currentTime > 0 &&
-      vid.currentTime < vid.duration
-    ) {
-      ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
-      lastGoodFrameCtx.drawImage(vid, 0, 0, lastGoodFrameCanvas.width, lastGoodFrameCanvas.height);
-      hasGoodFrame = true;
-      drewVideoFrame = true;
+      try {
+        ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+        lastGoodFrameCtx.drawImage(vid, 0, 0, lastGoodFrameCanvas.width, lastGoodFrameCanvas.height);
+        hasGoodFrame = true;
+      } catch (e) {
+        // fallback if drawImage fails
+        if (hasGoodFrame) {
+          ctx.drawImage(lastGoodFrameCanvas, 0, 0, canvas.width, canvas.height);
+        } else {
+          ctx.fillStyle = "#000";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+      }
     } else if (hasGoodFrame) {
       ctx.drawImage(lastGoodFrameCanvas, 0, 0, canvas.width, canvas.height);
-      drewVideoFrame = true;
     } else {
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -525,11 +511,9 @@ recordFullEditBtn.addEventListener('click', async function () {
     ...dest.stream.getAudioTracks()
   ]);
 
-  // Add videoBitsPerSecond for higher quality and better timing
   let mediaRecorder = new MediaRecorder(combinedStream, {
     mimeType: 'video/webm; codecs=vp9,opus',
     videoBitsPerSecond: 5000000 // 5Mbps, adjust if needed
-    // frameRate: FPS // You can try this if your browser supports it, but it's not standard
   });
 
   mediaRecorder.ondataavailable = function(e) {
@@ -538,7 +522,6 @@ recordFullEditBtn.addEventListener('click', async function () {
   mediaRecorder.onstop = function() {
     stopFixedFPSDrawLoop();
     const blob = new Blob(recordedChunks, { type: 'video/webm' });
-    // Clean up old object URL if any
     if (masterOutputVideo.src && masterOutputVideo.src.startsWith('blob:')) {
       URL.revokeObjectURL(masterOutputVideo.src);
     }
@@ -566,7 +549,6 @@ recordFullEditBtn.addEventListener('click', async function () {
 
   mediaRecorder.start();
 
-  // Start fixed FPS draw loop!
   startFixedFPSDrawLoop(drawFrame);
 
   audio.onended = function () {
