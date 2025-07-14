@@ -403,11 +403,23 @@ recordFullEditBtn.addEventListener('click', async function () {
   const lastGoodFrameCtx = lastGoodFrameCanvas.getContext('2d');
   let hasGoodFrame = false;
 
+  // Diagnostics for draw FPS
+  let lastDrawTime = performance.now();
+  let frameCount = 0;
+
   // Canvas mix draw loop
   const FADE_DURATION = 1.5; // seconds
 
   function drawFrame() {
     if (!isRecording) return;
+    const now = performance.now();
+    frameCount++;
+    if (frameCount % 30 === 0) {
+      logDebug(`Draw FPS: ${(1000 * frameCount / (now - lastDrawTime)).toFixed(2)}`);
+      frameCount = 0;
+      lastDrawTime = now;
+    }
+
     const vid = getCurrentDrawVideo();
     const audioTime = audio.currentTime;
     let drewVideoFrame = false;
