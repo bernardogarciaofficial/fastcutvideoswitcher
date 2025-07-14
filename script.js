@@ -338,21 +338,25 @@ function getCurrentDrawVideo() {
   return null;
 }
 
-let drawIntervalId;
+// --- MAIN: Audio-synced draw loop for perfect duration ---
+let animationFrameId;
+let lastDrawnAudioTime = 0;
 const FRAME_DURATION = 1 / FPS;
-let lastAudioTime = 0;
 
-function startFixedFPSDrawLoop(drawFrame) {
-  lastAudioTime = 0;
-  drawIntervalId = setInterval(() => {
+function startAudioSyncedDrawLoop(drawFrame) {
+  function rafLoop() {
     if (!isRecording) return;
     const audioTime = audio.currentTime;
-    drawFrame();
-    lastAudioTime = audioTime;
-  }, 1000 / FPS);
+    if (audioTime - lastDrawnAudioTime >= FRAME_DURATION - 0.001) {
+      drawFrame();
+      lastDrawnAudioTime = audioTime;
+    }
+    animationFrameId = requestAnimationFrame(rafLoop);
+  }
+  animationFrameId = requestAnimationFrame(rafLoop);
 }
-function stopFixedFPSDrawLoop() {
-  clearInterval(drawIntervalId);
+function stopAudioSyncedDrawLoop() {
+  cancelAnimationFrame(animationFrameId);
 }
 
 recordFullEditBtn.addEventListener('click', async function () {
@@ -417,51 +421,35 @@ recordFullEditBtn.addEventListener('click', async function () {
   const lastGoodFrameCtx = lastGoodFrameCanvas.getContext('2d');
   let hasGoodFrame = false;
 
-  // Diagnostics for draw FPS
-  let lastDrawTime = performance.now();
-  let frameCount = 0;
-
-  // Canvas mix draw loop - using setInterval for fixed FPS
   const FADE_DURATION = 1.5; // seconds
 
   function drawFrame() {
-    if (!isRecording) return;
-
-    frameCount++;
-    if (frameCount % 30 === 0) {
-      const now = performance.now();
-      logDebug(`Draw FPS: ${(1000 * frameCount / (now - lastDrawTime)).toFixed(2)}`);
-      frameCount = 0;
-      lastDrawTime = now;
-    }
-
     const vid = getCurrentDrawVideo();
     const audioTime = audio.currentTime;
 
-    if (vid) {
-      // Only set .currentTime if a big difference (avoid stalling the video)
-      if (Math.abs(vid.currentTime - audioTime) > 0.10) {
-        try { vid.currentTime = audioTime; } catch (e) {}
-      }
+    // Only set .currentTime if a big difference (avoid stalling the video)
+    if (vid && Math.abs(vid.currentTime - audioTime) > 0.10) {
+      try { vid.currentTime = audioTime; } catch (e) {}
+    }
 
-      try {
+    try {
+      if (vid) {
         ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
         lastGoodFrameCtx.drawImage(vid, 0, 0, lastGoodFrameCanvas.width, lastGoodFrameCanvas.height);
         hasGoodFrame = true;
-      } catch (e) {
-        // fallback if drawImage fails
-        if (hasGoodFrame) {
-          ctx.drawImage(lastGoodFrameCanvas, 0, 0, canvas.width, canvas.height);
-        } else {
-          ctx.fillStyle = "#000";
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
+      } else if (hasGoodFrame) {
+        ctx.drawImage(lastGoodFrameCanvas, 0, 0, canvas.width, canvas.height);
+      } else {
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
-    } else if (hasGoodFrame) {
-      ctx.drawImage(lastGoodFrameCanvas, 0, 0, canvas.width, canvas.height);
-    } else {
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    } catch (e) {
+      if (hasGoodFrame) {
+        ctx.drawImage(lastGoodFrameCanvas, 0, 0, canvas.width, canvas.height);
+      } else {
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
     }
 
     // Fade in/out
@@ -520,7 +508,7 @@ recordFullEditBtn.addEventListener('click', async function () {
     if (e.data.size > 0) recordedChunks.push(e.data);
   };
   mediaRecorder.onstop = function() {
-    stopFixedFPSDrawLoop();
+    stopAudioSyncedDrawLoop();
     const blob = new Blob(recordedChunks, { type: 'video/webm' });
     if (masterOutputVideo.src && masterOutputVideo.src.startsWith('blob:')) {
       URL.revokeObjectURL(masterOutputVideo.src);
@@ -549,7 +537,9 @@ recordFullEditBtn.addEventListener('click', async function () {
 
   mediaRecorder.start();
 
-  startFixedFPSDrawLoop(drawFrame);
+  // --- USE NEW DRAW LOOP ---
+  lastDrawnAudioTime = 0;
+  startAudioSyncedDrawLoop(drawFrame);
 
   audio.onended = function () {
     if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
