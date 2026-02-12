@@ -2,60 +2,113 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DiceCut 6-Track Music Video Editor</title>
+  <title>🎬 FastCut Music Video Switcher</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Orbitron:700|Montserrat:400,700&display=swap">
 </head>
 <body>
-
-<div class="container">
-
-  <h1>🎲 DiceCut 6-Track Music Video Editor</h1>
-
-  <!-- AUDIO SECTION -->
-  <div class="card">
-    <h2>1) Upload Master Audio</h2>
-    <input type="file" id="songInput" accept="audio/*">
-    <div id="audioStatus" class="status"></div>
-    <audio id="audio" controls></audio>
-
-    <div class="controls">
-      <label>BPM
-        <input type="number" id="bpmInput" value="120">
-      </label>
-
-      <label>Bars per Cut
-        <input type="number" id="barsInput" value="8">
-      </label>
+  <div class="theme-bg"></div>
+  <div class="set-lights">
+    <div class="spotlight spotlight-left"></div>
+    <div class="spotlight spotlight-right"></div>
+    <div class="spotlight spotlight-top"></div>
+  </div>
+  <header class="hollywood-header">
+    <span class="camera-icon">🎥</span>
+    <h2>FastCut Music Video Switcher</h2>
+    <span class="clapperboard-icon">🎬</span>
+    <div class="lights-action">LIGHTS <span class="dot">•</span> CAMERA <span class="dot">•</span> ACTION!</div>
+    <div class="members-counter" id="membersCounter">
+      <span class="counter-icon">🧑‍🤝‍🧑</span>
+      <span id="membersCountNumber">15,347</span> members online
     </div>
+  </header>
 
-    <div class="buttons">
-      <button id="rollDiceBtn" class="btn dice">🎲 Roll Dice</button>
-      <button id="startBtn" class="btn primary">▶ Start Auto</button>
-      <button id="stopBtn" class="btn danger" disabled>⏹ Stop</button>
+  <!-- INSTANT EDIT BANNER INSERTED HERE -->
+  <div class="instant-edit-banner">
+    get your music video filmed and edited instantly—no more long waits or video editing delay
+  </div>
+
+  <!-- Step 1: Audio Upload -->
+  <div class="audio-track-block">
+    <label for="songInput"><b><span class="music-icon">🎵</span> Main Music Track:</b></label>
+    <input type="file" id="songInput" accept=".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*">
+    <span id="audioStatus"></span>
+    <audio id="audio" controls style="display:none"></audio>
+  </div>
+
+  <!-- Main Video Recording Screen (NEW) -->
+  <div class="main-recorder-section">
+    <h3>after each take is recorded,click 'download' to save it to your computer-and don't forget to name your take</h3>
+    <video id="mainRecorderPreview" width="600" height="340" autoplay muted></video>
+    <div class="main-recorder-controls">
+      <button id="mainRecorderRecordBtn" class="main-recorder-btn custom-record-btn">⏺️ Record</button>
+      <button id="mainRecorderStopBtn" class="main-recorder-btn custom-stop-btn" disabled>⏹️ Stop</button>
+      <button id="mainRecorderDownloadBtn" class="main-recorder-btn custom-download-btn" disabled>⬇️ Download</button>
+      <span id="mainRecorderStatus" class="main-recorder-status"></span>
     </div>
-
-    <div id="diceStatus" class="status"></div>
-    <div id="errorStatus" class="status error"></div>
+    <div class="take-instructions">
+      <span>after each take is recorded,click 'download' to save it to your computer—and don't forget to name your take</span>
+    </div>
   </div>
 
-  <!-- VIDEO TRACKS -->
-  <div class="card">
-    <h2>2) Upload 6 Video Takes</h2>
-    <div id="tracksContainer" class="tracks"></div>
+  <!-- Step 2: Upload Takes for 6-Track Switching -->
+  <div class="switcher-upload-section">
+    <h3>easyly upload each take right here</h3>
+    <div id="switcherTracks" class="switcher-track-grid-row"></div>
   </div>
 
-  <!-- OUTPUT -->
-  <div class="card">
-    <h2>3) Master Output</h2>
-    <div id="exportStatus" class="status"></div>
-    <video id="outputVideo" controls playsinline></video>
+  <!-- Step 3: Live Switch and Record -->
+  <div class="switcher-control-section">
+    <div class="switcher-live-controls">
+      <button id="startSwitchingBtn" class="live-switch-btn record-btn">⏺️ Start Switching</button>
+      <button id="stopSwitchingBtn" class="live-switch-btn stop-btn" disabled>⏹️ Stop Switching</button>
+    </div>
+    <div id="fastcutSwitcher" class="fastcut-switcher-row"></div>
   </div>
 
-</div>
+  <!-- Step 4: FastCut Switcher/Export -->
+  <div class="master-output-section">
+    <h3 class="output-title">Master Output Video <span class="filmstrip">🎞️</span></h3>
+    <video
+      id="masterOutputVideo"
+      width="720"
+      height="405"
+      controls
+      style="background:#181c23; border-radius:16px; border:3px solid #ffe57f; box-shadow:0 4px 24px #000a; display:block; margin:0 auto;"
+      poster="master_output_poster.png"
+    >
+      Your browser does not support the video tag.
+    </video>
+    <!-- EXPORT MUSIC VIDEO BUTTON ADDED BELOW -->
+    <button id="exportMusicVideoBtn" class="export-music-btn">Export Music Video</button>
+    <div id="exportStatus" class="export-status"></div>
+    <div id="syncInstructions" class="sync-instructions">
+      <strong>How to Fix Audio/Video Sync in Your Editor:</strong>
+      <ol>
+        <li>Import your exported FastCut video into your video editor.</li>
+        <li>Right-click the video clip and choose <b>"Unlink"</b> or <b>"Detach Audio"</b>.</li>
+        <li>Select the audio track and move it forward by about <b>5–6 frames</b> (about 0.2 seconds), or until the music matches the video action.</li>
+      </ol>
+      <span class="sync-note">Tip: In most editors, you can nudge the audio by single frames using the arrow keys.</span>
+    </div>
+  </div>
 
-<canvas id="mixCanvas" width="960" height="540"></canvas>
+  <!-- Moving how-it-works instructions here as requested -->
+  <div class="switching-instructions" style="margin-top:-12px;">
+    <span>
+      <b>How it works:</b> Once all takes are uploaded, click <b>Start Switching</b>, then switch cameras live by pressing the camera buttons below. When you're done, click <b>Stop Switching</b> to generate your master video!
+    </span>
+    <div id="switchingError" style="color:#e53935; font-weight:bold; margin-top:10px;"></div>
+  </div>
 
-<script src="script.js"></script>
+  <canvas id="mixCanvas" width="720" height="405" style="display:none"></canvas>
+
+  <footer class="hollywood-footer">
+    <span class="clapperboard-icon">🎬</span>
+    <span>FastCut by <b>bernardogarciaofficial</b> | <span class="camera-icon">🎥</span></span>
+    <span class="footer-email">bernardogarciagarcia441@gmail.com</span>
+  </footer>
+  <script src="script.js"></script>
 </body>
 </html>
