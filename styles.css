@@ -1,132 +1,57 @@
-body {
-  font-family: Arial, sans-serif;
-  background: #f8f8fc;
-  padding: 20px;
-  color: #213;
-}
-h2 { text-align: center; margin-bottom: 28px; }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DiceCut Music Video Mixer</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <h2>DiceCut Multi-Track Music Video Editor</h2>
 
-.audio-track-block, .master-output-section {
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.07);
-  padding: 28px 30px 32px 30px;
-  margin: 0 auto 36px auto;
-  width: 620px;
-  max-width: 98vw;
-  text-align: center;
-}
+  <div class="audio-track-block">
+    <input type="file" id="songInput" accept="audio/*" />
+    <span id="audioStatus"></span>
+    <audio id="audio" controls style="display:none"></audio>
 
-.dice-controls{
-  margin-top:16px;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-  align-items:center;
-}
-.dice-controls label{
-  display:flex;
-  gap:10px;
-  align-items:center;
-  font-weight:700;
-  color:#415080;
-}
-.dice-controls input{
-  width:90px;
-  padding:8px 10px;
-  border-radius:8px;
-  border:1px solid rgba(0,0,0,0.15);
-}
+    <div class="dice-controls">
+      <label>
+        BPM
+        <input id="bpmInput" type="number" min="40" max="240" value="120" />
+      </label>
+      <label>
+        Bars per cut
+        <input id="barsInput" type="number" min="1" max="32" value="8" />
+      </label>
 
-.dice-row{
-  display:flex;
-  gap:12px;
-  justify-content:center;
-  align-items:center;
-  flex-wrap:wrap;
-}
+      <div class="dice-row">
+        <button id="rollDiceBtn" class="dice-edit-btn">🎲🎲 Roll Dice (Create Switch Plan)</button>
+        <span id="diceEditStatus" class="dice-edit-status"></span>
+      </div>
 
-#tracksContainer {
-  display: flex;
-  flex-direction: column;
-  gap: 36px;
-  align-items: center;
-}
+      <div class="dice-row">
+        <button id="startAutoBtn" class="export-btn">Start Auto Switching (Preview)</button>
+        <button id="stopAutoBtn" class="export-btn secondary">Stop</button>
+      </div>
+    </div>
+  </div>
 
-.track-block {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
-  padding: 18px 18px 20px 18px;
-  width: 660px;
-  max-width: 98vw;
-  text-align: center;
-}
+  <div id="tracksContainer"></div>
 
-.track-title { font-size: 1.1rem; margin-bottom: 14px; font-weight: bold; color: #415080; }
-.track-block video {
-  width: 100%;
-  max-width: 600px;
-  min-height: 240px;
-  background: #111;
-  margin: 0 auto 8px auto;
-}
+  <div id="trackSwitcher" class="track-switcher"></div>
 
-.track-switcher {
-  display: flex;
-  justify-content: center;
-  gap: 14px;
-  margin: 32px auto 0 auto;
-  flex-wrap: wrap;
-}
-.track-switcher button {
-  padding: 9px 18px;
-  border-radius: 6px;
-  background: #3054aa;
-  color: #fff;
-  border: none;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 1.04rem;
-  transition: background 0.14s, box-shadow 0.14s;
-}
-.track-switcher button.active,
-.track-block.switcher-active {
-  background: #e53935 !important;
-  color: #fff !important;
-  box-shadow: 0 2px 10px rgba(229,57,53,0.17);
-}
-.track-block.switcher-active {
-  border: 2.3px solid #e53935;
-  box-shadow: 0 0 0 4px rgba(229,57,53,0.08);
-}
+  <div class="master-output-section">
+    <h3>Master Output Video</h3>
+    <video id="masterOutputVideo" controls width="600" height="340"></video>
+    <div style="margin-top:16px;">
+      <button id="exportBtn" class="export-btn">Export Music Video</button>
+      <span id="exportStatus" class="export-status"></span>
+    </div>
+  </div>
 
-.dice-edit-btn {
-  background: #ff9800;
-  color: #fff;
-  font-size: 1.08rem;
-  font-weight: 800;
-  padding: 12px 22px;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  box-shadow: 0 2px 10px rgba(255,152,0,0.13);
-}
-.dice-edit-btn:hover { background: #f57c00; }
+  <!-- Hidden canvas used for the master mix render -->
+  <canvas id="mixCanvas" width="600" height="340" style="display:none"></canvas>
 
-.dice-edit-status { font-weight: 700; color: #e53935; font-size: 1.02rem; }
-
-.export-btn {
-  background: #e53935;
-  font-size: 1.05rem;
-  font-weight: 800;
-  padding: 10px 18px;
-  border-radius: 10px;
-  color: #fff;
-  border: none;
-  cursor: pointer;
-}
-.export-btn.secondary{
-  background:#3054aa;
-}
-.export-status { margin-left: 16px; font-weight: 700; color: #405280; }
+  <script src="script.js"></script>
+</body>
+</html>
