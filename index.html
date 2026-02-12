@@ -2,84 +2,112 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Fastcut Two Channels Music Video Maker</title>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
+  <title>🎬 FastCut Music Video Switcher</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Orbitron:700|Montserrat:400,700&display=swap">
 </head>
 <body>
-  <div class="spotlight-bg"></div>
-  <header>
-    <div class="logo-area">
-      <svg width="70" height="70" viewBox="0 0 70 70" fill="none">
-        <circle cx="35" cy="35" r="32" stroke="#FFD700" stroke-width="4" filter="url(#glow)"/>
-        <defs>
-          <filter id="glow" x="0" y="0" width="70" height="70">
-            <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#FFD700"/>
-          </filter>
-        </defs>
-        <rect x="18" y="21" width="34" height="28" rx="9" fill="#17c3b2" fill-opacity="0.25"/>
-        <polygon points="30,28 48,35 30,42" fill="#FFD700"/>
-      </svg>
-      <div class="brand-header">
-        <span class="brand-name">Fastcut Two Channels Music Video Maker</span>
-        <h1 class="gala-title"></h1>
-        <div class="lights-camera-action">
-          <span>✨ Lights</span>
-          <span>🎥 Camera</span>
-          <span>🎬 Action!</span>
-        </div>
-      </div>
+  <div class="theme-bg"></div>
+  <div class="set-lights">
+    <div class="spotlight spotlight-left"></div>
+    <div class="spotlight spotlight-right"></div>
+    <div class="spotlight spotlight-top"></div>
+  </div>
+  <header class="hollywood-header">
+    <span class="camera-icon">🎥</span>
+    <h2>FastCut Music Video Switcher</h2>
+    <span class="clapperboard-icon">🎬</span>
+    <div class="lights-action">LIGHTS <span class="dot">•</span> CAMERA <span class="dot">•</span> ACTION!</div>
+    <div class="members-counter" id="membersCounter">
+      <span class="counter-icon">🧑‍🤝‍🧑</span>
+      <span id="membersCountNumber">15,347</span> members online
     </div>
   </header>
 
-  <main>
-    <section class="hollywood-card upload-section" aria-label="Upload Your Song">
-      <h2>🎵 Step 1: Upload Your Song</h2>
-      <input type="file" id="songInput" accept="audio/*">
-      <span id="audioStatus"></span>
-      <audio id="audio" style="display:none;" controls></audio>
-      <button id="audioPlayBtn" class="action-btn" style="display:none;">▶️ Play Song</button>
-      <button id="audioPauseBtn" class="action-btn" style="display:none;">⏸️ Pause Song</button>
-    </section>
+  <!-- INSTANT EDIT BANNER INSERTED HERE -->
+  <div class="instant-edit-banner">
+    get your music video filmed and edited instantly—no more long waits or video editing delay
+  </div>
 
-    <section class="hollywood-card" aria-label="Upload or Record Camera Takes">
-      <h2>🎥 Step 2: Upload or Record Camera Takes</h2>
-      <div id="switcherTracks"></div>
-    </section>
+  <!-- Step 1: Audio Upload -->
+  <div class="audio-track-block">
+    <label for="songInput"><b><span class="music-icon">🎵</span> Main Music Track:</b></label>
+    <input type="file" id="songInput" accept=".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*">
+    <span id="audioStatus"></span>
+    <audio id="audio" controls style="display:none"></audio>
+  </div>
 
-    <section class="hollywood-card" aria-label="Live Edit Your Music Video">
-      <h2>🎬 Step 3: Live Edit Your Music Video</h2>
-      <div id="switcherBtnsContainer" class="gala-switcher-btns"></div>
-      <div class="controls-section">
-        <button id="recordFullEditBtn" class="action-btn" title="Record Your Live Edit">🎬 Record Full Edit</button>
-        <button id="stopPreviewBtn" class="action-btn" title="Stop Recording or Preview">⏹️ Stop</button>
-      </div>
-      <div class="hollywood-output">
-        <div class="hollywood-card video-output-card">
-          <video id="masterOutputVideo" controls></video>
-          <div id="timelineClock" class="timeline-clock"></div>
-          <div class="rec-indicator" id="recIndicator" style="display:none;">● REC</div>
-          <br>
-          <button class="export-btn" id="exportMusicVideoBtn" disabled title="Export Your Final Video">⬇️ Export Video</button>
-          <span id="exportStatus"></span>
-        </div>
-      </div>
-    </section>
-    <div id="hiddenVideos"></div>
-    <div id="debuglog" style="white-space:pre;max-width:800px;margin:20px auto;color:#FFD700;font-size:0.95em;"></div>
-  </main>
-
-  <footer>
-    <div class="gala-footer-bar"></div>
-    <div class="footer-content">
-      <span class="footer-links">
-        <span class="ticket-badge">
-          <svg width="18" height="18" style="vertical-align:middle;margin-right:4px;"><circle cx="9" cy="9" r="9" fill="#FFD700"/></svg>
-          <a href="mailto:bernardogarciagarcia441@gmail.com" title="Contact Email">bernardogarciagarcia441@gmail.com</a>
-        </span>
-      </span>
-      <span class="created-by">Created by Bernardo Garcia</span>
+  <!-- Main Video Recording Screen (NEW) -->
+  <div class="main-recorder-section">
+    <h3>after each take is recorded,click 'download' to save it to your computer-and don't forget to name your take</h3>
+    <video id="mainRecorderPreview" width="600" height="340" autoplay muted></video>
+    <div class="main-recorder-controls">
+      <button id="mainRecorderRecordBtn" class="main-recorder-btn custom-record-btn">⏺️ Record</button>
+      <button id="mainRecorderStopBtn" class="main-recorder-btn custom-stop-btn" disabled>⏹️ Stop</button>
+      <button id="mainRecorderDownloadBtn" class="main-recorder-btn custom-download-btn" disabled>⬇️ Download</button>
+      <span id="mainRecorderStatus" class="main-recorder-status"></span>
     </div>
+    <div class="take-instructions">
+      <span>after each take is recorded,click 'download' to save it to your computer—and don't forget to name your take</span>
+    </div>
+  </div>
+
+  <!-- Step 2: Upload Takes for 6-Track Switching -->
+  <div class="switcher-upload-section">
+    <h3>easyly upload each take right here</h3>
+    <div id="switcherTracks" class="switcher-track-grid-row"></div>
+  </div>
+
+  <!-- Step 3: Live Switch and Record -->
+  <div class="switcher-control-section">
+    <div class="switcher-live-controls">
+      <button id="startSwitchingBtn" class="live-switch-btn record-btn">⏺️ Start Switching</button>
+      <button id="stopSwitchingBtn" class="live-switch-btn stop-btn" disabled>⏹️ Stop Switching</button>
+    </div>
+    <div id="fastcutSwitcher" class="fastcut-switcher-row"></div>
+  </div>
+
+  <!-- Step 4: FastCut Switcher/Export -->
+  <div class="master-output-section">
+    <h3 class="output-title">Master Output Video <span class="filmstrip">🎞️</span></h3>
+    <video
+      id="masterOutputVideo"
+      width="720"
+      height="405"
+      controls
+      style="background:#181c23; border-radius:16px; border:3px solid #ffe57f; box-shadow:0 4px 24px #000a; display:block; margin:0 auto;"
+      poster="master_output_poster.png"
+    >
+      Your browser does not support the video tag.
+    </video>
+    <!-- EXPORT MUSIC VIDEO BUTTON ADDED BELOW -->
+    <button id="exportMusicVideoBtn" class="export-music-btn">Export Music Video</button>
+    <div id="exportStatus" class="export-status"></div>
+    <div id="syncInstructions" class="sync-instructions">
+      <strong>How to Fix Audio/Video Sync in Your Editor:</strong>
+      <ol>
+        <li>Import your exported FastCut video into your video editor.</li>
+        <li>Right-click the video clip and choose <b>"Unlink"</b> or <b>"Detach Audio"</b>.</li>
+        <li>Select the audio track and move it forward by about <b>5–6 frames</b> (about 0.2 seconds), or until the music matches the video action.</li>
+      </ol>
+      <span class="sync-note">Tip: In most editors, you can nudge the audio by single frames using the arrow keys.</span>
+    </div>
+  </div>
+
+  <!-- Moving how-it-works instructions here as requested -->
+  <div class="switching-instructions" style="margin-top:-12px;">
+    <span>
+      <b>How it works:</b> Once all takes are uploaded, click <b>Start Switching</b>, then switch cameras live by pressing the camera buttons below. When you're done, click <b>Stop Switching</b> to generate your master video!
+    </span>
+    <div id="switchingError" style="color:#e53935; font-weight:bold; margin-top:10px;"></div>
+  </div>
+
+  <canvas id="mixCanvas" width="720" height="405" style="display:none"></canvas>
+
+  <footer class="hollywood-footer">
+    <span class="clapperboard-icon">🎬</span>
+    <span>FastCut by <b>bernardogarciaofficial</b> | <span class="camera-icon">🎥</span></span>
+    <span class="footer-email">bernardogarciagarcia441@gmail.com</span>
   </footer>
   <script src="script.js"></script>
 </body>
