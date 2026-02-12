@@ -1,57 +1,104 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DiceCut Music Video Mixer</title>
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <h2>DiceCut Multi-Track Music Video Editor</h2>
+body{
+  margin:0;
+  font-family: Arial, sans-serif;
+  background:#0f1117;
+  color:white;
+}
 
-  <div class="audio-track-block">
-    <input type="file" id="songInput" accept="audio/*" />
-    <span id="audioStatus"></span>
-    <audio id="audio" controls style="display:none"></audio>
+.container{
+  max-width:1000px;
+  margin:30px auto;
+  padding:15px;
+}
 
-    <div class="dice-controls">
-      <label>
-        BPM
-        <input id="bpmInput" type="number" min="40" max="240" value="120" />
-      </label>
-      <label>
-        Bars per cut
-        <input id="barsInput" type="number" min="1" max="32" value="8" />
-      </label>
+h1{
+  text-align:center;
+  margin-bottom:25px;
+}
 
-      <div class="dice-row">
-        <button id="rollDiceBtn" class="dice-edit-btn">🎲🎲 Roll Dice (Create Switch Plan)</button>
-        <span id="diceEditStatus" class="dice-edit-status"></span>
-      </div>
+.card{
+  background:#1c1f26;
+  padding:20px;
+  border-radius:14px;
+  margin-bottom:20px;
+}
 
-      <div class="dice-row">
-        <button id="startAutoBtn" class="export-btn">Start Auto Switching (Preview)</button>
-        <button id="stopAutoBtn" class="export-btn secondary">Stop</button>
-      </div>
-    </div>
-  </div>
+h2{
+  margin-top:0;
+  color:#ffcc66;
+}
 
-  <div id="tracksContainer"></div>
+.status{
+  margin-top:10px;
+  font-weight:bold;
+  color:#aaa;
+}
 
-  <div id="trackSwitcher" class="track-switcher"></div>
+.status.error{
+  color:#ff6666;
+}
 
-  <div class="master-output-section">
-    <h3>Master Output Video</h3>
-    <video id="masterOutputVideo" controls width="600" height="340"></video>
-    <div style="margin-top:16px;">
-      <button id="exportBtn" class="export-btn">Export Music Video</button>
-      <span id="exportStatus" class="export-status"></span>
-    </div>
-  </div>
+.controls{
+  margin-top:15px;
+  display:flex;
+  gap:15px;
+}
 
-  <!-- Hidden canvas used for the master mix render -->
-  <canvas id="mixCanvas" width="600" height="340" style="display:none"></canvas>
+.controls input{
+  width:100px;
+  padding:8px;
+  border-radius:8px;
+  border:none;
+}
 
-  <script src="script.js"></script>
-</body>
-</html>
+.buttons{
+  margin-top:15px;
+  display:flex;
+  gap:10px;
+}
+
+.btn{
+  padding:10px 15px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  font-weight:bold;
+}
+
+.btn.dice{ background:#ffb300; }
+.btn.primary{ background:#2979ff; color:white; }
+.btn.danger{ background:#ff3b3b; color:white; }
+
+.tracks{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:15px;
+}
+
+.track{
+  background:#14161d;
+  padding:10px;
+  border-radius:10px;
+}
+
+.track video{
+  width:100%;
+  height:120px;
+  background:black;
+  border-radius:8px;
+}
+
+.track input{
+  margin-top:8px;
+  width:100%;
+}
+
+#outputVideo{
+  width:100%;
+  background:black;
+  border-radius:12px;
+}
+
+#mixCanvas{
+  display:none;
+}
