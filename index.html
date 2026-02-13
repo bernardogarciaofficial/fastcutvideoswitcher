@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>🎬 FastCut Music Video Switcher</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Orbitron:700|Montserrat:400,700&display=swap">
@@ -13,6 +14,7 @@
     <div class="spotlight spotlight-right"></div>
     <div class="spotlight spotlight-top"></div>
   </div>
+
   <header class="hollywood-header">
     <span class="camera-icon">🎥</span>
     <h2>FastCut Music Video Switcher</h2>
@@ -24,41 +26,47 @@
     </div>
   </header>
 
-  <!-- INSTANT EDIT BANNER INSERTED HERE -->
   <div class="instant-edit-banner">
     get your music video filmed and edited instantly—no more long waits or video editing delay
   </div>
 
-  <!-- Step 1: Audio Upload -->
   <div class="audio-track-block">
     <label for="songInput"><b><span class="music-icon">🎵</span> Main Music Track:</b></label>
     <input type="file" id="songInput" accept=".mp3,.wav,.ogg,.m4a,.aac,.flac,.aiff,audio/*">
     <span id="audioStatus"></span>
-    <audio id="audio" controls style="display:none"></audio>
+    <audio id="audio" controls style="display:none" preload="metadata"></audio>
   </div>
 
-  <!-- Main Video Recording Screen (NEW) -->
   <div class="main-recorder-section">
     <h3>after each take is recorded,click 'download' to save it to your computer-and don't forget to name your take</h3>
-    <video id="mainRecorderPreview" width="600" height="340" autoplay muted></video>
+
+    <video
+      id="mainRecorderPreview"
+      width="600"
+      height="340"
+      autoplay
+      muted
+      playsinline
+      preload="metadata"
+    ></video>
+
     <div class="main-recorder-controls">
       <button id="mainRecorderRecordBtn" class="main-recorder-btn custom-record-btn">⏺️ Record</button>
       <button id="mainRecorderStopBtn" class="main-recorder-btn custom-stop-btn" disabled>⏹️ Stop</button>
       <button id="mainRecorderDownloadBtn" class="main-recorder-btn custom-download-btn" disabled>⬇️ Download</button>
       <span id="mainRecorderStatus" class="main-recorder-status"></span>
     </div>
+
     <div class="take-instructions">
       <span>after each take is recorded,click 'download' to save it to your computer—and don't forget to name your take</span>
     </div>
   </div>
 
-  <!-- Step 2: Upload Takes for 6-Track Switching -->
   <div class="switcher-upload-section">
     <h3>easyly upload each take right here</h3>
     <div id="switcherTracks" class="switcher-track-grid-row"></div>
   </div>
 
-  <!-- Step 3: Live Switch and Record -->
   <div class="switcher-control-section">
     <div class="switcher-live-controls">
       <button id="startSwitchingBtn" class="live-switch-btn record-btn">⏺️ Start Switching</button>
@@ -67,22 +75,25 @@
     <div id="fastcutSwitcher" class="fastcut-switcher-row"></div>
   </div>
 
-  <!-- Step 4: FastCut Switcher/Export -->
   <div class="master-output-section">
     <h3 class="output-title">Master Output Video <span class="filmstrip">🎞️</span></h3>
+
     <video
       id="masterOutputVideo"
       width="720"
       height="405"
       controls
+      playsinline
+      preload="metadata"
       style="background:#181c23; border-radius:16px; border:3px solid #ffe57f; box-shadow:0 4px 24px #000a; display:block; margin:0 auto;"
       poster="master_output_poster.png"
     >
       Your browser does not support the video tag.
     </video>
-    <!-- EXPORT MUSIC VIDEO BUTTON ADDED BELOW -->
+
     <button id="exportMusicVideoBtn" class="export-music-btn">Export Music Video</button>
     <div id="exportStatus" class="export-status"></div>
+
     <div id="syncInstructions" class="sync-instructions">
       <strong>How to Fix Audio/Video Sync in Your Editor:</strong>
       <ol>
@@ -94,7 +105,6 @@
     </div>
   </div>
 
-  <!-- Moving how-it-works instructions here as requested -->
   <div class="switching-instructions" style="margin-top:-12px;">
     <span>
       <b>How it works:</b> Once all takes are uploaded, click <b>Start Switching</b>, then switch cameras live by pressing the camera buttons below. When you're done, click <b>Stop Switching</b> to generate your master video!
@@ -109,6 +119,7 @@
     <span>FastCut by <b>bernardogarciaofficial</b> | <span class="camera-icon">🎥</span></span>
     <span class="footer-email">bernardogarciagarcia441@gmail.com</span>
   </footer>
-  <script src="script.js"></script>
+
+  <script src="script.js" defer></script>
 </body>
 </html>
