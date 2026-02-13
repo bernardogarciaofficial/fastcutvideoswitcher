@@ -569,3 +569,72 @@ body {
     gap: 5px;
   }
 }
+ PERFORMANCE / ANTI-FREEZE PATCH
+   (Keeps the style, reduces jank)
+   ============================ */
+
+/* Hint GPU compositing for animated/large layers */
+.theme-bg,
+.spotlight,
+.hollywood-header,
+.instant-edit-banner,
+.switcher-track,
+.fastcut-btn,
+#mainRecorderPreview,
+#masterOutputVideo {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
+/* Prevent heavy blur filters from causing repaints during canvas draw */
+.theme-bg {
+  background-size: 200% 200%;
+}
+
+/* Reduce expensive filters on small devices */
+@media (max-width: 900px) {
+  .spotlight { filter: blur(18px); }
+  .theme-bg { filter: none; } /* big win for iPhone */
+}
+
+/* While switching is active, we can calm down background animations */
+body.fastcut-live .theme-bg,
+body.fastcut-live .spotlight-left,
+body.fastcut-live .spotlight-right,
+body.fastcut-live .spotlight-top,
+body.fastcut-live .lights-action {
+  animation: none !important;
+}
+
+/* Prevent layout shifts from buttons scaling on mobile (reduces stutter) */
+@media (max-width: 900px) {
+  .fastcut-btn:hover,
+  .fastcut-btn:focus {
+    transform: none;
+  }
+}
+
+/* Make active track *very obvious* without extra work */
+.switcher-track.active {
+  outline: 3px solid rgba(229,57,53,0.65);
+  outline-offset: 2px;
+}
+
+/* Make the canvas pipeline smoother: avoid subpixel rendering */
+#masterOutputVideo,
+.switcher-track video,
+#mainRecorderPreview {
+  image-rendering: auto;
+  backface-visibility: hidden;
+}
+
+/* Respect user's reduced motion setting (also helps stability) */
+@media (prefers-reduced-motion: reduce) {
+  .theme-bg,
+  .spotlight-left,
+  .spotlight-right,
+  .spotlight-top,
+  .lights-action {
+    animation: none !important;
+  }
+}
